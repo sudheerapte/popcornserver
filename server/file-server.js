@@ -34,13 +34,13 @@ const path = require('path');
 
 const ContentType = {
 //  file extension to Content-Type
-  "html": "text/html",
-  "js": "application/javascript",
-  "css": "text/css",
-  "png": "image/png",
-  "jpg": "image/jpeg",
-  "gif": "image/gif",
-  "svg": "image/svg+xml",
+  ".html": "text/html",
+  ".js": "application/javascript",
+  ".css": "text/css",
+  ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".gif": "image/gif",
+  ".svg": "image/svg+xml",
 };
 
 class FileServer {
@@ -63,11 +63,12 @@ class FileServer {
     let contentType = "text/html";
     if (ContentType[ext]) {
       contentType = ContentType[ext];
+    } else {
+      console.log(`FileServer.resolve: ext ${ext} not found in ContentType`);
     }
     let str = fs.createReadStream(p);
     if (typeof end === 'undefined') { end = true; }
-    // str.pipe(writeStream, {end: end});
-    str.pipe(writeStream);
+    str.pipe(writeStream, {end: end});
     return contentType;
   }
 }

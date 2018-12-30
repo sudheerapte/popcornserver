@@ -17,17 +17,18 @@
 "use strict";
 
 const [log, err] = require('./logerr.js');
+const {Writable} = require('stream');
 const fsmodule = require('../file-server.js');
 
 let msg;
 
-msg = "1. create fileServer";
+msg = "1. create fileServer --------";
+log(msg);
 const fileServer = new fsmodule('./assets');
 fileServer || err(msg);
 
-msg = "2. output contents of index.html";
-
-const {Writable} = require('stream');
+msg = "2. count contents of index.html ----------";
+log(msg);
 let countBytes = 0; // bytes in the contents of index.html
 const htmlStr = new Writable({
   write(chunk, encoding, cb) {
@@ -35,15 +36,29 @@ const htmlStr = new Writable({
     cb();
   }
 });
-
 htmlStr.on('finish', () => {
   countBytes === 53 || err(`htmlStr: countBytes not 53, but ${countBytes}`);
   log('htmlStr contents finished');
 });
 htmlStr.on('error', (msg) => {
-  console.log(`htmlStr error: ${msg}`);
+  err(`htmlStr error: ${msg}`);
 });
+const ctype = fileServer.resolve('/index.html', htmlStr);
+ctype === "text/html" || err(`index.html Content-Type should be text/html: found ${ctype}`);
 
- const ctype = fileServer.resolve('/index.html', htmlStr);
+msg = "3. content-type of example.svg ----------";
+log(msg);
+const svgStr = new Writable({
+  write(chunk, encoding, cb) {
+    cb();
+  }
+});
+svgStr.on('finish', () => {
+});
+svgStr.on('error', (msg) => {
+  err(`xmlStr error: ${msg}`);
+});
+const svgtype = fileServer.resolve('/example.svg', svgStr);
+svgtype === "image/svg+xml" || err(`example.svg type = ${svgtype}`);
 
-log(`content-type = ${ctype}`);
+
