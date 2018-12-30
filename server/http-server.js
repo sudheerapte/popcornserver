@@ -17,20 +17,9 @@
 "use strict";
 
 /*
-  server.js - main HTTP server. Uses HTTP/1.1
-  Invoke with assets in a subdirectory called "assets".
-  Resolves http://localhost:3000/foo.jpg with the file "assets/foo.jpg".
+  server.js - main HTTP server. Uses HTTP/1.1 to listen on a given socket.
+
 */
-const ContentType = {
-//  file extension to Content-Type
-    "html": "text/html",
-    "js": "application/javascript",
-    "css": "text/css",
-    "png": "image/png",
-    "jpg": "image/jpeg",
-    "gif": "image/gif",
-    "svg": "image/svg+xml",
-};
 
 const fs = require('fs');
 
