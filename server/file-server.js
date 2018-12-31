@@ -16,14 +16,12 @@
 
    ... obtain HTTP req and res streams ...
 
-   const type = fileServer.resolve("/foo.jpg", res);
+   const type = fileServer.resolve("/foo.jpg", res, () => {});
 
    This will return the string "image.jpg" and cause the contents of
    the file assets/foo.jpg to be written to the stream "res". When the
-   file contents are completely written, the stream will automatically
-   be ended. (This is usually what you want; if not, add a third
-   boolean parameter to "resolve" with the value false. This has the
-   same meaning as the Stream readable.pipe option named "end".)
+   file contents are completely read, the callback will be called, with
+   an error argument if there was any error.
 
   See "ContentType" object below to see the map of file extensions
   to the corresponding MIME Content-Type field.
@@ -54,21 +52,29 @@ class FileServer {
 
      @arg(urlPath) - the path portion of the URL to resolve
      @arg(writeStream) - write the contents of the file to this stream
+     @arg(cb) - no arguments; called back once file contents are read
      @return(contentType) - a value for the HTTP "Content-Type" header.
    */
 
-  resolve(urlPath, writeStream, end) {
+  resolve(urlPath, writeStream, cb) {
     let p = path.normalize(path.join(this._dirPath, urlPath));
     const ext = path.extname(p);
     let contentType = "text/html";
     if (ContentType[ext]) {
       contentType = ContentType[ext];
     } else {
-      console.log(`FileServer.resolve: ext ${ext} not found in ContentType`);
+      cb(`FileServer.resolve: ext ${ext} not found in ContentType`);
     }
-    let str = fs.createReadStream(p);
-    if (typeof end === 'undefined') { end = true; }
-    str.pipe(writeStream, {end: end});
+    fs.access(p, fs.constants.R_OK, eMsg => {
+      if (eMsg) {
+	cb(eMsg.code);
+      } else {
+	let str = fs.createReadStream(p);
+	str.pipe(writeStream, {end: false});
+	str.on('end', () => cb(null));
+	str.on('error', msg => cb(msg));
+      }
+    });
     return contentType;
   }
 }
