@@ -3,9 +3,13 @@
 /*
   Resolves URL paths using files in an assets directory.
 
+  Instantiate a FileServer instance with a directory path.
+
   Pass in a URL path and a writable stream to the method
   resolve(). The FileServer will write the contents of that file to
   the given stream, and also return the value of Content-Type to use.
+  The passed-in URL path must begin with "/". The rest of this path
+  will be looked up under the assets directory.
 
   Example: if you create an instance of file-server like this:
 
@@ -18,13 +22,19 @@
 
    const type = fileServer.resolve("/foo.jpg", res, () => {});
 
-   This will return the string "image.jpg" and cause the contents of
+   This will return the string "image/jpeg" and cause the contents of
    the file assets/foo.jpg to be written to the stream "res". When the
    file contents are completely read, the callback will be called, with
    an error argument if there was any error.
 
-  See "ContentType" object below to see the map of file extensions
-  to the corresponding MIME Content-Type field.
+   Possible errors:
+
+     ENOENT - no such file.
+     No ContentType for extension '${ext}' - bad file extension.
+     Stream error - failed to properly read data from file.
+
+   See "ContentType" object below to see the map of file extensions
+   to the corresponding MIME Content-Type field.
 */
 
 const fs = require('fs');
@@ -52,7 +62,7 @@ class FileServer {
 
      @arg(urlPath) - the path portion of the URL to resolve
      @arg(writeStream) - write the contents of the file to this stream
-     @arg(cb) - no arguments; called back once file contents are read
+     @arg(cb) - callback func when done; arg = null or error message.
      @return(contentType) - a value for the HTTP "Content-Type" header.
    */
 
@@ -63,7 +73,7 @@ class FileServer {
     if (ContentType[ext]) {
       contentType = ContentType[ext];
     } else {
-      cb(`FileServer.resolve: ext ${ext} not found in ContentType`);
+      cb(`No ContentType for extension '${ext}'`);
     }
     fs.access(p, fs.constants.R_OK, eMsg => {
       if (eMsg) {
