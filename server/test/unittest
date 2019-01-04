@@ -1,5 +1,6 @@
 #!/bin/sh
 here=$(dirname "$0")
 cd ${here}
-node ./file-server-test.js
+#node ./file-server-test.js
+node ./http-server-test.js
 

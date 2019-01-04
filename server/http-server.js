@@ -17,97 +17,38 @@
 "use strict";
 
 /*
-  server.js - main HTTP server. Uses HTTP/1.1 to listen on a given socket.
+  server.js - main HTTP server. Uses HTTP/1.1 to listen on a given port.
 
 */
 
-const fs = require('fs');
+const http = require('http');
 
-class Server extends EventEmitter {
+class Server {
 
-  constructor() {
-    super();
+  constructor(port) {
+    this._port = port;
+    this._server = http.createServer( (req, res) => {
+      this.handleConnect(req, res);
+    });
+    this._server.on('clientError', (err, sock) => {
+      sock.end('HTTP/1.1 400 bad request\r\n\r\n');
+    });
+    this._server.listen(this._port);
   }
 
-  newClient(sock) {
-    const emitter = new SSEventEmitter();
-    sock.on('end', () => {
-      this.emit('disconnect', emitter);
-      // no need to close the socket again
-      // this.dropClient(sock, emitter);
-    });
-    sock.on('error', (eMsg) => {
-      log(`dropping socket on error: ${eMsg}`);
-      this.dropClient(sock, emitter);
-    });
-    emitter.setWriteStream(sock);
-    emitter.once('SSEvent', e => {
-      this.processFirstClientEvent(emitter, sock, e);
-    });
-    emitter.readFrom(sock);
-    return emitter;
-  }
-
-  dropClient(sock, emitter) {
-    this.emit('disconnect', emitter);
-    if (sock) {
-      sock.end();
-      log(`closing socket`);
-    }
-  }
-
-  processFirstClientEvent(emitter, sock, e) {
-    let msg;
-    switch (e.type) {
-    case 'appConnect':
-      this.emit('appConnect', {
-	lines: e.data,
-	sse: emitter,
-	dropConnection: () => this.dropClient(sock, emitter),
-      });
-      break;
-    case 'fireAndForget':
-      this.emit('fireAndForget', e.data);
-      setImmediate( () => sock.end() );
-      break;
-    case 'oneShotCommand':
-      const arg = {
-	lines: e.data,
-	sendSuccess: (details, cb) => {
-	  if (sock) {
-	    let lines = details.split(/\r\n|\n/);
-	    sock.write(`event: replySuccess\n`);
-	    lines.forEach(line => sock.write(`data: ${line}\n`));
-	    sock.end("\n", () => {
-	      if (cb) { return cb(null); }
-	    });
-	  } else {
-	    if (cb) { return cb("sendSuccess: socket already closed"); }
-	  }
-	},
-	sendError: (msg, cb) => {
-	  if (sock) {
-	    sock.end(`event: replyError\r\ndata: ${msg}\r\n\r\n`, () => {
-	      if (cb) { return cb(null); }
-	    });
-	  } else {
-	    if (cb) { return cb("sendError: socket already closed"); }
-	  }
-	},
-      };
-      this.emit('oneShotCommand', arg);
-      break;
-    default:
-      log(`bad first event: |${e.type}|`);
-      this.dropClient(sock, emitter);
-    }
+  handleConnect(req, res) {
+    // log('got a connection');
+    res.writeHead(200, {'Content-Type': 'text/html'});
+    res.end('<html><head><title>TEST</title></head><body>TEST</body></html>\r\n');
+    res.end();
   }
 }
+
 
 function log(str) {
   if (! process.env["DEBUG"]) { return; }
   const d = new Date();
-  console.log(`[${d.toISOString()}] INFO client-wrangler: ${str}`);
+  console.log(`[${d.toISOString()}] INFO http-server: ${str}`);
 }
 
-module.exports = new ClientWrangler;
+module.exports = Server;
