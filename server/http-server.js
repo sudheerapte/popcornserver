@@ -22,9 +22,10 @@
 */
 
 const http = require('http');
+const fsmodule = require('./file-server.js');
+const fileServer = new fsmodule(__dirname);
 
 class Server {
-
   constructor(port) {
     this._port = port;
     this._server = http.createServer( (req, res) => {
@@ -38,9 +39,15 @@ class Server {
 
   handleConnect(req, res) {
     // log('got a connection');
-    res.writeHead(200, {'Content-Type': 'text/html'});
-    res.end('<html><head><title>TEST</title></head><body>TEST</body></html>\r\n');
-    res.end();
+    const ctype = fileServer.resolve('/index.html', res, msg => {
+      log('resolved index.html');
+      if (msg) {
+	log(msg);
+      } else {
+	res.writeHead(200, {'Content-Type': 'text/html'});
+      }
+      res.end();
+    });
   }
 }
 
