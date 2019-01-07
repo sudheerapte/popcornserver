@@ -12,13 +12,14 @@ let msg;
 // -----------------
 msg = "1. create http-server and open connection";
 log(msg);
+let numBytes = 0; // length of page served
 const httpServer = new hsmodule(PORT);
 httpServer || err(msg);
 const httpRequest = http.request({port: PORT, method: 'GET'}, res => {
   // log('httpRequest: got response.');
   // log(`STATUS: ${res.statusCode}`);
   // log(`HEADERS: ${JSON.stringify(res.headers)}`);
-  res.on('data', chunk => log(`BODY: ${chunk}`));
+  res.on('data', chunk => numBytes += chunk.length );
   res.on('end', () => {
     let httpRequestDone = true;
     endOfTest();
@@ -28,9 +29,8 @@ const httpRequest = http.request({port: PORT, method: 'GET'}, res => {
 httpRequest.on('error', errMsg => err(errMsg));
 httpRequest.end();
 
-
 function endOfTest() {
-  // log('end of test');
+  log(`test successful: received ${numBytes} bytes`);
   process.exit(0);
 }
 

@@ -44,7 +44,7 @@ class Server {
       if (msg) {
 	log(msg);
       } else {
-	res.writeHead(200, {'Content-Type': 'text/html'});
+	res.writeHead(200, {'Content-Type': `${ctype}`});
       }
       res.end();
     });
