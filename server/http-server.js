@@ -19,6 +19,10 @@
 /*
   server.js - main HTTP server. Uses HTTP/1.1 to listen on a given port.
 
+  Does two things:
+  1. Serves assets from disk on GET requests.
+  2. Offers a websocket per client.
+
 */
 
 const http = require('http');
@@ -72,7 +76,8 @@ class Server {
 	  res.write(chunk);
 	});
 	str.on('end', () => {
-	  res.end('\r\n');
+          // res.end('\r\n');
+	  res.end();
 	});
 	str.on('error', msg => {
 	  doError(msg);
