@@ -38,7 +38,8 @@ class Server {
   }
 
   handleConnect(req, res) {
-    log(`method = ${req.method}`);
+    log(`HTTP/${req.httpVersion} ${req.method} ${req.url}`);
+    log(`${JSON.stringify(req.headers)}`);
     if (req.method === 'GET') {
       req.on('data', chunk => log(`httpServer: received ${chunk.length} bytes`));
       req.on('error', msg => {
@@ -55,17 +56,15 @@ class Server {
   doGet(req, res) {
     let p = this.getFilePath(req.url);
     if (p === null) {
-      log(`doGet: no such path: ${req.url.path}`);
+      log(`doGet: no such path: ${req.url}`);
       res.writeHead(500, {'Content-Type': 'text/plain'});
-      res.end(`doGet: no such path: ${req.url.path}`);
+      res.end(`doGet: no such path: ${req.url}`);
       return;
     }
     const ctype = this.getContentType(p) || 'application/octet-stream';
     fs.access(p, fs.constants.R_OK, eMsg => {
       if (eMsg) {
-	log(`doGet: ${eMsg.code}`);
-	res.writeHead(500, {'Content-Type': 'text/plain'});
-	res.end(`doGet: ${eMsg.code}\r\n\r\n`);
+	doError(eMsg);
       } else {
 	res.writeHead(200, {'Content-Type': ctype });
 	let str = fs.createReadStream(p);
@@ -76,15 +75,20 @@ class Server {
 	  res.end('\r\n');
 	});
 	str.on('error', msg => {
-	  res.writeHead(500, {'Content-Type': 'text/plain'});
-	  res.end(`doGet: ${eMsg.code}\r\n\r\n`);
+	  doError(msg);
 	});
       }
     });
+
+    function doError(msg) {
+      log(msg);
+      res.writeHead(500, {'Content-Type': 'text/plain'});
+      res.end(msg);
+    }
   }
 
   getFilePath(urlPath) {
-    if (urlPath.match(/\//)) { return svrFile("index.html"); }
+    if (urlPath.match(/^\/$/)) { return svrFile("index.html"); }
     return null;
 
     function svrFile(name) {
