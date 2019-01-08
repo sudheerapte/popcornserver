@@ -38,13 +38,32 @@ class Server {
   }
 
   handleConnect(req, res) {
-    // log('got a connection');
+    log(`httpServer: method = ${req.method}`);
+    log('httpServer: headers:');
+    log(JSON.stringify(req.headers));
+    log('httpServer: URL:');
+    log(JSON.stringify(req.url));
+    if (req.method === 'GET') {
+      req.on('data', chunk => log(`httpServer: received ${chunk.length} bytes`));
+      req.on('error', msg => {
+	log(`httpServer: received error: ${msg}`);
+	res.end();
+      });
+      req.on('end', () => this.handleGet(req, res));
+    } else {
+      log(`httpServer: method ${req.method} not supported`);
+      res.end();
+    }
+  }
+
+  handleGet(req, res) {
     const ctype = fileServer.resolve('/index.html', res, msg => {
       log('resolved index.html');
       if (msg) {
 	log(msg);
       } else {
 	res.writeHead(200, {'Content-Type': `${ctype}`});
+	log(`sending document of type ${ctype}`);
       }
       res.end();
     });

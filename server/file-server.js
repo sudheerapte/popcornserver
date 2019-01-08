@@ -81,7 +81,9 @@ class FileServer {
       } else {
 	let str = fs.createReadStream(p);
 	str.pipe(writeStream, {end: false});
-	str.on('end', () => cb(null));
+	str.on('end', () => {
+	  cb(null);
+	});
 	str.on('error', msg => cb(msg));
       }
     });

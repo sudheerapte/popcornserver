@@ -15,7 +15,8 @@ log(msg);
 let numBytes = 0; // length of page served
 const httpServer = new hsmodule(PORT);
 httpServer || err(msg);
-const httpRequest = http.request({port: PORT, method: 'GET'}, res => {
+const options = {port: PORT, method: 'GET', path: '/foo'};
+const httpRequest = http.request(options, res => {
   // log('httpRequest: got response.');
   // log(`STATUS: ${res.statusCode}`);
   // log(`HEADERS: ${JSON.stringify(res.headers)}`);
@@ -28,6 +29,7 @@ const httpRequest = http.request({port: PORT, method: 'GET'}, res => {
 
 httpRequest.on('error', errMsg => err(errMsg));
 httpRequest.end();
+log('http-server-test: request ended.');
 
 function endOfTest() {
   log(`test successful: received ${numBytes} bytes`);
