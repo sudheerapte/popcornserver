@@ -22,8 +22,8 @@
 */
 
 const http = require('http');
-const fsmodule = require('./file-server.js');
-const fileServer = new fsmodule(__dirname);
+const fs = require('fs');
+const path = require('path');
 
 class Server {
   constructor(port) {
@@ -38,34 +38,42 @@ class Server {
   }
 
   handleConnect(req, res) {
-    log(`httpServer: method = ${req.method}`);
-    log('httpServer: headers:');
-    log(JSON.stringify(req.headers));
-    log('httpServer: URL:');
-    log(JSON.stringify(req.url));
+    log(`method = ${req.method}`);
     if (req.method === 'GET') {
       req.on('data', chunk => log(`httpServer: received ${chunk.length} bytes`));
       req.on('error', msg => {
 	log(`httpServer: received error: ${msg}`);
 	res.end();
       });
-      req.on('end', () => this.handleGet(req, res));
+      req.on('end', () => this.doGet(req, res));
     } else {
       log(`httpServer: method ${req.method} not supported`);
       res.end();
     }
   }
 
-  handleGet(req, res) {
-    const ctype = fileServer.resolve('/index.html', res, msg => {
-      log('resolved index.html');
-      if (msg) {
-	log(msg);
+  doGet(req, res) {
+    let p = path.normalize(path.join(__dirname, "index.html"));
+    fs.access(p, fs.constants.R_OK, eMsg => {
+      if (eMsg) {
+	log(`doGet: ${eMsg.code}`);
+	res.writeHead(500, {'Content-Type': 'text/html'});
+	res.end(`doGet: ${eMsg.code}\r\n\r\n`);
       } else {
-	res.writeHead(200, {'Content-Type': `${ctype}`});
-	log(`sending document of type ${ctype}`);
+	res.writeHead(200, {'Content-Type': 'text/html'});
+	let str = fs.createReadStream(p);
+	str.on('data', chunk => {
+	  res.write(chunk);
+	});
+	str.on('end', () => {
+	  // log(`readStream ended.`);
+	  res.end('\r\n');
+	});
+	str.on('error', msg => {
+	  res.writeHead(500, {'Content-Type': 'text/html'});
+	  res.end(`doGet: ${eMsg.code}\r\n\r\n`);
+	});
       }
-      res.end();
     });
   }
 }

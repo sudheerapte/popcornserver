@@ -20,7 +20,10 @@ const httpRequest = http.request(options, res => {
   // log('httpRequest: got response.');
   // log(`STATUS: ${res.statusCode}`);
   // log(`HEADERS: ${JSON.stringify(res.headers)}`);
-  res.on('data', chunk => numBytes += chunk.length );
+  res.on('data', chunk => {
+    numBytes += chunk.length;
+    log(`|${chunk}|`);
+  });
   res.on('end', () => {
     let httpRequestDone = true;
     endOfTest();
