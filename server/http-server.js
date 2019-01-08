@@ -53,29 +53,60 @@ class Server {
   }
 
   doGet(req, res) {
-    let p = path.normalize(path.join(__dirname, "index.html"));
+    let p = this.getFilePath(req.url);
+    if (p === null) {
+      log(`doGet: no such path: ${req.url.path}`);
+      res.writeHead(500, {'Content-Type': 'text/plain'});
+      res.end(`doGet: no such path: ${req.url.path}`);
+      return;
+    }
+    const ctype = this.getContentType(p) || 'application/octet-stream';
     fs.access(p, fs.constants.R_OK, eMsg => {
       if (eMsg) {
 	log(`doGet: ${eMsg.code}`);
-	res.writeHead(500, {'Content-Type': 'text/html'});
+	res.writeHead(500, {'Content-Type': 'text/plain'});
 	res.end(`doGet: ${eMsg.code}\r\n\r\n`);
       } else {
-	res.writeHead(200, {'Content-Type': 'text/html'});
+	res.writeHead(200, {'Content-Type': ctype });
 	let str = fs.createReadStream(p);
 	str.on('data', chunk => {
 	  res.write(chunk);
 	});
 	str.on('end', () => {
-	  // log(`readStream ended.`);
 	  res.end('\r\n');
 	});
 	str.on('error', msg => {
-	  res.writeHead(500, {'Content-Type': 'text/html'});
+	  res.writeHead(500, {'Content-Type': 'text/plain'});
 	  res.end(`doGet: ${eMsg.code}\r\n\r\n`);
 	});
       }
     });
   }
+
+  getFilePath(urlPath) {
+    if (urlPath.match(/\//)) { return svrFile("index.html"); }
+    return null;
+
+    function svrFile(name) {
+      const svrP = path.normalize(path.join(__dirname, name));
+      return svrP;
+    }
+  }
+
+  getContentType(fileName) {
+    const ContentType = {
+      //  file extension to Content-Type
+      ".html": "text/html",
+      ".js": "application/javascript",
+      ".css": "text/css",
+      ".png": "image/png",
+      ".jpg": "image/jpeg",
+      ".gif": "image/gif",
+      ".svg": "image/svg+xml",
+    };
+    return ContentType[path.extname(fileName)];
+  }
+
 }
 
 
