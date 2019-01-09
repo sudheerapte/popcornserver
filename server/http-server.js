@@ -21,16 +21,24 @@
 
   Does two things:
   1. Serves assets from disk on GET requests.
-  2. Offers a websocket per client.
+  2. Creates a TCP socket for each websocket client.
 
+  Usage:
+  
+  const httpModule = require('./http-server.js');
+  const server = new httpModule(8000); // start HTTP server on port 8000
+  server.on('wssocket', (socket) => { ... use the socket ... });
+     You can drop the socket by listening for events on it.
 */
 
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const EventEmitter = require('events');
 
-class Server {
+class Server extends EventEmitter {
   constructor(port) {
+    super();
     this._port = port;
     this._server = http.createServer( (req, res) => {
       this.handleConnect(req, res);
@@ -38,6 +46,12 @@ class Server {
     this._server.on('clientError', (err, sock) => {
       sock.end('HTTP/1.1 400 bad request\r\n\r\n');
     });
+
+
+    this._server.on('upgrade', (req, socket, head) => {
+      this.handleUpgrade(req, socket, head);
+    });
+    
     this._server.listen(this._port);
   }
 
@@ -85,6 +99,15 @@ class Server {
       }
     });
 
+    function handleUpgrade(req, socket, head) {
+      socket.write('HTTP/1.1 101 Web Socket Protocol Handshake\r\n' +
+		   'Upgrade: WebSocket\r\n' +
+		   'Connection: Upgrade\r\n' +
+		   '\r\n');
+
+      this.emit('wssocket', socket);
+    }
+
     function doError(msg) {
       log(msg);
       res.writeHead(500, {'Content-Type': 'text/plain'});
@@ -94,6 +117,7 @@ class Server {
 
   getFilePath(urlPath) {
     if (urlPath.match(/^\/$/)) { return svrFile("index.html"); }
+    if (urlPath.match(/^\/boot.js$/)) { return svrFile("boot.js"); }
     return null;
 
     function svrFile(name) {
