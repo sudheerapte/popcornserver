@@ -46,12 +46,9 @@ class Server extends EventEmitter {
     this._server.on('clientError', (err, sock) => {
       sock.end('HTTP/1.1 400 bad request\r\n\r\n');
     });
-
-
     this._server.on('upgrade', (req, socket, head) => {
       this.handleUpgrade(req, socket, head);
     });
-    
     this._server.listen(this._port);
   }
 
@@ -99,20 +96,21 @@ class Server extends EventEmitter {
       }
     });
 
-    function handleUpgrade(req, socket, head) {
-      socket.write('HTTP/1.1 101 Web Socket Protocol Handshake\r\n' +
-		   'Upgrade: WebSocket\r\n' +
-		   'Connection: Upgrade\r\n' +
-		   '\r\n');
-
-      this.emit('wssocket', socket);
-    }
-
     function doError(msg) {
       log(msg);
       res.writeHead(500, {'Content-Type': 'text/plain'});
       res.end(msg);
     }
+  }
+
+  handleUpgrade(req, socket, head) {
+    log(`upgrade received`);
+    socket.write('HTTP/1.1 101 Web Socket Protocol Handshake\r\n' +
+		 'Upgrade: WebSocket\r\n' +
+		 'Connection: Upgrade\r\n' +
+		 '\r\n');
+    this.emit('wssocket', socket);
+    socket.pipe(socket);
   }
 
   getFilePath(urlPath) {
