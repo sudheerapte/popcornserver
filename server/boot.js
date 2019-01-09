@@ -1,5 +1,5 @@
 function boot() {
-  let ws = new WebSocket("ws://localhost:8000/");
+  let ws = new WebSocket("ws://localhost:8000/ws");
   ws.addEventListener('open', function(ev) {
     console.log(`websocket is open: protocol = ${ws.protocol}`);
   });
