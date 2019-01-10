@@ -92,7 +92,12 @@ class Server extends EventEmitter {
       machine = getFirstWord(req.url);
       log(`doGet: machine requested = ${machine}`);
       if (isOneWord(req.url)) {
-	filePath = this.getFilePath(machine, "/");
+	const origin = req.headers["host"];
+	const content = getIndexHtml(origin, machine);
+	log(`sending index.html with origin ${origin} and machine ${machine}`);
+	res.writeHead(200, {'Content-Type': 'text/html'});
+	res.end(content);
+	return;
       } else {
 	machineDir = this.getMachineDir(machine);
 	log(`doGet: machine location = ${machineDir}`);
@@ -205,9 +210,22 @@ function getCdr(urlPath) {
   if (m) { return m[1]; }
   else { return null; }
 }
-
 function isOneWord(urlPath) {
   return !! urlPath.match(/^\/(\w+)$/);
+}
+
+function getIndexHtml(origin, machine) {
+  let contents = `
+<html><head>
+    <meta charset="utf-8">
+    <base href="http://${origin}/${machine}">
+    <title>TEST</title>
+    <script src="boot.js"></script>
+  </head>
+  <body>TEST</body>
+</html>
+`;
+  return contents;
 }
 
 function log(str) {
