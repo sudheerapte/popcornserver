@@ -1,17 +1,5 @@
 /**
-   Copyright 2018 Sudheer Apte
-
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
-
-       http://www.apache.org/licenses/LICENSE-2.0
-
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License.
+   Copyright 2018,2019 Sudheer Apte
 */
 
 "use strict";
@@ -29,6 +17,32 @@
   const server = new httpModule(8000); // start HTTP server on port 8000
   server.on('wssocket', (socket) => { ... use the socket ... });
      You can drop the socket by listening for events on it.
+
+  Details:
+
+  On startup, the server knows about one or more machines:
+    { MACHINE1: directory1, MACHINE2: directory2, ...}
+
+  TODO: allow external configuration of machines.
+
+  Each client asks for one of these machines by connecting to
+  http://HOST:PORT/MACHINE.
+
+  The server goes through two states:
+
+  1. Ready to accept new clients.
+  2. Onboarding a client for MACHINE:
+       - Providing common popcorn assets: index.html, boot.js.
+       - Resolving assets for the MACHINE.
+       - Upgrading to websocket.
+
+  Once a client is onboarded, the server goes back to State 1.  Thus,
+  it can speak websocket with multiple clients, but it can onboard
+  only one client at a time. During State 2, it refuses any new
+  clients.
+
+  TODO: queue new incoming clients while one is being onboarded.
+
 */
 
 const http = require('http');
@@ -37,8 +51,9 @@ const path = require('path');
 const EventEmitter = require('events');
 
 class Server extends EventEmitter {
-  constructor(port) {
+  constructor(port, machines) {
     super();
+    this._machines = machines;
     this._port = port;
     this._server = http.createServer( (req, res) => {
       this.handleConnect(req, res);
@@ -69,20 +84,42 @@ class Server extends EventEmitter {
   }
 
   doGet(req, res) {
-    let p = this.getFilePath(req.url);
-    if (p === null) {
+    log(`urlPath=${req.url} isOneWord=${isOneWord(req.url)} firstWord=${getFirstWord(req.url)}`);
+    let filePath, machineDir, machine;
+    if (req.url === "/boot.js") {
+      filePath = this.getFilePath(null, "/boot.js");
+    } else {
+      machine = getFirstWord(req.url);
+      log(`doGet: machine requested = ${machine}`);
+      if (isOneWord(req.url)) {
+	filePath = this.getFilePath(machine, "/");
+      } else {
+	machineDir = this.getMachineDir(machine);
+	log(`doGet: machine location = ${machineDir}`);
+	if (! machineDir) {
+	  log(`doGet: no such machine: ${machine}`);
+	  log(`doGet: no such path: ${req.url}`);
+	  res.writeHead(500, {'Content-Type': 'text/plain'});
+	  res.end(`doGet: no such path: ${req.url}`);
+	  return;
+	}
+	filePath = this.getFilePath(machine, getCdr(req.url));
+      }
+    }
+    if (filePath === null) {
       log(`doGet: no such path: ${req.url}`);
       res.writeHead(500, {'Content-Type': 'text/plain'});
       res.end(`doGet: no such path: ${req.url}`);
       return;
     }
-    const ctype = this.getContentType(p) || 'application/octet-stream';
-    fs.access(p, fs.constants.R_OK, eMsg => {
+    log(`doGet: looking for path ${filePath}`);
+    const ctype = this.getContentType(filePath) || 'application/octet-stream';
+    fs.access(filePath, fs.constants.R_OK, eMsg => {
       if (eMsg) {
 	doError(eMsg);
       } else {
 	res.writeHead(200, {'Content-Type': ctype });
-	let str = fs.createReadStream(p);
+	let str = fs.createReadStream(filePath);
 	str.on('data', chunk => {
 	  res.write(chunk);
 	});
@@ -120,14 +157,26 @@ class Server extends EventEmitter {
     // socket.on('data', (data) => { console.log(`got ws data: ${data}`); });
   }
 
-  getFilePath(urlPath) {
-    if (urlPath.match(/^\/$/)) { return svrFile("index.html"); }
-    if (urlPath.match(/^\/boot.js$/)) { return svrFile("boot.js"); }
-    return null;
+  getMachineDir(machine) {
+    if (this._machines && this._machines[machine]) {
+      return this._machines[machine];
+    } else {
+      return null;
+    }
+  }
 
-    function svrFile(name) {
-      const svrP = path.normalize(path.join(__dirname, name));
-      return svrP;
+  getFilePath(machine, cdr) {
+    // index.html and boot.js are served from private area
+    if (cdr.match(/^\/$/)) { return indexHtml(); }
+    if (cdr.match(/^\/boot.js$/)) { return bootJs(); }
+    const mDir = this.getMachineDir(machine);
+    return path.normalize(path.join(mDir, cdr));
+
+    function indexHtml() {
+      return path.normalize(path.join(__dirname, "index.html"));
+    }
+    function bootJs() {
+      return path.normalize(path.join(__dirname, "boot.js"));
     }
   }
 
@@ -147,6 +196,21 @@ class Server extends EventEmitter {
 
 }
 
+
+function getFirstWord(urlPath) {
+  const m = urlPath.match(/^\/(\w+)/);
+  if (m) { return m[1]; }
+  else { return null; }
+}
+function getCdr(urlPath) {
+  const m = urlPath.match(/^\/\w+(.*)/);
+  if (m) { return m[1]; }
+  else { return null; }
+}
+
+function isOneWord(urlPath) {
+  return !! urlPath.match(/^\/(\w+)$/);
+}
 
 function log(str) {
   if (! process.env["DEBUG"]) { return; }

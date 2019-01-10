@@ -1,5 +1,7 @@
 function boot() {
-  let ws = new WebSocket("ws://localhost:8000/ws");
+  const urlPath = window.location.pathname;
+  console.log(`urlPath=${urlPath}`);
+  let ws = new WebSocket(`ws://localhost:8000${urlPath}`);
   ws.addEventListener('open', function(ev) {
     console.log(`websocket is open: protocol = ${ws.protocol}`);
   });
