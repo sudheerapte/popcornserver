@@ -9,13 +9,16 @@
 
   Does two things:
   1. Serves assets from disk on GET requests.
+     Connect to a machine as http://HOST:PORT/MACHINE
   2. Creates a TCP socket for each websocket client.
+     The index.html under the MACHINE will automatically cause "boot.js"
+     to be loaded, which will start a websocket upgrade.
 
   Usage:
   
   const httpModule = require('./http-server.js');
   const server = new httpModule(8000); // start HTTP server on port 8000
-  server.on('wssocket', (socket) => { ... use the socket ... });
+  server.on('wssocket', (socket, machine) => { ... use the socket ... });
      You can drop the socket by listening for events on it.
 
   Details:
@@ -84,13 +87,11 @@ class Server extends EventEmitter {
   }
 
   doGet(req, res) {
-    log(`urlPath=${req.url} isOneWord=${isOneWord(req.url)} firstWord=${getFirstWord(req.url)}`);
     let filePath, machineDir, machine;
     if (req.url === "/boot.js") {
       filePath = this.getFilePath(null, "/boot.js");
     } else {
       machine = getFirstWord(req.url);
-      log(`doGet: machine requested = ${machine}`);
       if (isOneWord(req.url)) {
 	const origin = req.headers["host"];
 	const content = getIndexHtml(origin, machine);
@@ -99,6 +100,7 @@ class Server extends EventEmitter {
 	res.end(content);
 	return;
       } else {
+	log(`doGet: machine requested = ${machine}`);
 	machineDir = this.getMachineDir(machine);
 	log(`doGet: machine location = ${machineDir}`);
 	if (! machineDir) {
@@ -129,7 +131,6 @@ class Server extends EventEmitter {
 	  res.write(chunk);
 	});
 	str.on('end', () => {
-          // res.end('\r\n');
 	  res.end();
 	});
 	str.on('error', msg => {
@@ -147,7 +148,6 @@ class Server extends EventEmitter {
 
   handleUpgrade(req, socket, head) {
     log(`upgrade received: ${req.method} ${req.url}`);
-    // log(`headers: ${JSON.stringify(req.headers)}`);
     const origin = req.headers["origin"];
     let key = req.headers["sec-websocket-key"];
     const MAGIC = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
@@ -158,8 +158,7 @@ class Server extends EventEmitter {
 		 'Sec-Websocket-Accept: ' + key + '\r\n' +
 		 'Connection: Upgrade\r\n' +
 		 '\r\n');
-    this.emit('wssocket', socket);
-    // socket.on('data', (data) => { console.log(`got ws data: ${data}`); });
+    this.emit('wssocket', socket, getFirstWord(req.url));
   }
 
   getMachineDir(machine) {
