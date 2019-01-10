@@ -193,9 +193,7 @@ class Server extends EventEmitter {
     };
     return ContentType[path.extname(fileName)];
   }
-
 }
-
 
 function getFirstWord(urlPath) {
   const m = urlPath.match(/^\/(\w+)/);
