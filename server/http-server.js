@@ -53,10 +53,12 @@ const fs = require('fs');
 const path = require('path');
 const EventEmitter = require('events');
 
+let _machines;
+
 class Server extends EventEmitter {
   constructor(port, machines) {
     super();
-    this._machines = machines;
+    _machines = machines;
     this._port = port;
     this._server = http.createServer( (req, res) => {
       this.handleConnect(req, res);
@@ -89,19 +91,15 @@ class Server extends EventEmitter {
   doGet(req, res) {
     let filePath, machineDir, machine;
     if (req.url === "/boot.js") {
-      filePath = this.getFilePath(null, "/boot.js");
+      filePath = getFilePath(null, "/boot.js");
     } else {
       machine = getFirstWord(req.url);
       if (isOneWord(req.url)) {
-	const origin = req.headers["host"];
-	const content = getIndexHtml(origin, machine);
-	log(`sending index.html with origin ${origin} and machine ${machine}`);
-	res.writeHead(200, {'Content-Type': 'text/html'});
-	res.end(content);
+	getIndexHtml(req, res, machine); // async
 	return;
       } else {
 	log(`doGet: machine requested = ${machine}`);
-	machineDir = this.getMachineDir(machine);
+	machineDir = getMachineDir(machine);
 	log(`doGet: machine location = ${machineDir}`);
 	if (! machineDir) {
 	  log(`doGet: no such machine: ${machine}`);
@@ -110,7 +108,7 @@ class Server extends EventEmitter {
 	  res.end(`doGet: no such path: ${req.url}`);
 	  return;
 	}
-	filePath = this.getFilePath(machine, getCdr(req.url));
+	filePath = getFilePath(machine, getCdr(req.url));
       }
     }
     if (filePath === null) {
@@ -120,7 +118,7 @@ class Server extends EventEmitter {
       return;
     }
     log(`doGet: looking for path ${filePath}`);
-    const ctype = this.getContentType(filePath) || 'application/octet-stream';
+    const ctype = getContentType(filePath) || 'application/octet-stream';
     fs.access(filePath, fs.constants.R_OK, eMsg => {
       if (eMsg) {
 	doError(eMsg);
@@ -160,42 +158,42 @@ class Server extends EventEmitter {
 		 '\r\n');
     this.emit('wssocket', socket, getFirstWord(req.url));
   }
+}
 
-  getMachineDir(machine) {
-    if (this._machines && this._machines[machine]) {
-      return this._machines[machine];
-    } else {
-      return null;
-    }
+function getFilePath(machine, cdr) {
+  // index.html and boot.js are served from private area
+  if (cdr.match(/^\/$/)) { return indexHtml(); }
+  if (cdr.match(/^\/boot.js$/)) { return bootJs(); }
+  const mDir = getMachineDir(machine);
+  return path.normalize(path.join(mDir, cdr));
+
+  function indexHtml() {
+    return path.normalize(path.join(__dirname, "index.html"));
   }
-
-  getFilePath(machine, cdr) {
-    // index.html and boot.js are served from private area
-    if (cdr.match(/^\/$/)) { return indexHtml(); }
-    if (cdr.match(/^\/boot.js$/)) { return bootJs(); }
-    const mDir = this.getMachineDir(machine);
-    return path.normalize(path.join(mDir, cdr));
-
-    function indexHtml() {
-      return path.normalize(path.join(__dirname, "index.html"));
-    }
-    function bootJs() {
-      return path.normalize(path.join(__dirname, "boot.js"));
-    }
+  function bootJs() {
+    return path.normalize(path.join(__dirname, "boot.js"));
   }
+}
 
-  getContentType(fileName) {
-    const ContentType = {
-      //  file extension to Content-Type
-      ".html": "text/html",
-      ".js": "application/javascript",
-      ".css": "text/css",
-      ".png": "image/png",
-      ".jpg": "image/jpeg",
-      ".gif": "image/gif",
-      ".svg": "image/svg+xml",
-    };
-    return ContentType[path.extname(fileName)];
+function getContentType(fileName) {
+  const ContentType = {
+    //  file extension to Content-Type
+    ".html": "text/html",
+    ".js": "application/javascript",
+    ".css": "text/css",
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".gif": "image/gif",
+    ".svg": "image/svg+xml",
+  };
+  return ContentType[path.extname(fileName)];
+}
+
+function getMachineDir(machine) {
+  if (_machines && _machines[machine]) {
+    return _machines[machine];
+  } else {
+    return null;
   }
 }
 
@@ -213,18 +211,33 @@ function isOneWord(urlPath) {
   return !! urlPath.match(/^\/(\w+)$/);
 }
 
-function getIndexHtml(origin, machine) {
-  let contents = `
+/**
+   @function(getIndexHtml) - compose the HTML using stock
+   boilerplate and the "frags.html" from the machine dir.
+
+   The stock boilerplate document contains:
+   - a <base> element setting the base URL to the machine dir.
+   - title containing the machine name.
+   - body containing the frags.html.
+
+ */
+
+function getIndexHtml(req, res, machine) {
+  const origin = req.headers["host"];
+  const mDir = getMachineDir(machine);
+  log(`sending index.html with origin ${origin} and machine ${machine}`);
+  res.writeHead(200, {'Content-Type': 'text/html'});
+  res.write(`
 <html><head>
     <meta charset="utf-8">
     <base href="http://${origin}/${machine}">
-    <title>TEST</title>
+    <title>${machine}</title>
     <script src="boot.js"></script>
   </head>
-  <body>TEST</body>
-</html>
-`;
-  return contents;
+  <body>
+`);
+  res.end(`</body></html>
+`);
 }
 
 function log(str) {
