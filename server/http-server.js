@@ -160,6 +160,25 @@ class Server extends EventEmitter {
   }
 }
 
+function streamFile(filePath, outStream, cb) { // cb(errMsg)
+  fs.access(filePath, fs.constants.R_OK, eMsg => {
+    if (eMsg) {
+      cb(eMsg);
+    } else {
+      let str = fs.createReadStream(filePath);
+      str.on('data', chunk => {
+	outStream.write(chunk);
+      });
+      str.on('end', () => {
+	cb(null);
+      });
+      str.on('error', msg => {
+	cb(msg);
+      });
+    }
+  });
+}
+
 function getFilePath(machine, cdr) {
   // index.html and boot.js are served from private area
   if (cdr.match(/^\/$/)) { return indexHtml(); }
@@ -224,7 +243,6 @@ function isOneWord(urlPath) {
 
 function getIndexHtml(req, res, machine) {
   const origin = req.headers["host"];
-  const mDir = getMachineDir(machine);
   log(`sending index.html with origin ${origin} and machine ${machine}`);
   res.writeHead(200, {'Content-Type': 'text/html'});
   res.write(`
@@ -236,8 +254,15 @@ function getIndexHtml(req, res, machine) {
   </head>
   <body>
 `);
-  res.end(`</body></html>
+  
+  const fPath = getFilePath(machine, "frags.html");
+  streamFile(fPath, res, (errMsg) => {
+    if (errMsg) {
+      res.write(`<!-- frags.html not found: ${errMsg} -->\n`);
+    }
+    res.end(`</body></html>
 `);
+  });
 }
 
 function log(str) {
