@@ -52,13 +52,11 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const EventEmitter = require('events');
-
-let _machines;
+const registry = require('./registry.js');
 
 class Server extends EventEmitter {
-  constructor(port, machines) {
+  constructor(port) {
     super();
-    _machines = machines;
     this._port = port;
     this._server = http.createServer( (req, res) => {
       this.handleConnect(req, res);
@@ -184,6 +182,7 @@ function getFilePath(machine, cdr) {
   if (cdr.match(/^\/$/)) { return indexHtml(); }
   if (cdr.match(/^\/boot.js$/)) { return bootJs(); }
   const mDir = getMachineDir(machine);
+  log(`getFilePath(${machine}) = ${mDir}`);
   return path.normalize(path.join(mDir, cdr));
 
   function indexHtml() {
@@ -209,11 +208,7 @@ function getContentType(fileName) {
 }
 
 function getMachineDir(machine) {
-  if (_machines && _machines[machine]) {
-    return _machines[machine];
-  } else {
-    return null;
-  }
+  return registry.getMachineDir(machine);
 }
 
 function getFirstWord(urlPath) {
@@ -263,6 +258,55 @@ function getIndexHtml(req, res, machine) {
     res.end(`</body></html>
 `);
   });
+}
+
+/**
+   @function(getCssFilenames) - get all CSS files as relative names
+   This output is used to populate <link> elements in index.html.
+*/
+function getCssFilenames(machine, cb) { // err, namesArray
+  const mDir = getMachineDir(machine);
+  if (mDir) {
+    let moreDirs = [ "." ]; // directories not yet scanned (relative)
+    names = [];    // CSS filenames found so far (relative)
+    for(;;) {
+      // scan the first dir in the array.
+      scanDir(moreDirs, names).
+        then( () => {
+          moreDirs.shift();
+          if (moreDirs.length <= 0) { return cb(null, names); }
+        });
+    }
+  } else {
+    return cb(`getCssFilenames: bad machine ${machine}`);
+  }
+
+  // scanDir(moreDirs, names) - returns a Promise.
+  // Expand the first element of moreDirs.
+  // Any subdirectories, append to moreDirs.
+  // Any .css files, append to "names".
+
+  function scanDir(moreDirs, names) {
+    return new Promise((resolve, reject) => {
+      if (moreDirs.length <= 0) { return resolve(); }
+      const dirPath = path.join(mDir, moreDirs[0]);
+      fs.readdir(dirPath, (errMsg, arr) => {
+        if (errMsg) {
+          return reject(`scanDir: failed reading ${dirPath}: ${errMsg}`);
+        } else {
+          arr.map( entry => {
+            const ePath = path.join(dirPath, entry);
+            const stat = fs.statSync(ePath);
+            if (stat.isDirectory()) {
+              moreDirs.push(path.join(moreDirs[0], entry));
+            } else if (entry.match(/\.css$/)) {
+              names.push(path.join(moreDirs[0], entry));
+            }
+          });
+        }
+      });
+    });
+  }
 }
 
 function log(str) {
