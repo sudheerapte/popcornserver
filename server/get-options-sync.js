@@ -11,7 +11,8 @@
 
    In the values, the following substitutions have been made:
 
-   %D   __dirname
+   %D   the directory where this file lives, i.e., __dirname
+   %U   the user's home directory
 
 */
 
@@ -37,7 +38,9 @@ try {
 Object.keys(options).forEach( k => {
   let temp = options[k];
   temp = temp.replace(/\%D/, dirname());
+  temp = temp.replace(/\%U/, homedir());
   options[k] = temp;
 });
 function dirname() { return `${__dirname}`;}
+function homedir() { return process.env["HOME"]; }
 module.exports = options;

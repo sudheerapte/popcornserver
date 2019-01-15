@@ -1,2 +1,4 @@
-{"demo": "/home/sapte/d/temp",
- "t2": "%D/test/t2"}
+{"demo": "%U/d/temp",
+ "t2": "%D/test/t2",
+ "test": "/tmp/foo"
+}
