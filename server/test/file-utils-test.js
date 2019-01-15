@@ -31,10 +31,12 @@ msg = "--- scan dir structure t2";
 log(msg);
 const t2Path = path.join(__dirname, "t2");
 registry.addMachine("t2", t2Path);
-fileUtils.getAllSubdirs(t2Path, (errMsg, arr) => {
-  err(errMsg);
-  log(`subdirs = ${JSON.stringify(arr)}`);
-})
+let arr = [];
+fileUtils.getAllSubdirs(t2Path)
+  .then( arr => {
+    if (arr.length !== 4) { err('expected array of length 4'); }
+  })
+  .catch(errMsg => log(errMsg) );
 
 
 // -----------------
