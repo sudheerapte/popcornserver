@@ -9,7 +9,7 @@
 
   usage: const futils = require('./file-utils.js');
 
-  futils.getCssList(machine) - returns a Promise whose "resolve" result
+  futils.getCss(machine) - returns a Promise whose "resolve" result
   is an array of relative pathnames of CSS files in that machine's dir.
   This output is used to populate <link> elements in index.html.
 
@@ -80,24 +80,51 @@ class FileUtils {
     });
   }
 
-  // getCss - return all CSS files in toScan.
-  // toScan is expressed relative to rootDir.
-  getCss(rootDir, toScan) {
+  // getCss - return all CSS files in directory toScan.
+  // each CSS file is represented by its full path.
+  getCss(toScan) {
     return new Promise((resolve, reject) => {
-      let arr = [];
-
-      fs.readdir(path.join(rootDir, toScan), (errMsg, arr) => {
-	if (errMsg) {
-          return reject(`expandDir: failed reading ${toScan}: ${errMsg}`);
-	} else {
-	  const csslist = arr.filter( entry => {
-            const ePath = path.join(rootDir, toScan, entry);
-            const stat = fs.statSync(ePath);
+      fs.readdir(toScan, (errMsg, arr) => {
+        if (errMsg) {
+          return reject(`failed reading ${toScan}: ${errMsg}`);
+        } else {
+          const csslist = arr.filter( entry => {
+            const stat = fs.statSync(path.join(toScan, entry));
             return !stat.isDirectory() && entry.match(/\.css$/);
           });
-	  return resolve(csslist);
-	}
+          return resolve(csslist);
+        }
       });
+    });
+  }
+
+  // getAllCss - return all CSS files under toScan.
+  // each CSS file is represented by its full path.
+  getAllCss(toScan) {
+    let cssfiles = [];
+    return new Promise((resolve, reject) => {
+    // Push all the CSS files in the parent dir.
+    this.getCss(toScan)
+      .then( arr => {
+        const fullPaths = arr.map(f => path.join(toScan, f));
+        Array.prototype.push.apply(cssfiles, fullPaths);
+        // Push all the CSS files in all the subdirectories.
+        this.getAllSubdirs(toScan)
+          .then( dirs => {
+            let numDirs = dirs.length;
+            dirs.forEach(subdir => {
+              this.getCss(subdir)
+                .then( arr => {
+                  const fullPaths = arr.map(f => path.join(subdir, f));
+                  Array.prototype.push.apply(cssfiles, fullPaths);
+                  if (--numDirs <= 0) {
+                    return resolve(cssfiles);
+                  }
+                });
+            });
+          })
+      })
+        .catch( errMsg => reject(errMsg) );
     });
   }
 }
