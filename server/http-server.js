@@ -265,6 +265,10 @@ function getIndexHtml(req, res, machine) {
     res.end(`</body></html>
 `);
       });
+    })
+    .catch( errMsg => {
+      console.log(`getIndexHtml: ${errMsg}`);
+      res.end(`getIndexHtml: ${errMsg}\n</body></html>\n`);
     });
 }
 
@@ -283,7 +287,8 @@ function getCssFilenames(machine, cb) { // err, namesArray
         then( () => {
           moreDirs.shift();
           if (moreDirs.length <= 0) { return cb(null, names); }
-        });
+        })
+        .catch( (errMsg) => console.log(`${errMsg}`));
     }
   } else {
     return cb(`getCssFilenames: bad machine ${machine}`);
