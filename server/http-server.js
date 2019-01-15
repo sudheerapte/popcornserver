@@ -53,6 +53,7 @@ const fs = require('fs');
 const path = require('path');
 const EventEmitter = require('events');
 const registry = require('./registry.js');
+const fileUtils = require('./file-utils.js');
 
 class Server extends EventEmitter {
   constructor(port) {
@@ -231,7 +232,8 @@ function isOneWord(urlPath) {
 
    The stock boilerplate document contains:
    - a <base> element setting the base URL to the machine dir.
-   - title containing the machine name.
+   - in the head, a <title> containing the machine name.
+   - in the head, <link> elements for all the stylesheets.
    - body containing the frags.html.
 
  */
@@ -245,19 +247,25 @@ function getIndexHtml(req, res, machine) {
     <meta charset="utf-8">
     <base href="http://${origin}/${machine}">
     <title>${machine}</title>
-    <script src="boot.js"></script>
-  </head>
-  <body>
 `);
-  
-  const fPath = getFilePath(machine, "frags.html");
-  streamFile(fPath, res, (errMsg) => {
-    if (errMsg) {
-      res.write(`<!-- frags.html not found: ${errMsg} -->\n`);
-    }
+  const mDir = getMachineDir(machine);
+  fileUtils.getAllCss(mDir)
+    .then( cssFiles => {
+      log(`found ${cssFiles.length} CSS files in ${mDir}`);
+      cssFiles.forEach( f => {
+        f = f.substr(mDir.length); // keep only the relative portion
+        res.write(`<link href="${f}" rel="stylesheet">\n`);
+      });
+      res.write(`    <script src="boot.js"></script>\n</head>\n<body>\n`);
+      const fPath = getFilePath(machine, "frags.html");
+      streamFile(fPath, res, (errMsg) => {
+        if (errMsg) {
+          res.write(`<!-- frags.html not found: ${errMsg} -->\n`);
+        }
     res.end(`</body></html>
 `);
-  });
+      });
+    });
 }
 
 /**
