@@ -6,13 +6,14 @@ const registry = require('../registry.js');
 const path = require('path');
 
 let msg;
+let promise;
 
+/*
 msg = "--- scan simple dir t1 with 2 .css files";
 log(msg);
 const t1Path = path.join(__dirname, "t1");
 registry.addMachine("t1", t1Path);
 
-let promise;
 
 promise = fileUtils.getCss(t1Path, ".");
 log(`promise returned.`);
@@ -24,22 +25,16 @@ promise.then( (arr) => {
   log(`total cssfiles = ${JSON.stringify(cssfiles)}`);
 })
   .catch(errMsg => err(errMsg));
+*/
 
-let dirs = []; // Add directories to be scanned, other than machine root
-
-msg = "--- scan dir structure t2 with 3 subdirectories";
+msg = "--- scan dir structure t2";
 log(msg);
 const t2Path = path.join(__dirname, "t2");
 registry.addMachine("t2", t2Path);
-promise = fileUtils.getSubdirs("t2", ".");
-promise.then(subdirs => {
-  log(`subdirs = ${JSON.stringify(subdirs)}`);
-  if (subdirs.length !== 3) {
-    err(`expected 3 subdirs; got ${subdirs.length}`);
-  }
+fileUtils.getAllSubdirs(t2Path, (errMsg, arr) => {
+  err(errMsg);
+  log(`subdirs = ${JSON.stringify(arr)}`);
 })
-  .catch(errMsg => err(errMsg));
-
 
 
 // -----------------
