@@ -72,8 +72,6 @@ class Server extends EventEmitter {
   }
 
   handleConnect(req, res) {
-    log(`HTTP/${req.httpVersion} ${req.method} ${req.url}`);
-    log(`${JSON.stringify(req.headers)}`);
     if (req.method === 'GET') {
       req.on('data', chunk => log(`httpServer: received ${chunk.length} bytes`));
       req.on('error', msg => {
@@ -97,9 +95,7 @@ class Server extends EventEmitter {
 	getIndexHtml(req, res, machine); // async
 	return;
       } else {
-	log(`doGet: machine requested = ${machine}`);
 	machineDir = getMachineDir(machine);
-	log(`doGet: machine location = ${machineDir}`);
 	if (! machineDir) {
 	  log(`doGet: no such machine: ${machine}`);
 	  log(`doGet: no such path: ${req.url}`);
@@ -116,7 +112,6 @@ class Server extends EventEmitter {
       res.end(`doGet: no such path: ${req.url}`);
       return;
     }
-    log(`doGet: looking for path ${filePath}`);
     const ctype = getContentType(filePath) || 'application/octet-stream';
     fs.access(filePath, fs.constants.R_OK, eMsg => {
       if (eMsg) {
@@ -183,7 +178,6 @@ function getFilePath(machine, cdr) {
   if (cdr.match(/^\/$/)) { return indexHtml(); }
   if (cdr.match(/^\/boot.js$/)) { return bootJs(); }
   const mDir = getMachineDir(machine);
-  log(`getFilePath(${machine}) = ${mDir}`);
   return path.normalize(path.join(mDir, cdr));
 
   function indexHtml() {
@@ -235,21 +229,22 @@ function isOneWord(urlPath) {
    - in the head, a <title> containing the machine name.
    - in the head, <link> elements for all the stylesheets.
    - body containing the frags.html.
-
  */
 
 function getIndexHtml(req, res, machine) {
+  log(`HTTP/${req.httpVersion} ${req.method} ${req.url}`);
+  log(`${JSON.stringify(req.headers)}`);
   const origin = req.headers["host"];
   log(`sending index.html with origin ${origin} and machine ${machine}`);
   res.writeHead(200, {'Content-Type': 'text/html'});
   res.write(`
-<html><head>
+<html>\n<head>
     <meta charset="utf-8">
     <base href="http://${origin}/${machine}">
     <title>${machine}</title>
 `);
   const mDir = getMachineDir(machine);
-  log(`mDir = ${mDir}`);
+  log(`machine = ${machine} mDir = ${mDir}`);
   fileUtils.getAllCss(mDir)
     .then( cssFiles => {
       log(`found ${cssFiles.length} CSS files in ${mDir}`);
@@ -261,7 +256,7 @@ function getIndexHtml(req, res, machine) {
       cssFiles.forEach( f => {
         f = f.substr(mDir.length+1); // relative portion
 	f = machine + "/" + f;
-        res.write(`<link href="${f}" rel="stylesheet">\n`);
+        res.write(`    <link href="${f}" rel="stylesheet">\n`);
       });
       res.write(`    <script src="boot.js"></script>\n</head>\n<body>\n`);
       const fPath = getFilePath(machine, "frags.html");
