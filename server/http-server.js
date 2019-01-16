@@ -249,11 +249,18 @@ function getIndexHtml(req, res, machine) {
     <title>${machine}</title>
 `);
   const mDir = getMachineDir(machine);
+  log(`mDir = ${mDir}`);
   fileUtils.getAllCss(mDir)
     .then( cssFiles => {
       log(`found ${cssFiles.length} CSS files in ${mDir}`);
+      // create <link> element for each CSS file.
+      // We tried just creating relative href for the <link> elem,
+      // thinking that the <base> href above would automatically
+      // apply to these. But Firefox 64.0 did not use the base href.
+      // So, we now use the href "MACHINE/RELATIVE" for each <link>.
       cssFiles.forEach( f => {
-        f = f.substr(mDir.length); // keep only the relative portion
+        f = f.substr(mDir.length+1); // relative portion
+	f = machine + "/" + f;
         res.write(`<link href="${f}" rel="stylesheet">\n`);
       });
       res.write(`    <script src="boot.js"></script>\n</head>\n<body>\n`);

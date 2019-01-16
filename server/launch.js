@@ -6,6 +6,9 @@ const registry = require('./registry.js');
 const hsmodule = require('./http-server.js');
 const options = require('./get-options-sync.js');
 
-
-Object.keys(options).forEach( k => registry.addMachine(k, options[k]) );
+const machineObj = options.machineDirs || {"demo": "%D/demo"};
+Object.keys(machineObj).forEach( k => {
+  registry.addMachine(k, machineObj[k]);
+});
+let port = options.port || "8000";
 const httpServer = new hsmodule(8000);
