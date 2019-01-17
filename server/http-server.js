@@ -98,23 +98,23 @@ class Server extends EventEmitter {
     }
     // Otherwise it is a machine-level file:
     machine = getFirstWord(req.url);
+    machineDir = getMachineDir(machine);
+    if (! machineDir) {
+      log(`doGet: no such machine: ${machine}`);
+      setContentTypeText(res);
+      res.end(`doGet: no such machine: ${req.url}\n`);
+      return;
+    }
     if (isOneWord(req.url)) {
+      log(`URL ${req.url} is one word`);
       getIndexHtml(req, res, machine); // async
       return;
-    } else {
-      machineDir = getMachineDir(machine);
-      if (! machineDir) {
-	log(`doGet: no such machine: ${machine}`);
-	log(`doGet: no such path: ${req.url}`);
-	res.writeHead(500, {'Content-Type': 'text/plain'});
-	res.end(`doGet: no such path: ${req.url}`);
-	return;
-      }
-      filePath = getFilePath(machine, getCdr(req.url));
     }
+    log(`URL ${req.url} is machine = ${machine}, cdr = ${getCdr(req.url)}`);
+    filePath = getFilePath(machine, getCdr(req.url));
     if (filePath === null) {
       log(`doGet: no such path: ${req.url}`);
-      res.writeHead(500, {'Content-Type': 'text/plain'});
+      setContentTypeText(res);
       res.end(`doGet: no such path: ${req.url}`);
       return;
     }
@@ -179,38 +179,19 @@ class Server extends EventEmitter {
   }
 }
 
+function setContentTypeText(res) {
+  res.writeHead(200, {'Content-Type': 'text/plain; charset=utf-8'});
+}
+
 function doError(res, msg) {
   log(`doError: ${msg}`);
-  res.writeHead(500, {'Content-Type': 'text/plain'});
+  setContentTypeText(res);
   res.end(`Error: ${msg}`);
 }
 
 function getFilePath(machine, cdr) {
-  // Most paths are machine paths
-  if (machine) {
-    const mDir = getMachineDir(machine);
-    return path.normalize(path.join(mDir, cdr));
-  } else { // server path
-    log(`getFilePath: server path ${cdr}`);
-    if (cdr === '/boot.js') { return bootJs(); }
-    else if (cdr === '/') { return indexHtml(); }
-    else if (cdr === '/index.html') { return indexHtml(); }
-    else {
-      log(`getFilePath: bad server path "${cdr}"`);
-      return null;
-    }
-  }
-
-  function indexHtml() {
-    return path.normalize(path.join(__dirname, "index.html"));
-  }
-  function bootJs() {
-    return path.normalize(path.join(__dirname, "boot.js"));
-  }
-}
-
-function getServerPath(fileName) {
-  return path.normalize(path.join(__dirname, fileName));
+  const mDir = getMachineDir(machine);
+  return path.normalize(path.join(mDir, cdr));
 }
 
 function getContentType(fileName) {
