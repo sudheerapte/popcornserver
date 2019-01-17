@@ -127,6 +127,25 @@ class FileUtils {
         .catch( errMsg => reject(errMsg) );
     });
   }
+
+  streamFile(filePath, outStream, cb) { // cb(errMsg)
+    fs.access(filePath, fs.constants.R_OK, eMsg => {
+      if (eMsg) {
+	cb(eMsg);
+      } else {
+	let str = fs.createReadStream(filePath);
+	str.on('data', chunk => {
+	  outStream.write(chunk);
+	});
+	str.on('end', () => {
+	  cb(null);
+	});
+	str.on('error', msg => {
+	  cb(msg);
+	});
+      }
+    });
+  }
 }
 
 function log(str) {

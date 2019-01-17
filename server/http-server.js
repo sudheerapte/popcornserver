@@ -87,24 +87,30 @@ class Server extends EventEmitter {
 
   doGet(req, res) {
     let filePath, machineDir, machine;
-    if (req.url === "/boot.js") {
-      filePath = getFilePath(null, "/boot.js");
+    // /boot.js is common, popcorn-level code.
+    if (req.url === '/boot.js') {
+      log(`getBootjs...`);
+      this.getBootJs(req, res, () => {
+	res.end();
+	log(`...done.`);
+      });
+      return;
+    }
+    // Otherwise it is a machine-level file:
+    machine = getFirstWord(req.url);
+    if (isOneWord(req.url)) {
+      getIndexHtml(req, res, machine); // async
+      return;
     } else {
-      machine = getFirstWord(req.url);
-      if (isOneWord(req.url)) {
-	getIndexHtml(req, res, machine); // async
+      machineDir = getMachineDir(machine);
+      if (! machineDir) {
+	log(`doGet: no such machine: ${machine}`);
+	log(`doGet: no such path: ${req.url}`);
+	res.writeHead(500, {'Content-Type': 'text/plain'});
+	res.end(`doGet: no such path: ${req.url}`);
 	return;
-      } else {
-	machineDir = getMachineDir(machine);
-	if (! machineDir) {
-	  log(`doGet: no such machine: ${machine}`);
-	  log(`doGet: no such path: ${req.url}`);
-	  res.writeHead(500, {'Content-Type': 'text/plain'});
-	  res.end(`doGet: no such path: ${req.url}`);
-	  return;
-	}
-	filePath = getFilePath(machine, getCdr(req.url));
       }
+      filePath = getFilePath(machine, getCdr(req.url));
     }
     if (filePath === null) {
       log(`doGet: no such path: ${req.url}`);
@@ -115,7 +121,7 @@ class Server extends EventEmitter {
     const ctype = getContentType(filePath) || 'application/octet-stream';
     fs.access(filePath, fs.constants.R_OK, eMsg => {
       if (eMsg) {
-	doError(eMsg);
+	doError(res, eMsg);
       } else {
 	res.writeHead(200, {'Content-Type': ctype });
 	let str = fs.createReadStream(filePath);
@@ -126,16 +132,35 @@ class Server extends EventEmitter {
 	  res.end();
 	});
 	str.on('error', msg => {
-	  doError(msg);
+	  doError(res, msg);
 	});
       }
     });
+  }    
 
-    function doError(msg) {
-      log(msg);
-      res.writeHead(500, {'Content-Type': 'text/plain'});
-      res.end(msg);
-    }
+  /**
+     @function(getBootJs) - concatenate machine.js and boot.js
+   */
+  getBootJs(req, res, cb) {
+    const machineJsPath = path.join(__dirname, "machine.js");
+    const bootJsPath = path.join(__dirname, "boot.js");
+    res.writeHead(200, {'Content-Type': 'application/javascript'});
+    res.write("var module = {};\n");
+    fileUtils.streamFile(machineJsPath, res, (errMsg) => {
+      if (errMsg) {
+	doError(res, `machine.js: ${errMsg}`);
+	cb();
+      } else {
+	fileUtils.streamFile(bootJsPath, res, (errMsg) => {
+	  if (errMsg) {
+	    doError(res, `boot.js: ${errMsg}`);
+	    cb();
+	  } else {
+	    cb();
+	  }
+	});
+      }
+    });
   }
 
   handleUpgrade(req, socket, head) {
@@ -154,31 +179,27 @@ class Server extends EventEmitter {
   }
 }
 
-function streamFile(filePath, outStream, cb) { // cb(errMsg)
-  fs.access(filePath, fs.constants.R_OK, eMsg => {
-    if (eMsg) {
-      cb(eMsg);
-    } else {
-      let str = fs.createReadStream(filePath);
-      str.on('data', chunk => {
-	outStream.write(chunk);
-      });
-      str.on('end', () => {
-	cb(null);
-      });
-      str.on('error', msg => {
-	cb(msg);
-      });
-    }
-  });
+function doError(res, msg) {
+  log(`doError: ${msg}`);
+  res.writeHead(500, {'Content-Type': 'text/plain'});
+  res.end(`Error: ${msg}`);
 }
 
 function getFilePath(machine, cdr) {
-  // index.html and boot.js are served from private area
-  if (cdr.match(/^\/$/)) { return indexHtml(); }
-  if (cdr.match(/^\/boot.js$/)) { return bootJs(); }
-  const mDir = getMachineDir(machine);
-  return path.normalize(path.join(mDir, cdr));
+  // Most paths are machine paths
+  if (machine) {
+    const mDir = getMachineDir(machine);
+    return path.normalize(path.join(mDir, cdr));
+  } else { // server path
+    log(`getFilePath: server path ${cdr}`);
+    if (cdr === '/boot.js') { return bootJs(); }
+    else if (cdr === '/') { return indexHtml(); }
+    else if (cdr === '/index.html') { return indexHtml(); }
+    else {
+      log(`getFilePath: bad server path "${cdr}"`);
+      return null;
+    }
+  }
 
   function indexHtml() {
     return path.normalize(path.join(__dirname, "index.html"));
@@ -186,6 +207,10 @@ function getFilePath(machine, cdr) {
   function bootJs() {
     return path.normalize(path.join(__dirname, "boot.js"));
   }
+}
+
+function getServerPath(fileName) {
+  return path.normalize(path.join(__dirname, fileName));
 }
 
 function getContentType(fileName) {
@@ -258,9 +283,10 @@ function getIndexHtml(req, res, machine) {
 	f = machine + "/" + f;
         res.write(`    <link href="${f}" rel="stylesheet">\n`);
       });
-      res.write(`    <script src="boot.js"></script>\n</head>\n<body>\n`);
+      res.write(`    <script src="boot.js"></script>
+</head>\n<body>\n`);
       const fPath = getFilePath(machine, "frags.html");
-      streamFile(fPath, res, (errMsg) => {
+      fileUtils.streamFile(fPath, res, (errMsg) => {
         if (errMsg) {
           res.write(`<!-- frags.html not found: ${errMsg} -->\n`);
         }

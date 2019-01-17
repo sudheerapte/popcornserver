@@ -1,4 +1,12 @@
+window.onload = boot;
+
+// let machine = new Machine;
+
 function boot() {
+  upgradeToWebsocket();
+}
+
+function upgradeToWebsocket() {
   const urlPath = window.location.pathname;
   console.log(`urlPath=${urlPath}`);
   let ws = new WebSocket(`ws://localhost:8000${urlPath}`);
@@ -15,4 +23,3 @@ function boot() {
     console.log(`websocket message: ${JSON.stringify(ev)}`);
   });
 }
-window.onload = boot;
