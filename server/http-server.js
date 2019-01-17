@@ -244,7 +244,7 @@ function getIndexHtml(req, res, machine) {
     <base href="http://${origin}/${machine}">
     <title>${machine}</title>
 `);
-  const mDir = getMachineDir(machine);
+  const mDir = registry.getMachineDir(machine);
   log(`machine = ${machine} mDir = ${mDir}`);
   fileUtils.getAllCss(mDir)
     .then( cssFiles => {
