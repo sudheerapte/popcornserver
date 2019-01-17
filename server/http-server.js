@@ -89,28 +89,24 @@ class Server extends EventEmitter {
     let filePath, machineDir, machine;
     // /boot.js is common, popcorn-level code.
     if (req.url === '/boot.js') {
-      log(`getBootjs...`);
       this.getBootJs(req, res, () => {
 	res.end();
-	log(`...done.`);
       });
       return;
     }
     // Otherwise it is a machine-level file:
     machine = getFirstWord(req.url);
-    machineDir = getMachineDir(machine);
+    machineDir = registry.getMachineDir(machine);
     if (! machineDir) {
       log(`doGet: no such machine: ${machine}`);
       setContentTypeText(res);
-      res.end(`doGet: no such machine: ${req.url}\n`);
+      res.end(`doGet: no such machine: ${machine}\n`);
       return;
     }
     if (isOneWord(req.url)) {
-      log(`URL ${req.url} is one word`);
       getIndexHtml(req, res, machine); // async
       return;
     }
-    log(`URL ${req.url} is machine = ${machine}, cdr = ${getCdr(req.url)}`);
     filePath = getFilePath(machine, getCdr(req.url));
     if (filePath === null) {
       log(`doGet: no such path: ${req.url}`);
@@ -140,6 +136,9 @@ class Server extends EventEmitter {
 
   /**
      @function(getBootJs) - concatenate machine.js and boot.js
+
+     The machine.js file contains "module.exports", so we first
+     neutralize it by providing a dummy var up front.
    */
   getBootJs(req, res, cb) {
     const machineJsPath = path.join(__dirname, "machine.js");
@@ -190,7 +189,7 @@ function doError(res, msg) {
 }
 
 function getFilePath(machine, cdr) {
-  const mDir = getMachineDir(machine);
+  const mDir = registry.getMachineDir(machine);
   return path.normalize(path.join(mDir, cdr));
 }
 
@@ -206,10 +205,6 @@ function getContentType(fileName) {
     ".svg": "image/svg+xml",
   };
   return ContentType[path.extname(fileName)];
-}
-
-function getMachineDir(machine) {
-  return registry.getMachineDir(machine);
 }
 
 function getFirstWord(urlPath) {
@@ -279,56 +274,6 @@ function getIndexHtml(req, res, machine) {
       console.log(`getIndexHtml: ${errMsg}`);
       res.end(`getIndexHtml: ${errMsg}\n</body></html>\n`);
     });
-}
-
-/**
-   @function(getCssFilenames) - get all CSS files as relative names
-   This output is used to populate <link> elements in index.html.
-*/
-function getCssFilenames(machine, cb) { // err, namesArray
-  const mDir = getMachineDir(machine);
-  if (mDir) {
-    let moreDirs = [ "." ]; // directories not yet scanned (relative)
-    names = [];    // CSS filenames found so far (relative)
-    for(;;) {
-      // scan the first dir in the array.
-      scanDir(moreDirs, names).
-        then( () => {
-          moreDirs.shift();
-          if (moreDirs.length <= 0) { return cb(null, names); }
-        })
-        .catch( (errMsg) => console.log(`${errMsg}`));
-    }
-  } else {
-    return cb(`getCssFilenames: bad machine ${machine}`);
-  }
-
-  // scanDir(moreDirs, names) - returns a Promise.
-  // Expand the first element of moreDirs.
-  // Any subdirectories, append to moreDirs.
-  // Any .css files, append to "names".
-
-  function scanDir(moreDirs, names) {
-    return new Promise((resolve, reject) => {
-      if (moreDirs.length <= 0) { return resolve(); }
-      const dirPath = path.join(mDir, moreDirs[0]);
-      fs.readdir(dirPath, (errMsg, arr) => {
-        if (errMsg) {
-          return reject(`scanDir: failed reading ${dirPath}: ${errMsg}`);
-        } else {
-          arr.map( entry => {
-            const ePath = path.join(dirPath, entry);
-            const stat = fs.statSync(ePath);
-            if (stat.isDirectory()) {
-              moreDirs.push(path.join(moreDirs[0], entry));
-            } else if (entry.match(/\.css$/)) {
-              names.push(path.join(moreDirs[0], entry));
-            }
-          });
-        }
-      });
-    });
-  }
 }
 
 function log(str) {
