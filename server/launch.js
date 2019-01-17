@@ -14,4 +14,5 @@ Object.keys(machineObj).forEach( k => {
 });
 let port = options.httpPort || "8000";
 if (port >= 65536 || port <= 0) { port = 8000; }
+console.log(`listening on http://localhost:${port}`);
 const httpServer = new hsmodule(port);

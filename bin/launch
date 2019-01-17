@@ -1,0 +1,9 @@
+#!/bin/sh
+this=$(readlink -f ${0})
+here=$(readlink -f $(dirname ${this}))
+
+die() { echo $@; exit 1; }
+
+{ which node 2>&1 1> /dev/null; } || die Nodejs not found
+cd ${here}/../server
+node ./launch.js
