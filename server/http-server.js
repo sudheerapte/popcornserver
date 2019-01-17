@@ -17,9 +17,10 @@
   Usage:
   
   const httpModule = require('./http-server.js');
-  const server = new httpModule(8000); // start HTTP server on port 8000
+  const server = new httpModule(8000);
   server.on('wssocket', (socket, machine) => { ... use the socket ... });
      You can drop the socket by listening for events on it.
+  server.start();
 
   Details:
 
@@ -68,6 +69,9 @@ class Server extends EventEmitter {
     this._server.on('upgrade', (req, socket, head) => {
       this.handleUpgrade(req, socket, head);
     });
+  }
+
+  start() {
     this._server.listen(this._port);
   }
 
