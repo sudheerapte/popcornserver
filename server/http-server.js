@@ -172,13 +172,16 @@ class Server extends EventEmitter {
     let key = req.headers["sec-websocket-key"];
     const MAGIC = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
     log(`upgrade origin = ${origin}; key = ${key}`);
-    key = require('crypto').createHash('sha1').update(key+MAGIC).digest('base64');
+    let rkey = require('crypto').createHash('sha1').update(key+MAGIC).digest('base64');
     socket.write('HTTP/1.1 101 Web Socket Protocol Handshake\r\n' +
 		 'Upgrade: WebSocket\r\n' +
-		 'Sec-Websocket-Accept: ' + key + '\r\n' +
+		 'Sec-Websocket-Accept: ' + rkey + '\r\n' +
 		 'Connection: Upgrade\r\n' +
 		 '\r\n');
-    this.emit('wssocket', socket, getFirstWord(req.url));
+    this.emit('wssocket', socket,
+	      { origin: req.headers["origin"],
+		key: key,
+		url: req.url });
   }
 }
 
