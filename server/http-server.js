@@ -267,6 +267,7 @@ function getIndexHtml(req, res, machine) {
         res.write(`    <link href="${f}" rel="stylesheet">\n`);
       });
       res.write(`    <script src="boot.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1">
 </head>\n<body>\n`);
       const fPath = getFilePath(machine, "frags.html");
       fileUtils.streamFile(fPath, res, (errMsg) => {
