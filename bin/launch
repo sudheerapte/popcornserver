@@ -5,5 +5,5 @@ here=$(readlink -f $(dirname ${this}))
 die() { echo $@; exit 1; }
 
 { which node 2>&1 1> /dev/null; } || die Nodejs not found
-cd ${here}/../server
+cd ${here}/../js
 node ./launch.js
