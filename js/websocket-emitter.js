@@ -1,6 +1,7 @@
 "use strict";
 
 const EventEmitter = require('events');
+const crypto = require('crypto');
 
 /**
    @class(WebsocketEmitter) - read and write using websocket frames
@@ -79,53 +80,60 @@ class WebsocketEmitter extends EventEmitter {
     this._frameSize =0;
   }
   _readData(data) {
-    console.log(`_readData len = ${data.length}`);
+    log(`_readData len = ${data.length} type = ${typeof data}`);
     let first = data.readUInt8(0);
-    if (first & 128 === 0) {
+    log(`first = ${first.toString(16)}`);
+    if ((first & 128) !== 128) {
       console.log(`*** TODO readData without FIN not implemented ***`);
       return;
     }
-    console.log(`first = ${first.toString(16)}`);
-    console.log(`opcode = ${first & 15}`);
+    log(`opcode = ${first & 15}`);
     let second = data.readUInt8(1);
-    if (second & 128 === 0) {
-      console.log(`*** TODO readData without MASK not implemented ***`);
+    log(`second = ${second.toString(16)}`);
+    let masked = (second & 128) === 128 ? true : false;
+    const masklen = masked ? 4 : 0;
+    log(`masked = ${masked}`);
+    let len = second & 127;
+    log(`payload len = ${len}`);
+    const extpayloadlen = 0; // TODO extended paylods not supported
+    const offset = 2+masklen+extpayloadlen;
+    if (data.length !== offset+len) {
+      console.log(`*** data length = ${data.length}`);
+      console.log(`*** expected = ${offset+len}`);
       return;
     }
-    console.log(`second = ${second.toString(16)}`);
-    console.log(`payload len = ${second & 127}`);
-    for (let i=0; i<data.length-6; i++) {
-      data[i+6] = data[i+6] ^ data[2+(i%4)];
+    if (masked) {
+      for (let i=0; i<len; i++) {
+	data[i+offset] = data[i+offset] ^ data[2+extpayloadlen+(i%4)];
+      }
     }
-    console.log(`incoming = |${data.slice(6).toString()}|`);
+    const incoming = data.slice(offset).toString();
+    log(`incoming = |${incoming}|`);
+    this.emit('message', incoming);
   }
-  _readErr(errMsg) { console.log(`error on readStream: ${errMsg}`); }
-  _readClose() { console.log(`got close event on readStream.`); }
-  _writeErr(errMsg) { console.log(`error on writeStream: ${errMsg}`); }
-  _writeClose() { console.log(`got close event on writeStream.`); }
+  _readErr(errMsg) { log(`error on readStream: ${errMsg}`); }
+  _readClose() { log(`got close event on readStream.`); }
+  _writeErr(errMsg) { log(`error on writeStream: ${errMsg}`); }
+  _writeClose() { log(`got close event on writeStream.`); }
   sendMessage(buf, masked = false, cb) {
     if (! cb) { cb = ()=>{}; }
-    if (typeof buf !== 'string') {
-      console.log(`*** TODO non-string buf not implemented ***`);
-      return;
+    if (typeof buf === 'string') {
+      buf = Buffer.from(buf);
     }
-    this._setHeader(buf, masked);
-    this._setPayload(buf, masked);
+    log(`sendMessage: masked = ${masked}`);
+    this._fillFrame(buf, masked);
     const frame = this._buffer.slice(0, this._frameSize);
     // const frame = this._buffer;
     const done = this._writeStream.write(frame, 'utf8');
-    console.log(frame);
     if (done) {
       cb();
     } else {
       this._writeStream.once('drain', () => cb() );
     }
   }
-  _setHeader(buf, masked) {
-    if (masked) {
-      console.log(`*** TODO masked = true not implemented ***`);
-      return;
-    }
+  _fillFrame(buf, masked) {
+    let extpayloadlen = 0; // TODO extended payloads not supported
+    let masklen = (masked ? 4 : 0);
     const len = buf.length;
     log(`encoding payload |${buf}|`);
     if (len > 125) {
@@ -135,14 +143,27 @@ class WebsocketEmitter extends EventEmitter {
     let first = 128;          // FIN = 1, RSV1=RSV2=RSV3 = 0
     first = first | 1;        // opcode = text, 0x1
     this._buffer.writeUInt8(first, 0);
-    let second = 0;       // MASK = 0
-    second = second | len; // length = len
+    let second = (masked ? 128 : 0);
+    second = second | len;
     this._buffer.writeUInt8(second, 1);
-    this._frameSize = 2 + len;
+    const offset = 2 + extpayloadlen + masklen;
+    this._frameSize =  offset + len;
+    if (masked) {
+      crypto.randomFillSync(this._buffer, 2+extpayloadlen, 4);
+    }
     log(`frame size = ${this._frameSize}`);
-  }
-  _setPayload(buf, masked) {
-    this._buffer.write(buf, 2, buf.length);
+    // write payload
+    if (masked) {
+      for (let i=0; i<len; i++) {
+	this._buffer[i+offset] = buf[i] ^ this._buffer[2+extpayloadlen+(i%4)];
+      }
+    } else {
+      const result = buf.copy(this._buffer, offset, 0, len);
+      if (result !== len) {
+	console.log(`*** failed to copy ${len} bytes: only ${result} copied`);
+	return;
+      }
+    }
   }
 }
 
