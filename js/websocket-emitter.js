@@ -74,8 +74,12 @@ class WebsocketEmitter extends EventEmitter {
     readStream.on('data', data => this._readData(data) );
     readStream.on('error', errMsg => this._readErr(errMsg) );
     readStream.on('close', () => this._readClose() );
+    readStream.on('end', () => this._readClose() );
+    readStream.on('finish', () => this._readClose() );
     writeStream.on('error', errMsg => this._writeErr(errMsg) );
     writeStream.on('close', () => this._writeClose() );
+    writeStream.on('end', () => this._writeClose() );
+    writeStream.on('finish', () => this._writeClose() );
     this._buffer = Buffer.alloc(125); // smallest possible size
     this._frameSize =0;
   }
@@ -95,6 +99,10 @@ class WebsocketEmitter extends EventEmitter {
     log(`masked = ${masked}`);
     let len = second & 127;
     log(`payload len = ${len}`);
+    if (len > 125) {
+      console.log(`*** TODO extended payloads not supported`);
+      return;
+    }
     const extpayloadlen = 0; // TODO extended paylods not supported
     const offset = 2+masklen+extpayloadlen;
     if (data.length !== offset+len) {
@@ -169,6 +177,7 @@ class WebsocketEmitter extends EventEmitter {
 
 function log(str) {
   if (! process.env["DEBUG"]) { return; }
+  if (process.env["DEBUG"] < 2) { return; }
   const d = new Date();
   console.log(`[${d.toISOString()}] INFO WebsocketEmitter: ${str}`);
 }

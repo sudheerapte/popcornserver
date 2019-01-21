@@ -3,5 +3,5 @@ here=$(dirname "$0")
 cd ${here}
 #node ./registry-test.js
 #node ./file-utils-test.js
-node ./get-options-sync-test.js
-
+#node ./get-options-sync-test.js
+node ./websocket-emitter-test.js
