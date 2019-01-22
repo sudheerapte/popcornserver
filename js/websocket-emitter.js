@@ -84,26 +84,36 @@ class WebsocketEmitter extends EventEmitter {
     this._frameSize =0;
   }
   _readData(data) {
-    log(`_readData len = ${data.length} type = ${typeof data}`);
+    if (! isValid(data)) { return; }
     let first = data.readUInt8(0);
     log(`first = ${first.toString(16)}`);
     if ((first & 128) !== 128) {
       console.log(`*** TODO readData without FIN not implemented ***`);
       return;
     }
-    log(`opcode = ${first & 15}`);
+    const opcode = first & 15;
+    log(`opcode = ${opcode}`);
+    if (opcode !== 1 && opcode !== 0) {
+      console.log(`*** opcode ${opcode} not implemented--- only 0 or 1`);
+      return;
+    }
     let second = data.readUInt8(1);
     log(`second = ${second.toString(16)}`);
     let masked = (second & 128) === 128 ? true : false;
     const masklen = masked ? 4 : 0;
     log(`masked = ${masked}`);
     let len = second & 127;
-    log(`payload len = ${len}`);
-    if (len > 125) {
-      console.log(`*** TODO extended payloads not supported`);
-      return;
+    let extpayloadlen = 0;
+    if (len === 126) {
+      log(`extended payload 2 bytes`);
+      extpayloadlen = 2;
+      len = data.readUInt16BE(2);
+    } else if (len === 127) {
+      log(`extended payload 8 bytes`);
+      extpayloadlen = 8;
+      len = data.readUIntBE(2, 8);
     }
-    const extpayloadlen = 0; // TODO extended paylods not supported
+    log(`payload len = ${len}`);
     const offset = 2+masklen+extpayloadlen;
     if (data.length !== offset+len) {
       console.log(`*** data length = ${data.length}`);
@@ -116,8 +126,21 @@ class WebsocketEmitter extends EventEmitter {
       }
     }
     const incoming = data.slice(offset).toString();
-    log(`incoming = |${incoming}|`);
+    log(`incoming payload length = ${incoming.length}`);
     this.emit('message', incoming);
+
+    function isValid(data) {
+      if (! Buffer.isBuffer(data)) {
+	console.log(`*** TODO readData implemented only for Buffer ***`);
+	return false;
+      }
+      if (data.length < 2) {
+	console.log(`*** IMPOSSIBLE readData length < 2 ***`);
+	return false;
+      }
+      log(`_readData len = ${data.length} type = ${typeof data}`);
+      return true;
+    }
   }
   _readErr(errMsg) { log(`error on readStream: ${errMsg}`); }
   _readClose() { log(`got close event on readStream.`); }
@@ -140,21 +163,46 @@ class WebsocketEmitter extends EventEmitter {
     }
   }
   _fillFrame(buf, masked) {
-    let extpayloadlen = 0; // TODO extended payloads not supported
+    let extpayloadlen = 0;
+    let offset = 2;
     let masklen = (masked ? 4 : 0);
     const len = buf.length;
-    log(`encoding payload |${buf}|`);
-    if (len > 125) {
-      console.log(`*** TODO length > 125 not implemented ***`);
-      return;
+    log(`encoding payload for buf length ${len}`);
+    const TWOBYTE = Math.pow(2, 16);
+    if (len > TWOBYTE) {
+      log(`extended payload 8 bytes`);
+      extpayloadlen = 8;
+      offset = 2 + extpayloadlen + masklen;
+      if (this._buffer.length < (offset+len)) {
+	log(`growing internal buffer to ${offset+len} bytes`);
+	this._buffer = Buffer.alloc(offset+len);
+      }
+    } else if (len > 125) {
+      log(`extended payload 2 bytes`);
+      extpayloadlen = 2;
+      offset = 2 + extpayloadlen + masklen;
+      if (this._buffer.length < (offset+len)) {
+	log(`growing internal buffer to ${offset+len} bytes`);
+	this._buffer = Buffer.alloc(offset+len);
+      }
+    } else {
+      log(`no extended payload`);
+      offset = 2 + extpayloadlen + masklen;
     }
     let first = 128;          // FIN = 1, RSV1=RSV2=RSV3 = 0
-    first = first | 1;        // opcode = text, 0x1
+    first = first | 1;        // opcode = text
     this._buffer.writeUInt8(first, 0);
     let second = (masked ? 128 : 0);
-    second = second | len;
+    if (extpayloadlen === 0) {
+      second = second | len;
+    } else if (extpayloadlen === 2) {
+      second = second | 126;
+      this._buffer.writeUInt16BE(len, 2);
+    } else if (extpayloadlen === 8) {
+      second = second | 127;
+      this._buffer.writeUIntBE(len, 2, 8);
+    }
     this._buffer.writeUInt8(second, 1);
-    const offset = 2 + extpayloadlen + masklen;
     this._frameSize =  offset + len;
     if (masked) {
       crypto.randomFillSync(this._buffer, 2+extpayloadlen, 4);
