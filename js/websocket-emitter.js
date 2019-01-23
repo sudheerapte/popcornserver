@@ -25,17 +25,22 @@ const crypto = require('crypto');
      can make multiple sendFrame() calls followed by endMessage().
      Make sure to check the return value of sendFrame(). If it
      returns false, then the websocket is full; try again later.
-     (TODO not implemented)
+     (TODO sendFrame not implemented)
    - In either case, you can pass an optional second argument to
      the sendMessage(), called "masked". This is set only by
      browser clients, so we rarely need to use it. See the RFC.
 
-   To read a message, you subscribe to the 'frame' event.
-   - Usually, it returns to you the contents and the option
-     "wholeMessage" = true.
-   - if the message is larger than one frame, you will get each
-     frame with wholeMessage = false. The last frame of the message
-     will have the option "fin" = true.
+   To read a message, you have two options:
+
+   - (a) Subscribe to the "message" event. When an entire message from
+     the peer is available, you will get the whole thing as a single
+     buffer. (this is the most common scenario)
+
+   - (b) Subscribe to the 'frame' event. TODO NOT IMPLEMENTED. If the
+     frame has one entire message, then this event returns to you the
+     contents and the option "fin" = true.  If the message is larger
+     than one frame, you will get each frame with fin = false. The
+     last frame of the message will have the option "fin" = true. TODO
 
    Usage:
 
@@ -55,10 +60,30 @@ const crypto = require('crypto');
        - buf can be a Buffer or a String (utf-8)
      sendFrame ... TODO not implemented
      endMessage ... TODO not implemented
+     sendClose() - returns true if not already closing
+     sendPing() - sends a Ping frame; see 'pong' event below
+     sendPong() - sends a Pong frame for keepalive
+     isLive() - returns true iff this class thinks socket is alive
 
     EVENTS:
 
-      'frame' (buf, options)
+      'message' (buf)
+        - an entire message is received; payload = Buffer buf.
+        - TODO only single-frame messages are implemented.
+
+      'close' (code reason)
+        - peer sent us a Close frame. A response Close fram has
+	  already been sent by this class. The "code" is a numeric
+          reason code, and the "reason" is the UTF-8 string sent.
+
+       'ping' (buf)
+         - peer sent us a Ping frame. A response Pong frame has
+           already sent by this class. "buf" is any payload sent.
+
+       'pong' (buf)
+          - peer sent us a Pong frame. No need to do anything.
+
+      'frame' (buf, options) TODO not implemented
         - a frame has arrived. The payload is in 'buf', a Buffer.
 	- options:
         - wholeMessage: true iff entire message is in this frame
@@ -82,21 +107,13 @@ class WebsocketEmitter extends EventEmitter {
     writeStream.on('finish', () => this._writeClose() );
     this._buffer = Buffer.alloc(125); // smallest possible size
     this._frameSize =0;
+    this._live = true;
   }
+  // _readData(data) - data just came over the wire. Parse it.
   _readData(data) {
     if (! isValid(data)) { return; }
-    let first = data.readUInt8(0);
-    log(`first = ${first.toString(16)}`);
-    if ((first & 128) !== 128) {
-      console.log(`*** TODO readData without FIN not implemented ***`);
-      return;
-    }
-    const opcode = first & 15;
-    log(`opcode = ${opcode}`);
-    if (opcode !== 1 && opcode !== 0) {
-      console.log(`*** opcode ${opcode} not implemented--- only 0 or 1`);
-      return;
-    }
+    const opcode = doFirstByte(data);
+    if (! opcode) { return; }
     let second = data.readUInt8(1);
     log(`second = ${second.toString(16)}`);
     let masked = (second & 128) === 128 ? true : false;
@@ -116,8 +133,9 @@ class WebsocketEmitter extends EventEmitter {
     log(`payload len = ${len}`);
     const offset = 2+masklen+extpayloadlen;
     if (data.length !== offset+len) {
-      console.log(`*** data length = ${data.length}`);
-      console.log(`*** expected = ${offset+len}`);
+      const errMsg = `*** bad data length ${data.length} should be ${offset+len}`;
+      console.log(errMsg);
+      this.emit('error', errMsg);
       return;
     }
     if (masked) {
@@ -125,9 +143,8 @@ class WebsocketEmitter extends EventEmitter {
 	data[i+offset] = data[i+offset] ^ data[2+extpayloadlen+(i%4)];
       }
     }
-    const incoming = data.slice(offset).toString();
-    log(`incoming payload length = ${incoming.length}`);
-    this.emit('message', incoming);
+    const payload = data.slice(offset).toString();
+    this._processOp(opcode, payload); // done.
 
     function isValid(data) {
       if (! Buffer.isBuffer(data)) {
@@ -141,7 +158,42 @@ class WebsocketEmitter extends EventEmitter {
       log(`_readData len = ${data.length} type = ${typeof data}`);
       return true;
     }
+    function doFirstByte(data) {
+      let first = data.readUInt8(0);
+      log(`first = ${first.toString(16)}`);
+      if ((first & 128) !== 128) {
+	const errMsg = `*** TODO readData without FIN not implemented ***`;
+	console.log(errMsg);
+	this.emit('error', errMsg);
+	return null;
+      }
+      const opcode = first & 15;
+      log(`opcode = ${opcode}`);
+      if (opcode !== 1 && opcode !== 0) {
+	console.log(`*** opcode ${opcode} not implemented--- only 0 or 1`);
+	return null;
+      } else {
+	return opcode;
+      }
+    }
+
   }
+
+  _processOp(opcode, payload) {
+    log(`incoming payload length = ${payload.length}`);
+    if (opcode === 0 || opcode === 1) {
+      this.emit('message', payload);
+
+      // TODO close, ping, pong reason not parsed
+    } else if (opcode === 8) {
+      this.emit('close', ''); return;
+    } else if (opcode === 9) {
+      this.emit('ping', ''); return;
+    } else if (opcode === 10) {
+      this.emit('pong', ''); return;
+    }
+  }
+
   _readErr(errMsg) { log(`error on readStream: ${errMsg}`); }
   _readClose() { log(`got close event on readStream.`); }
   _writeErr(errMsg) { log(`error on writeStream: ${errMsg}`); }

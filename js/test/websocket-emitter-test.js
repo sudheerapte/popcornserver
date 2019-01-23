@@ -42,6 +42,8 @@ function unmaskedTest() {
     s2c = new Pipe(); c2s = new Pipe();
     s = new WebsocketEmitter(c2s, s2c);
     c = new WebsocketEmitter(s2c, c2s);
+    s.on('error', errMsg => err(errMsg) );
+    c.on('error', errMsg => err(errMsg) );
 
     s.on('message', message => {
       log(`server got: |${message.toString()}|`);
@@ -66,7 +68,7 @@ function unmaskedTest() {
     let msg2 = "--- client says hello";
     log(msg2);
     c.sendMessage("hello", false, () => {
-      log("hello sent");
+      log("hello sent unmasked");
     });
   });
 }
