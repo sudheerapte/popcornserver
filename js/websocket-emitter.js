@@ -115,22 +115,19 @@ class WebsocketEmitter extends EventEmitter {
     const opcode = doFirstByte(data);
     if (! opcode) { return; }
     let second = data.readUInt8(1);
-    log(`second = ${second.toString(16)}`);
     let masked = (second & 128) === 128 ? true : false;
     const masklen = masked ? 4 : 0;
-    log(`masked = ${masked}`);
+    log(`second = ${second.toString(16)} masked = ${masked}`);
     let len = second & 127;
     let extpayloadlen = 0;
     if (len === 126) {
-      log(`extended payload 2 bytes`);
       extpayloadlen = 2;
       len = data.readUInt16BE(2);
     } else if (len === 127) {
-      log(`extended payload 8 bytes`);
       extpayloadlen = 8;
       len = data.readUIntBE(2, 8);
     }
-    log(`payload len = ${len}`);
+    log(`payload len = ${len} extended payload ${extpayloadlen} bytes`);
     const offset = 2+masklen+extpayloadlen;
     if (data.length !== offset+len) {
       const errMsg = `*** bad data length ${data.length} should be ${offset+len}`;
@@ -160,7 +157,6 @@ class WebsocketEmitter extends EventEmitter {
     }
     function doFirstByte(data) {
       let first = data.readUInt8(0);
-      log(`first = ${first.toString(16)}`);
       if ((first & 128) !== 128) {
 	const errMsg = `*** TODO readData without FIN not implemented ***`;
 	console.log(errMsg);
@@ -168,7 +164,7 @@ class WebsocketEmitter extends EventEmitter {
 	return null;
       }
       const opcode = first & 15;
-      log(`opcode = ${opcode}`);
+      log(`first = ${first.toString(16)} opcode = ${opcode}`);
       if (opcode !== 1 && opcode !== 0) {
 	console.log(`*** opcode ${opcode} not implemented--- only 0 or 1`);
 	return null;
@@ -176,24 +172,24 @@ class WebsocketEmitter extends EventEmitter {
 	return opcode;
       }
     }
-
   }
-
   _processOp(opcode, payload) {
     log(`incoming payload length = ${payload.length}`);
     if (opcode === 0 || opcode === 1) {
       this.emit('message', payload);
-
-      // TODO close, ping, pong reason not parsed
-    } else if (opcode === 8) {
-      this.emit('close', ''); return;
-    } else if (opcode === 9) {
-      this.emit('ping', ''); return;
-    } else if (opcode === 10) {
-      this.emit('pong', ''); return;
+      return;
+    }
+    // control frame.
+    const reasonCode = payload.readUInt16BE(0);
+    const text = payload.slice(2).toString();
+    if (opcode === 8) { // Close
+      this.emit('close', reasonCode, text); return;
+    } else if (opcode === 9) { // Ping
+      this.emit('ping', reasonCode, text); return;
+    } else if (opcode === 10) { // Pong
+      this.emit('pong', reasonCode, text); return;
     }
   }
-
   _readErr(errMsg) { log(`error on readStream: ${errMsg}`); }
   _readClose() { log(`got close event on readStream.`); }
   _writeErr(errMsg) { log(`error on writeStream: ${errMsg}`); }
