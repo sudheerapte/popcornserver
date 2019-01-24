@@ -11,6 +11,7 @@ const { Duplex } = require('stream');
 */
 let s, c, s2c, c2s;
 
+// class Pipe - you can read whatever you write on the other end
 class Pipe extends Duplex {
   constructor(options) {
     super(options);
@@ -41,7 +42,7 @@ function unmaskedTest() {
     log(msg1);
     s2c = new Pipe(); c2s = new Pipe();
     s = new WebsocketEmitter(c2s, s2c);
-    c = new WebsocketEmitter(s2c, c2s);
+    c = new WebsocketEmitter(s2c, c2s, true); // isClient
     s.on('error', errMsg => err(errMsg) );
     c.on('error', errMsg => err(errMsg) );
 
@@ -52,7 +53,7 @@ function unmaskedTest() {
       }
       let msg3 = "--- server sending how are you";
       log(msg3);
-      s.sendMessage('how are you', false, () => {
+      s.sendMessage('how are you', () => {
 	log('how are you sent.');
       });
     });
@@ -65,23 +66,20 @@ function unmaskedTest() {
       log(`test unmasked successful.`);
       resolve();
     });
-    let msg2 = "--- client says hello";
+    let msg2 = "--- client says hello, masked";
     log(msg2);
-    c.sendMessage("hello", false, () => {
-      log("hello sent unmasked");
+    c.sendMessage("hello", () => {
+      log("hello sent masked");
     });
   });
 }
 
 unmaskedTest()
+  .then(maskedTest)
+  .then(payload16Test)
+  .then(closeTest)
   .then(() => {
-    maskedTest()
-      .then(() => {
-	payload16Test()
-	  .then(() => {
-	    setImmediate( () => process.exit(0));
-	  });
-      });
+    setImmediate( () => process.exit(0));
   })
   .catch((errMsg) => log(errMsg));
 
@@ -93,7 +91,7 @@ function maskedTest() {
     log(msg);
     s2c = new Pipe(); c2s = new Pipe();
     s = new WebsocketEmitter(c2s, s2c);
-    c = new WebsocketEmitter(s2c, c2s);
+    c = new WebsocketEmitter(s2c, c2s, true);
 
     s.on('message', message => {
       log(`server got: |${message.toString()}|`);
@@ -102,7 +100,7 @@ function maskedTest() {
       }
       let msg3 = "--- server sending how are you";
       log(msg3);
-      s.sendMessage('how are you', false, () => {
+      s.sendMessage('how are you', () => {
 	log('how are you sent.');
       });
     });
@@ -117,7 +115,7 @@ function maskedTest() {
     });
     msg = "--- client says hello, masked";
     log(msg);
-    c.sendMessage("hello", true, () => {
+    c.sendMessage("hello", () => {
       log("hello sent");
     });
   });
@@ -131,7 +129,7 @@ function payload16Test() {
     log(msg1);
     s2c = new Pipe(); c2s = new Pipe();
     s = new WebsocketEmitter(c2s, s2c);
-    c = new WebsocketEmitter(s2c, c2s);
+    c = new WebsocketEmitter(s2c, c2s, true);
 
     s.on('message', message => {
       if (typeof message === 'string') {
@@ -143,7 +141,7 @@ function payload16Test() {
       }
       let msg3 = "--- server sending 300 bytes";
       log(msg3);
-      s.sendMessage('y'.repeat(300), false, () => {
+      s.sendMessage('y'.repeat(300), () => {
 	log('300 bytes sent.');
       });
     });
@@ -161,12 +159,49 @@ function payload16Test() {
     });
     let msg2 = "--- client sends 200 bytes, masked";
     log(msg2);
-    c.sendMessage("x".repeat(200), true, () => {
+    c.sendMessage("x".repeat(200), () => {
       log("200 bytes sent");
     });
   });
 }
 
+// -------------------
+
+function closeTest() {
+  return new Promise( (resolve, reject) => {
+    let msg1 = "--- set up closeTest";
+    log(msg1);
+    s2c = new Pipe(); c2s = new Pipe();
+    s = new WebsocketEmitter(c2s, s2c);
+    c = new WebsocketEmitter(s2c, c2s, true);
+
+    s.on('close', (code, reason) => {
+      log(`server got close event`);
+      if (code) { log(`    close code ${code}`); }
+      let msg3 = "--- server sending close back";
+      log(msg3);
+      s.sendClose(1000, 'closing', () => {
+	log('server sent close.');
+	s2c.end();
+      });
+    });
+
+    c.on('close', (code, reason) => {
+      if (code) {
+	log(`client got close event`);
+	if (code) { log(`    close code ${code}`); }
+	c2s.end();
+      }
+      log(`test Close successful.`);
+      resolve();
+    });
+    let msg2 = "--- client sends Close, masked";
+    log(msg2);
+    c.sendClose(1000, 'M done', () => {
+      log("client sent Close");
+    });
+  });
+}
 
 
 // -----------------
