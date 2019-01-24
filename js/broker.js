@@ -43,13 +43,30 @@ class Broker {
     let { origin, key, url } = idObj;
     console.log(`web socket on: origin ${origin} key ${key} url ${url}`);
     const wse = new WebsocketEmitter(sock, sock);
-    sock.on('data', data => {
+    schedulePing(wse);
+    wse.on('message', data => {
+      console.log(`got message: |${data}|`);
       console.log(`sending: how are you`);
       wse.sendMessage('how are you', false, () => {
 	console.log(`message sent`);
       });
     });
+    wse.on('pong', text => {
+      console.log(`   -- got pong ${text}. Closing websocket.`);
+      wse.sendClose(1000, 'done with test.', () => {
+	console.log(`close frame sent.`);
+      });
+    });
+    wse.on('close', (code, reason) => {
+      console.log(`got close code ${code}.`);
+    });
   }
+}
+
+function schedulePing(wse) {
+  setTimeout( () => {
+    wse.sendPing('howdy', () => console.log(`ping sent: howdy`) );
+  }, 1000);
 }
 
 module.exports = new Broker();
