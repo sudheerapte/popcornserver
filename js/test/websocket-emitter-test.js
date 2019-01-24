@@ -77,6 +77,7 @@ function unmaskedTest() {
 unmaskedTest()
   .then(maskedTest)
   .then(payload16Test)
+  .then(pingpongTest)
   .then(closeTest)
   .then(() => {
     setImmediate( () => process.exit(0));
@@ -165,6 +166,40 @@ function payload16Test() {
   });
 }
 
+// -------------------
+
+function pingpongTest() {
+  return new Promise( (resolve, reject) => {
+    let msg1 = "--- set up pingpongTest";
+    log(msg1);
+    s2c = new Pipe(); c2s = new Pipe();
+    s = new WebsocketEmitter(c2s, s2c);
+    c = new WebsocketEmitter(s2c, c2s, true);
+
+    s.on('ping', payload => {
+      log(`server got ping event, |${payload}|`);
+      let msg3 = "--- server sending pong back";
+      log(msg3);
+      s.sendPong(payload, () => {
+	log('server sent pong |${payload}|');
+      });
+    });
+
+    c.on('pong', payload => {
+      log(`   client got pong |${payload}|`);
+      if (payload !== 'howdy') {
+	err(`client was expecting pong |howdy|, got |${payload}|`);
+      }
+      log(`pingpongTest successful.`);
+      resolve();
+    });
+    let msg2 = "--- client sends ping, masked";
+    log(msg2);
+    c.sendPing('howdy', () => {
+      log("client sent ping");
+    });
+  });
+}
 // -------------------
 
 function closeTest() {

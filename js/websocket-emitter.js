@@ -125,6 +125,7 @@ class WebsocketEmitter extends EventEmitter {
     this._frameSize =0;
     this._live = true;
   }
+  isLive() { return this._live; }
   // _readData(data) - data just came over the wire. Parse it.
   _readData(data) {
     if (! isValid(data)) { return; }
@@ -192,15 +193,15 @@ class WebsocketEmitter extends EventEmitter {
       return;
     }
     // We have a control frame.
-    const reasonCode = payload.readUInt16BE(0);
-    const text = payload.slice(2).toString();
-    log(`opcode = ${opcode} reasonCode = ${reasonCode} text |${text}|`);
+    log(`    opcode = ${opcode}`);
     if (opcode === 8) { // Close
+      const reasonCode = payload.readUInt16BE(0);
+      const text = payload.slice(2).toString();
       this.emit('close', reasonCode, text); return;
     } else if (opcode === 9) { // Ping
-      this.emit('ping', reasonCode, text); return;
+      this.emit('ping', payload.toString()); return;
     } else if (opcode === 10) { // Pong
-      this.emit('pong', reasonCode, text); return;
+      this.emit('pong', payload.toString()); return;
     }
   }
   _readErr(errMsg) { log(`error on readStream: ${errMsg}`); }
@@ -208,6 +209,7 @@ class WebsocketEmitter extends EventEmitter {
   _writeErr(errMsg) { log(`error on writeStream: ${errMsg}`); }
   _writeClose() { log(`got close event on writeStream.`); }
   sendMessage(buf, cb) {
+    if (! this.isLive()) { return false };
     if (! cb) { cb = ()=>{}; }
     if (typeof buf === 'string') {
       buf = Buffer.from(buf);
@@ -221,11 +223,30 @@ class WebsocketEmitter extends EventEmitter {
     } else {
       this._writeStream.once('drain', () => cb() );
     }
+    return true;
   }
   sendClose(code, reason, cb) {
+    if (! this.isLive()) { return false };
     let buf = Buffer.from('  ' + reason);
     buf.writeUInt16BE(code, 0);
     this._fillFrame(8, buf, this._masked);
+    const frame = this._buffer.slice(0, this._frameSize);
+    const done = this._writeStream.write(frame, 'utf8');
+    if (done) {
+      this._live = false;
+      cb();
+    } else {
+      this._writeStream.once('drain', () => {
+	this._live = false;
+	cb();
+      });
+    }
+    return true;
+  }
+  sendPing(payload, cb) {
+    if (! this.isLive()) { return false };
+    let buf = Buffer.from(payload);
+    this._fillFrame(9, buf, this._masked);
     const frame = this._buffer.slice(0, this._frameSize);
     const done = this._writeStream.write(frame, 'utf8');
     if (done) {
@@ -233,6 +254,20 @@ class WebsocketEmitter extends EventEmitter {
     } else {
       this._writeStream.once('drain', () => cb() );
     }
+    return true;
+  }
+  sendPong(payload, cb) {
+    if (! this.isLive()) { return false };
+    let buf = Buffer.from(payload);
+    this._fillFrame(10, buf, this._masked);
+    const frame = this._buffer.slice(0, this._frameSize);
+    const done = this._writeStream.write(frame, 'utf8');
+    if (done) {
+      cb();
+    } else {
+      this._writeStream.once('drain', () => cb() );
+    }
+    return true;
   }
   // _fillFrame() - fill our _frame with given payload
   _fillFrame(opcode, buf, masked) {
