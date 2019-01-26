@@ -331,11 +331,8 @@ class WebsocketEmitter extends EventEmitter {
   }
 }
 
-function log(str) {
-  if (! process.env["DEBUG"]) { return; }
-  if (process.env["DEBUG"] < 2) { return; }
-  const d = new Date();
-  console.log(`[${d.toISOString()}] INFO WebsocketEmitter: ${str}`);
-}
+// Make log() an active function if the developer wants to debug
+
+const log = require('./debug-log.js')(__filename);
 
 module.exports = WebsocketEmitter;

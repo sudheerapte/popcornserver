@@ -284,10 +284,6 @@ function getIndexHtml(req, res, machine) {
     });
 }
 
-function log(str) {
-  if (! process.env["DEBUG"]) { return; }
-  const d = new Date();
-  console.log(`[${d.toISOString()}] INFO http-server: ${str}`);
-}
+let log = require('./debug-log')(__filename);
 
 module.exports = Server;
