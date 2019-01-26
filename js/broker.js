@@ -41,32 +41,44 @@ class Broker {
   }
   addNewClient(sock, idObj) {
     let { origin, key, url } = idObj;
-    console.log(`web socket on: origin ${origin} key ${key} url ${url}`);
+    log(`web socket on: origin ${origin} key ${key} url ${url}`);
     const wse = new WebsocketEmitter(sock, sock);
     schedulePing(wse);
     wse.on('message', data => {
-      console.log(`got message: |${data}|`);
-      console.log(`sending: how are you`);
+      log(`got message: |${data}|`);
+      log(`sending: how are you`);
       wse.sendMessage('how are you', false, () => {
-	console.log(`message sent`);
+	log(`message sent`);
       });
     });
     wse.on('pong', text => {
-      console.log(`   -- got pong ${text}. Closing websocket.`);
+      log(`   -- got pong ${text}. Closing websocket.`);
       wse.sendClose(1000, 'done with test.', () => {
-	console.log(`close frame sent.`);
+	log(`close frame sent.`);
       });
     });
     wse.on('close', (code, reason) => {
-      console.log(`got close code ${code}.`);
+      log(`got close code ${code}.`);
     });
   }
 }
 
 function schedulePing(wse) {
   setTimeout( () => {
-    wse.sendPing('howdy', () => console.log(`ping sent: howdy`) );
+    wse.sendPing('howdy', () => log(`ping sent: howdy`) );
   }, 1000);
+}
+
+// create logging function log(str). Copy and paste these lines.
+let log = () => {};
+const logFileName = require('path').basename(__filename, '.js');
+if (process.env["DEBUG"] &&
+    process.env["DEBUG"].indexOf(logFileName) >= 0) {
+  console.log(`[debugging ${logFileName}]`);
+  log = str => {
+    const d = new Date();
+    console.log(`[${d.toISOString()}] INFO ${logFileName}: ${str}`);
+  };
 }
 
 module.exports = new Broker();

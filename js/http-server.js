@@ -56,6 +56,7 @@ const EventEmitter = require('events');
 const registry = require('./registry.js');
 const fileUtils = require('./file-utils.js');
 
+
 class Server extends EventEmitter {
   constructor(port) {
     super();
@@ -284,6 +285,16 @@ function getIndexHtml(req, res, machine) {
     });
 }
 
-let log = require('./debug-log')(__filename);
+// create logging function log(str). Copy and paste these lines.
+let log = () => {};
+const logFileName = require('path').basename(__filename, '.js');
+if (process.env["DEBUG"] &&
+    process.env["DEBUG"].indexOf(logFileName) >= 0) {
+  console.log(`[debugging ${logFileName}]`);
+  log = str => {
+    const d = new Date();
+    console.log(`[${d.toISOString()}] INFO ${logFileName}: ${str}`);
+  };
+}
 
 module.exports = Server;
