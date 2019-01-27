@@ -4,4 +4,5 @@ cd ${here}
 #node ./registry-test.js
 #node ./file-utils-test.js
 #node ./get-options-sync-test.js
-node ./websocket-emitter-test.js
+#node ./websocket-emitter-test.js
+node ./debug-log-test.js
