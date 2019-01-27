@@ -83,7 +83,7 @@ function l1l2Test() {
 
 l1Test()
   .then(l1l2Test)
-  .then( () => console.log('done') )
+  .then( () => log('done') )
   .then( () => process.exit(0) )
   .catch( (errMsg) => err(`promise rejected: ${errMsg}`));
 

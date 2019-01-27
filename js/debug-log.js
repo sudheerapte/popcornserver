@@ -29,6 +29,11 @@ class DebugLog {
   constructor() {
     this._map = new Map();
     this._debugMap = new Map();
+    if (process.env["DEBUG"]) {
+      const arr = process.env["DEBUG"].split(/\s+|\s*,\s*/);
+      console.log(`debug: ${JSON.stringify(arr.join(" "))}`);
+      arr.forEach( i => this.startDebugging(i) );
+    }
   }
   registerLogger(fileName, logger) {
     if (! logger) {
@@ -63,7 +68,9 @@ class DebugLog {
   startDebugging(fileName) {
     if (! this._debugMap.has(fileName)) {
       this._debugMap.set(fileName, "debug");
-      this._setLoggerFunction(fileName);
+      if (this._map.has(fileName)) {
+	this._setLoggerFunction(fileName);
+      }
       return true;
     } else {
       return false;
