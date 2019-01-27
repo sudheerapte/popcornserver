@@ -286,15 +286,9 @@ function getIndexHtml(req, res, machine) {
 }
 
 // create logging function log(str). Copy and paste these lines.
-let log = () => {};
-const logFileName = require('path').basename(__filename, '.js');
-if (process.env["DEBUG"] &&
-    process.env["DEBUG"].indexOf(logFileName) >= 0) {
-  console.log(`[debugging ${logFileName}]`);
-  log = str => {
-    const d = new Date();
-    console.log(`[${d.toISOString()}] INFO ${logFileName}: ${str}`);
-  };
-}
+const logger = {};
+require('./debug-log.js')
+  .registerLogger('http-server', logger);
+function log(str) { logger.log(str); }
 
 module.exports = Server;
