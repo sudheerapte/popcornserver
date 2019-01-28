@@ -4,9 +4,9 @@
    @module(broker.js) - singleton - manage web clients and apps.
 
    When an app connects, we add it to the list of apps. (Today popcorn
-   only ever has one app, but this class is more general). When an HTTP
-   client connects over websocket, we add it to the list of clients,
-   and look to see if an app serves the same model and connect the two.
+   only ever has one app, but this class is more general). 
+   When a client connects, we find an app that handles that machine,
+   and hook them up with each other.
 
    const broker = require('./broker.js');
    broker.start(); // now listening on TCP port options.appPort
@@ -31,11 +31,9 @@ class Broker {
   }
   start() {
   }
-  addNewClient(sock, idObj) {
-    let { origin, key, url } = idObj;
-    log(`web socket on: origin ${origin} key ${key} url ${url}`);
-    
-    const wse = new WebsocketEmitter(sock, sock);
+  addNewClient(machine, clientId, readStr, writeStr) {
+    log(`new client: machine ${machine} clientId ${clientId}`);
+    const wse = new WebsocketEmitter(readStr, writeStr);
     schedulePing(wse);
     wse.on('message', data => {
       log(`got message: |${data}|`);
