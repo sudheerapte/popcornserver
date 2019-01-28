@@ -23,25 +23,18 @@
 
 */
 
-const registry = require('./registry.js');
 const WebsocketEmitter = require('./websocket-emitter.js');
 
 class Broker {
+  constructor() {
+    this._map = new Map();
+  }
   start() {
-    // We use the options to cache machine info into the registry.
-    const options = require('./get-options-sync.js');
-    const machineObj = options.machineDirs || {"demo": "%D/demo"};
-    Object.keys(machineObj).forEach( k => {
-      if (k.match(/^[a-z0-9]+$/)) {
-	registry.addMachine(k, machineObj[k]);
-      } else {
-	console.log(`machine name: ${k} not lowercase; ignoring`);
-      }
-    });
   }
   addNewClient(sock, idObj) {
     let { origin, key, url } = idObj;
     log(`web socket on: origin ${origin} key ${key} url ${url}`);
+    
     const wse = new WebsocketEmitter(sock, sock);
     schedulePing(wse);
     wse.on('message', data => {
@@ -60,6 +53,18 @@ class Broker {
     wse.on('close', (code, reason) => {
       log(`got close code ${code}.`);
     });
+  }
+  addNewApp(machine, readStr, writeStr) {
+    if (! machine || typeof machine !== 'string' ||
+	! machine.match(/^[a-z]+$/)) {
+      console.log(`addNewApp: bad machine format: ${machine}`);
+      return false;
+    }
+    if (this._map.has(machine)) {
+      log(`addNewApp: already have ${machine}. Replacing.`);
+    }
+    this._map.set(machine, {readStr:readStr, writeStr:writeStr});
+    return true;
   }
 }
 

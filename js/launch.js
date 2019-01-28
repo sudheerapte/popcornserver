@@ -8,6 +8,7 @@
 
 const broker = require('./broker.js');
 const hsmodule = require('./http-server.js');
+const registry = require('./registry.js');
 
 function launch() {
   const options = require('./get-options-sync.js');
@@ -16,7 +17,15 @@ function launch() {
   console.log(`listening on http://localhost:${port}`);
   const httpServer = new hsmodule(port);
   httpServer.on('wssocket', (sock, idObj) => broker.addNewClient(sock, idObj));
-  broker.start();
+  // We use the options to cache machine info into the registry.
+  const machineObj = options.machineDirs || {"demo": "%D/demo"};
+  Object.keys(machineObj).forEach( k => {
+    if (k.match(/^[a-z0-9]+$/)) {
+      registry.addMachine(k, machineObj[k]);
+    } else {
+      console.log(`machine name: ${k} not lowercase; ignoring`);
+    }
+  });
   httpServer.start();
 }
 
