@@ -24,12 +24,11 @@
 */
 
 const WebsocketEmitter = require('./websocket-emitter.js');
+const EventEmitter = require('events');
 
-class Broker {
+class Broker extends EventEmitter {
   constructor() {
     this._map = new Map();
-  }
-  start() {
   }
   addNewClient(machine, clientId, readStr, writeStr) {
     log(`new client: machine ${machine} clientId ${clientId}`);
