@@ -28,11 +28,14 @@ const EventEmitter = require('events');
 
 class Broker extends EventEmitter {
   constructor() {
-    this._map = new Map();
+    super();
+    this._map = new Map(); // readStr -> { machine, clientId, wse }
   }
   addNewClient(machine, clientId, readStr, writeStr) {
     log(`new client: machine ${machine} clientId ${clientId}`);
     const wse = new WebsocketEmitter(readStr, writeStr);
+    const rec = {machine: machine, clientId: clientId, wse: wse};
+    this._map.set(readStr, rec);
     schedulePing(wse);
     wse.on('message', data => {
       log(`got message: |${data}|`);
@@ -49,6 +52,11 @@ class Broker extends EventEmitter {
     });
     wse.on('close', (code, reason) => {
       log(`got close code ${code}.`);
+      this._map.delete(readStr);
+    });
+    readStr.on('close', () => {
+      log(`readStr closed: ${machine} ${clientId}`);
+      this._map.delete(readStr);
     });
   }
   addNewApp(machine, readStr, writeStr) {
