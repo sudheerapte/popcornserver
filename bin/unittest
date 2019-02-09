@@ -1,0 +1,28 @@
+#!/bin/sh
+usage() {
+    echo "Usage: unitfile [ TESTNAME ]"
+    echo "  Runs the unit test in the file js/test/TESTNAME-test.js"
+    echo "  By default, runs all unit tests in js/test."
+    exit 0
+}
+here=$(dirname "$0")
+die() { echo $@ ; exit 1; }
+cd ${here}/../js/test
+pwd ; echo "DEBUG=|$DEBUG|"
+if [ -n "$1" ] ; then
+    testfile="${1}-test.js"
+    if [ -e "$testfile" ]; then
+	echo "running $1"
+	node "./$testfile"
+    else
+	echo "No such file: ${testfile}"
+	sleep 1
+	usage
+    fi
+else
+    for i in $(echo *-test.js); do
+	echo "$i"
+	node "./$i"
+    done
+fi
+

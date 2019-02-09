@@ -1,0 +1,9 @@
+{
+  "httpPort": "8000",
+  "machineDirs": {
+    "demo": "%U/d/temp",
+    "t2": "%D/test/t2",
+    "test": "/tmp/foo"
+  },
+  "appPort": "8001"
+}
