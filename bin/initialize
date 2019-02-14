@@ -4,15 +4,23 @@ die() { echo $@ ; exit 1; }
   die "~/.popcorn already exists. Remove it first."
 echo "Initializing popcorn configuration for user $USER..."
 mkdir ~/.popcorn
-<< 'EOF' cat > ~/.popcorn/options.json && echo done
+<< 'EOF' cat > ~/.popcorn/options.json && echo Created options.json
 {
   "httpPort": "8000",
   "machineDirs": {
-    "testmachine": "%U/d/testmachine"
+    "demo": "%U/.popcorn/demo"
   },
   "appPort": "8001"
 }
 EOF
+mkdir ~/.popcorn/demo
+<< 'EOF2' cat > ~/.popcorn/demo/frags.html && echo Created demo dir
+<span data-machine=".hinge/open">Hinge open</span>
+<span data-machine=".hinge/closed">Hinge closed</span>
+<span data-machine=".bolt/unlocked">Bolt unlocked</span>
+<span data-machine=".bolt/locked">Bolt locked</span>
+EOF2
+
 
 
 
