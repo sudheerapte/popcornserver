@@ -5,23 +5,26 @@ beautifully designed, highly responsive browser-based applications. It
 is suitable for smart embedded devices or for applications that have a
 limited number of users. It has not been designed for web-scale
 Internet apps that serve thousands of users; for that kind of use, you
-would probably need to deploy multiple copies of Popcorn. See
-Deployment considerations section at the end.
+would probably need to deploy multiple copies of Popcorn. See the
+*Deployment considerations* section at the end.
+
+By "beautiful", we don't mean visually pleasing (although Popcorn
+applications could be that, too). We mean pleasant to use.
 
 A good user experience requires the UX designer to have *complete
 control* over every user interaction. Popcorn lets the UX designer
 define every single pixel of every millisecond of user interaction
 using HTML5 features. If you are a UX designer, popcorn is for you!
 There are no web programmers putting up roadblocks based on
-programming difficulties or browser compatibilities, or framework
-limitations. As long as your UX goal is logical for the application,
-then you can make the user interaction work the way you want it.  The
-only possible obstacle might be performance-related, for example the
-response time from the application or the web rendering. You will have
-to work around that.
+programming difficulties, or browser compatibilities, or framework
+limitations. As long as your vision for the user experience is
+possible to implement, then you can make it so. The only possible
+obstacle might be performance-related, for example the response time
+from the application or the web rendering might make something
+impossible to do. You will have to work around that.
 
 If you are a programmer, Popcorn can free you from GUI concerns
-entirely. All the web UI assets: HTML, images, CSS, SVG, etc., are
+entirely. All the web UI assets--- HTML, images, CSS, SVG, etc.--- are
 created by the UX designer. Popcorn provides a simple, unambiguous way
 for you to communicate to the UX designer the UI states of the
 application. You do not need to write any Javascript.
@@ -29,49 +32,76 @@ application. You do not need to write any Javascript.
 And finally, the Popcorn server is easy to integrate with applications
 written in any language. Your application needs to communicate with
 Popcorn over a TCP socket or a UNIX domain socket, using a simple
-text-based protocol. Since Popcorn itself is written in NodeJS, we
-have provided a client library for NodeJS applications to make them
-even easier to integrate.
+text-based protocol. You don't need any special libraries. If you are
+writing your application in NodeJS, then you can use a client library
+if you want: one is provided because Popcorn itself is written in
+NodeJS. In any case, a few command-line tools are also provided so
+that you can send your communication text strings to Popcorn by
+supplying them as arguments, without having to open sockets yourself.
 
 ## How to read the rest of this document
 
-If you are only curious about Popcorn, read the section *How Popcorn
+* If you are only curious about Popcorn, read the section *How Popcorn
 Works*, and then decide if you want to read further.
 
-If you are deploying a Popcorn-based web application, you should
+* If you are deploying a Popcorn-based web application, you should
 read *How Popcorn Works* and then the section *Deployment
 considerations*.
 
-If you are a UX designer developing a Popcorn application, you should
-read the above two sections, and also understand the *Popcorn State
-Machine model*, and then *How to Design the UX of a Popcorn
-Application*.
+* If you are a UX designer developing a Popcorn application, you
+should read the the entire document, except perhaps the section *How
+do Write a Popcorn Application*.
 
-If you are programming a Popcorn application, you probably need to
+* If you are programming a Popcorn application, you probably need to
 read all the sections except *How to Design the UX of a Popcorn
 Application*.
 
+
 # How Popcorn Works
 
-Popcorn imposes a pure model-view-controller (MVC) architecture on
-your application UI. The "model" is a hierarchical state machine
-defined by the designer and the programmer together. The "view" is the
-web page, and the "controller" role is played by the application
-program.  The controller makes updates to the model, while Popcorn
-automatically manages the view so that it always reflects the current
-state of the model.
-
-Abstractly:
+Popcorn imposes a certain architecture on your application
+UI. This architecure is similar to Facebook's Flux data flow
+architecture:
 
 ```
-   controller  -->    model       -->  view
+  Action --> Dispatcher --> Store --> View
 ```
 
-More concretely:
+The key component in the Flux architecture is the Store, which holds a
+consistent application domain model. Changes to the model
+automatically update the View. Typically, Flux-based Views are
+implemented using a Javascript library like `React.js`.
+
+The central idea of Flux is that data always flows from left to right:
+all changes in the domain model are represented by Action objects sent
+to the Dispatcher, which triggers updates in the Store, which in turn
+triggers updates in the View. In particular, user interactions with
+the View cannot directly modify the View; instead, user interactions
+generate Actions that are sent to the Dispatcher.
+
+* (For more details on Flux, see
+  https://facebook.github.io/flux/docs/in-depth-overview.html)
+
+Popcorn takes this central idea and implements it in a way that
+simplfies your work as an application developer. The Dispatcher and
+Store are both implemented by Popcorn. The Store holds a domain model
+in the form of an application **state machine** that you define.
+
+The data flow looks like this in Popcorn:
 
 ```
-       app     -->  state machine --> browser
+    app --> (state machine update) -->  popcorn --> View
 ```
+
+At run time, your application sends a text description, called an
+"update", that describes changes to be made to the current state in
+the state machine. This update is analogous to an Action in Flux.
+Popcorn interprets the update by making changes to the state.
+
+The View in Popcorn consists of annotated web assets (HTML, CSS,
+images, SVG) that your UX designer prepares. When the state is
+updated, Popcorn causes the web assets to change their visibility
+according to the new state. You don't write any code.
 
 The UX designer writes HTML tags and other web assets, referencing the
 state machine by using attribute values. Popcorn defines certain
@@ -86,6 +116,22 @@ application without any regard to the GUI.
 
 Popcorn maintains a mirror copy of the state machine in the browser
 page and keeps it updated automatically by sending it events.
+
+A more detailed picture of the data flow:
+
+```
+       app --> update  --+
+                         |
+                         V
+                 server-side state machine
+                         |
+                         | (websocket events)
+                         V
+                 browser-side state machine
+                         |
+                         V
+                       View        
+```
 
 The designer and the programmer must agree on the state machine
 definition for the application. Popcorn provides a standardized
@@ -115,6 +161,12 @@ text-based protocol. Popcorn listens on two different ports for HTTP
 and TCP traffic.  We provide a simple Javascript client library for
 Nodejs based applications, to make it easier to develop an app.
 
+In terms of protocols, the data flows like this:
+
+```
+   app --> (TCP socket) --> popcorn --> (websocket) --> browser
+```
+
 Of course, apart from updating the state machine, an application often
 also needs to take user input. The application programmer should
 define a set of *commands* with arguments in any convenient text
@@ -124,12 +176,14 @@ attributes in the HTML assets. Popcorn will transfer these commands
 back to the application using the same TCP or UNIX-domain socket.
 
 ```
-  app <-- command <-- browser
+  app <-- popcorn <-- command event <-- browser
 ```
 
 # The Popcorn State Machine Model
 
-A state machine is a hierarchical tree of state nodes.
+## Background on state machines and states
+
+A state machine is a hierarchical tree of nodes.
 
 The tree defines two things:
 
@@ -138,31 +192,103 @@ states that the application model can be in.
 
 2. The current state within this state space.
 
-In general, any state can be of one of three types:
+Each state of the application is a composition of sub-states. In
+general, any state can be of one of three types:
 
-- A list of alternative states, one of which can be current at a time
-  (for example, a door can be either open or closed). We call such a
-  state an alternative-parent state, and we call these alternative
-  states alternative children of the parent state.
+- A list of at least one **alternative** sub-states, one of which is
+  marked current at a time (for example, a bulb can be either on or
+  off). We call such a state an **alternative-parent** state, and we
+  call these alternative sub-states "alternative children" of the
+  parent state.
 
-- A list of concurrent states, each of which is current all the time
-  (for example, a door can have a lock state and a hinge state). We
-  call such a state a concurrent-parent state, and these concurrent
-  states concurrent children of the parent state.
+- A list of sub-states, all of which are current all the time whenever
+  the parent state is current (for example, a door can have a lock
+  state and a hinge state). We call such a state a
+  **concurrent-parent** state, and its children "concurrent children"
+  of the parent state.
 
-- A placeholder for a limited amount of data, e.g., a string that is
-  no longer than 1024 bytes. We call such a state a data-state.
+- A container for a limited amount of data, e.g., a string.  We call
+  such a state a **data-state**.
 
-A state machine tree is called a "machine" in this document. The
-machine represents the state of the application model as a set of
-states contained within other states to form a tree.
+In turn, the child states of an alternative-parent or of a
+concurrent-parent state can themselves be of any of these three types.
+This is how one defines the state of the application as a hierarchical
+state machine.
 
-The machine consists at least of one root node, which stands for a
-concurrent-parent state. The root node can contain zero or more
-concurrent children node. Every node in the tree has a short name
-composed of lowercase letters, numbers, and hyphens. This short name
-is unique among siblings of the same parent node. The root node has a
-zero-length short name.
+* Such hierarchical state machines were first defined by David Harel
+  in 1986. He called them "Statecharts", and they were incorporated
+  into the Unified Modeling Language (UML) 2.0 in a simplified
+  form. In Popcorn we do not represent transitions between states; we
+  just represent the hierarchy as a tree of nodes.
+
+This tree of nodes in Popcorn follows certain rules.
+
+## Tree Rules for Popcorn
+
+The entire tree is the description of all possible states of an
+application model, and the same tree also describes one single state
+out of all of these as the current state, by marking some of the nodes
+in the tree as "current".
+
+Here is an example state machine tree for the states of a door:
+
+```
+    root. +
+          |
+          +- hinge/
+          |       +
+          |       + - open (*)
+          |       + - closed
+          |
+          +- bolt/
+                 +
+                 + - unlocked (*)
+                 + - locked
+```
+
+The machine consists at least of one root node, which is always a
+concurrent-parent state node. The root node is always marked current.
+
+The rules are:
+
+1. Every alternative-parent node has one and exactly one child that is
+  marked as current at a time. `hinge` and `bolt` above are
+  alternative-parent nodes, which we have indicated by ending them in
+  a slash `/`. We have indicated each current alternative child node
+  with an asterisk in parentheses `(*)`.
+
+1. For every concurrent-parent node, all of its children are marked as
+  current if and only if the parent node is marked as current. We have
+  indicated the concurrent-parent node above in a dot (`.`).
+
+1. Every data-state node has one and exactly one data value. The node
+  is marked as current if and only if its parent node is marked as
+  current. The above example has no data-state node.
+
+1. We allow alternative children to be leaf nodes, but not concurrent
+  children. If a concurrent child is made a leaf node, we
+  automatically assume that it is a data-state node. This is a
+  restriction in Popcorn to make it easier to define trees. In the
+  above picture, all four leaf nodes are alternative child nodes.
+
+## Changing the application state
+
+In order to change the application state, you can change the tree in
+these ways:
+
+- change an alternative-parent node to have a different current child, OR
+- change the data of a data-node to a different value.
+
+You can make a list of multiple changes of this type in a single
+transaction. Once the tree has been modified in this way, it shows a
+new current state.
+
+## Paths to identify nodes
+
+Every node in the tree has a short name composed of lowercase letters,
+numbers, and hyphens. This short name is unique among children of the
+same parent node. The root node has a zero-length short name, i.e.,
+the empty string, `""`.
 
 Any node in the tree can thus be identified uniquely by the complete
 series of short names starting from the root node. If we write the
@@ -172,42 +298,42 @@ children from their concurrent-parent nodes, and a slash character `/`
 to separate alternative children from their alternative-parent
 nodes.
 
-## Example machines
+## Example machine: open, locked, unlocked
 
-Here is an example machine for the states of a room door:
+Here is our earlier example state machine tree for the states of a
+door, showing three interior nodes and four leaf nodes:
 
 ```
+    root. +
+          |
+          +- hinge/
+          |       +
+          |       + - open (*)
+          |       + - closed
+          |
+          +- bolt/
+                 +
+                 + - unlocked (*)
+                 + - locked
+```
+
+The following is a path-syntax view, which Popcorn can understand:
+
+```
+  .hinge
   .hinge/open
-  .hinge/closed.bolt/locked
-  .hinge/closed.bolt/unlocked
+  .hinge/closed
+  .bolt
+  .bolt/unlocked
+  .bolt/locked
 ```
 
-The three paths above define the tree.  This machine shows the three
-possible states of the door: open, closed and locked, or closed and
-unlocked.
+The six paths above define six nodes.  A seventh root node `""` is
+understood.
 
-Note that our root node above has only one concurrent child,
-`hinge`. Technically we could eliminate `hinge`, but we need it here
-because `open` and `close` need an alternative-parent, which Popcorn
-disallows the root node to be.
-
-We could simplify the machine by leaving out the `bolt` node which, as
-an only concurrent child, is not adding any value. Its alternative
-children `locked` and `unlocked` could simply become the direct
-alternative children of `closed` instead:
-
-```
-  .hinge/open
-  .hinge/closed/locked
-  .hinge/closed/unlocked
-```
-
-Both of our machines above model the door by disregarding the state of
-the bolt when the door is `open`, presumably because it does not
-matter to our application.
-
-But we could represent the door's states more completely if we wanted
-to. Here is a different way to model the same door:
+When defining a machine, we can always leave out the paths for the
+interior nodes, since they are implied when we list the leaf nodes. So
+the following four paths are sufficient to define the tree:
 
 ```
   .hinge/open
@@ -216,30 +342,35 @@ to. Here is a different way to model the same door:
   .bolt/locked
 ```
 
-Here we are considering the hinge and the bolt as independent
-(concurrent) sub-states of the root node. This tree represents a state
-space of four states, for the two alternative children of `hinge`
-times the two alternative children of `bolt`.
+## State space defined by the tree
 
-Of these four possible states, these three correspond to the states in
-the earlier model:
+This state machine is capturing four states of the door: each
+combination of the hinge being open or closed, and the bolt being
+unlocked or locked.
+
+Let us look at the state space.
 
 ```
-  .hinge/open     .hinge/closed   .hinge/closed
-  .bolt/unlocked  .bolt/unlocked  .bolt/locked
+  State 1:      .hinge/open, .bolt/unlocked
+  State 2:      .hinge/open, .bolt/locked
+  State 3:      .hinge/closed, .bolt/unlocked
+  State 4:      .hinge/closed, .bolt/locked
+
 ```
 
-But in the new model, we are also allowing the bolt to be in the
-"locked" state even when the door is open. In most doors, if you are
-able to lock the bolt while the door is open, the door will be unable
-to close until you unlock the bolt. If our application needs to make
-this distinction, then this new 4-leaf-node tree is the better model.
+In the picture of the tree we drew at the beginning, we used the `(*)`
+annotation to show State 1, `open` and `unlocked`.
 
-# Specifying a Machine
+(With this state space, we are modeling a door that can be locked even
+when it is open: of no security benefit, and in fact inconvenient
+because often such doors cannot be closed until you first unlock
+them.)
+
+# Specifying a Machine to Popcorn
 
 We specify a machine by declaring all the paths. The command to
 declare a path is `P`. Here is how we can specify our 4-leaf-node
-machine:
+machine to Popcorn:
 
 ```
 P .hinge/open
@@ -248,50 +379,110 @@ P .bolt/unlocked
 P .bolt/locked
 ```
 
-If we give this series of text lines to Popcorn using a `machine`
-command, it will build a machine like this for us and keep it in
+If we give this series of text lines to Popcorn as a `provide`
+transaction, it will build a machine like this for us and keep it in
 memory.
 
 This machine specifies four possible states for our door. But in
 addition, it also specifies an *initial state* for our door. The rule
-is that when a series of `P` commands specifies the children of an
-alternative-parent, then the first-mentioned child is automatically
-assumed to be "current". Thus, in this example, if we asked Popcorn to
-create this machine, our door will initially be in the `open` and
-`unlocked` state.
+is that the first-mentioned child of an alternative-parent node is
+automatically assumed to be "current". Thus, in this example, if we
+asked Popcorn to create this machine, our door will initially be in
+State 1 (`open` and `unlocked`).
 
 If we want to change the current state, we send Popcorn an `update`
-command with the changes. To close the door, we need to use a change
-command, `C`, which specifies a node that we want to make current:
+transaction with the changes we want to make. To close the door, we
+need to use a change command, `C`, which specifies an alternative
+parent and which of its alternative children we want to make current:
 
 ```
-C .hinge.closed
+C .hinge closed
 ```
 
-This changes the `closed` alternative child to become the current
-child.
+This command changes the `closed` alternative child to become the
+current child. Using this command, we can close our door and enter
+State 3, `closed` and `unlocked`.
 
+An `update` transaction can specify a list of such change
+commands. For example, by adding a second `C` command, we can
+simultaneously close and lock our door:
 
+```
+C .hinge closed
+C .bolt locked
+```
+
+Popcorn will put the machine in State 4, `closed` and `locked`.
+
+## Data nodes
+
+All leaf nodes that are concurrent children are assumed to be "data
+nodes" and have associated with them a UTF-8 string value. By default
+this value is the empty string `""`. But we can assign any string
+value to a data-node by using the `D` (data) command.
+
+For example, let us expand our state space. Let us say our door has a
+combination lock with a 4-digit key. Every time we flip the
+combination lock, we change the state of the door.
+
+We could model such a door by adding a new concurrent-parent, `.key`,
+to our machine:
+
+```
+P .hinge/open
+P .hinge/closed
+P .bolt/unlocked
+P .bolt/locked
+P .key
+D .key 1234
+```
+
+The above set of `P` commands defines our 4-state door, and also gives
+it another concurrent-parent leaf node called `key`. This node has a
+data string `1234` associated with it. (The fifth `P` command creates
+a `key` node with an empty data string; the `D` command assigns `1234`
+to it).
+
+With this new data-node, we have expanded our state machine to cover a
+very large number of possible states: ten thousand possible strings
+for each of the 4 states of the hinge and the bolt.
+
+To change our key, we have to assign the new value to `key`:
+
+```
+D .key 1235
+```
+
+and so on. Note that we are not representing in our model the secret
+key needed to unlock our door, only the visible key value that anyone
+can change. We could, of course, add the secret key to our model if we
+wanted, by adding another data-node.
 
 # How to Design the UX of a Popcorn Application
 
-You need to understand how to represent a hierarchical state machine
-in Popcorn's syntax, explained in the previous section. When you have
-defined your state machine, you are ready to create your web assets as
-a hierarchy of files in any directory you define.
+## Overview
 
-An app rendered by a Popcorn server always has a URL like this:
+1. Define the state machine for your application along with the app
+developer.
 
-```
-http://localhost:8000/mymachine
-```
+1. Create your assets directory for the machine, and configure Popcorn
+to find the directory.
 
-Above we assume Popcorn has been configured to run on the local host
-at the default 8000 port, and your state machine is named
-`mymachine`. The state machine name must be composed purely of
-lowercase letters `[a-z]`.
+1. In your assets directory, write `frags.html` and `head-frags.html`,
+and place any images, CSS files, and other assets in it.
 
-The contents of the HTML web page look like this:
+1. Launch Popcorn and view the URL for your machine.
+
+## Create assets directory and HTML files
+
+When you have defined your state machine as described in the previous
+sections, you are ready to create your web assets as a hierarchy of
+files in any directory you define.
+
+In your assets directory, you create two HTML files, `head-frags.html`
+and `frags.html`, which Popcorn will send as part of the `mymachine`
+page, like this:
+
 ```
 <head>
   ...
@@ -303,14 +494,18 @@ The contents of the HTML web page look like this:
 </body>
 ```
 
-The two files `head-frags.html` and `frags.html` must be in directory
-of assets you define.
-
 ## Contents of `frags.html`
 
 You can enter any valid HTML elements that can go into the
-`<body`. You will use popcorn-specific attributes like `data-machine`
+`<body>`. You will use popcorn-specific attributes like `data-machine`
 to point to a machine path.
+
+- *TODO: show `data-machine` attribute examples*
+
+- *TODO: show how to use data-node values.*
+
+- *TODO: show how to issue commands and substitute values.*
+
 
 ## Contents of `head-frags.html`
 
@@ -319,7 +514,10 @@ The `head-frags.html` file is optional. It is meant for entering
 need to cascade them. The `.CSS` files must be located inside the
 assets directory in the subdirectory named by the `href` attribute.
 
-## Popcorn assets directory location
+*TODO: show `<link>` element examples*
+
+
+## Configure Popcorn with assets directory location
 
 You tell Popcorn where to find the assets directory for a machine
 through Popcorn's config file, `~/.popcorn/options.json`:
@@ -338,11 +536,48 @@ through Popcorn's config file, `~/.popcorn/options.json`:
 ```
 
 The above example options.json file says that the `myapp` assets are
-to be found in the directory `~/myapp/assets` for the user who ran
+to be found in the directory `~/myapp/assets` for the user who runs
 Popcorn.
+
+## Launch Popcorn and Browse Machine URL and HTML
+
+The command to launch Popcorn is `bin/launch`, under the Popcorn
+directory (wherever you installed Popcorn). This command launches
+Popcorn in the foreground, where you can see its log output if any.
+
+By default, Popcorn listens to HTTP requests on port `8000`, and it
+listens to apps on port `8001`.
+
+If your app needs to be launched, this can be done at this time. Then
+you can view the URL for your machine:
+
+```
+http://localhost:8000/mymachine
+```
+
+This URL indicates that Popcorn has been configured to run on the
+local host at the default 8000 port, and your state machine is named
+`mymachine`. The state machine name must be composed purely of
+lowercase letters `[a-z]`.
 
 
 # How to Write a Popcorn Application
+
+1. Decide on the application state machine with the designer.
+
+1. Set up communication with the Popcorn server on the TCP or UNIX
+domain port where it will listen for apps. In the beginning, send
+Popcorn a `provide` transaction so that it has the initial state
+machine.
+
+1. As your application runs, update the machine with an `update`
+transaction.
+
+1. Optionally, decide on the set of commands your app can understand,
+and implement them as `command` transactions that Popcorn will send to
+your app.
+
+## Communication overview
 
 A Popcorn Application, or "app", is a program that owns one or more
 state machines, keeping each machine updated as the application state
@@ -360,67 +595,306 @@ Each machine can have only at most one app providing it, but
 multiple HTTP clients can all request the same machine; they will
 all see the same machine and the same updates.
 
-The apps do not have to be connected to the app-server at the same
-time as the clients; the clients get their updates from a persistent
-"broker" inside Popcorn that remembers the machines and accumulates
-all the updates for each machine. (But not incoming commands: to get
-those, the application has to stay persistently connected).
+```
+      1  provides 1..*          1  requests 1..*
+   app ------------->  machine <---------------- web client
+```
 
-When an app connects and sends a popcorn "machine" command, it becomes
-the provider of that machine. This is the format of the multi-line
-machine command:
+The apps do not have to be connected to the app-server at the same
+time as the clients; Popcorn remembers the machines and accumulates
+all the updates for each machine, so that when a web client requests a
+machine, it always sees the latest one. (But Popcorn does not cache
+incoming commands: to get those, the application has to stay
+persistently connected).
+
+## Transaction formats
+
+### Background on Server-Sent Events (SSE)
+
+Server-Sent Events (SSE) is a W3C standard format for events sent
+from an HTTP server to the browser.
+
+SSE is a simple, text-based format that can carry a multi-line
+payload. An SSE event consists of multiple text lines that look like
+this:
 
 ```
-machine NAME\n
+  event: message
+  data: lorem ipsum dolor sit amet,
+  data: consectetur adipiscing elit,
+
+```
+
+The above lines show a single SSE event (it ends with a blank
+line). The type of this event is `message`, the word that follows the
+`event:` marker. The payload is the multi-line text that follows the
+`data:` markers. In this way, arbitrary multi-line text data can be
+sent.
+
+- For details on SSE, see https://www.w3.org/TR/eventsource/
+
+Popcorn uses SSE as the format to carry transactions to and from apps.
+Sending SSE events to Popcorn is very easy; receiving them from
+Popcorn is a little more work, but there are libraries in almost every
+language to make that part easier.
+
+Here are the formats for the different transactions that apps need to
+send and receive.
+
+### Provide transaction
+
+When an app sends Popcorn a `provide` transaction, it sends Popcorn a
+series of `P` and `D` commands that can build the entire machine.  As
+far as Popcorn is concerned, the app becomes the "provider" of that
+machine.
+
+This is the format of the multi-line `provide` transaction:
+
+```
+provide NAME
 SERIALIZATION LINES
 ```
 
-And this is the format of the multi-line update command:
+Where `NAME` is the name of the machine, and `SERIALIZATION LINES` are
+the `P` and `D` commands, one command per line, that describe the
+machine.
+
+After this machine is provided to Popcorn, whenever a web client
+connects to Popcorn with the machine `NAME` in the URL, then this
+machine is delivered to it, and the web client is subscribed to any
+subsequent updates to the machine.
+
+### Update transaction
+
+This is the format of the multi-line `update` transaction:
 
 ```
-update NAME\n
+update NAME
 BLOCK LINES
 ```
 
-These commands are to be sent as the "data" payload of an SSE event.
-The event type depends on how the app connects.
+Where `NAME` is the name of the machine, and `BLOCK LINES` are the
+change `C` and data `D` commands, one per line, that describe the
+update to be made.
 
-If the app connects as a persistently-connected app ("appConnect"),
-then it can remain connected to the app-server. It will get commands
-sent back to it from GUI clients. Each command will come as a
-"message" event, with a payload of one or more
-lines:
+When Popcorn receives this `update` transaction, it modifies its copy
+of the machine named `NAME` and notifies any web clients that happen
+to be connected to Popcorn and subscribed to that machine. Those
+clients will modify their displayed document object model (DOM) to
+reflect the new, modified state of the machine.
+
+From then on, any new web clients that connect to Popcorn with that
+machine `NAME` in the URL, will automatically receive the new machine
+state and will also be subscribed for any further updates.
+
+### Abandon transaction
+
+This is the format of the single-line `abandon` transaction:
 
 ```
-command MACHINE-NAME\n
+abandon NAME
+```
+
+Where `NAME` is the name of the machine. The app that sent this
+transaction is abandoning the machine `NAME` and will never send any
+more updates for it.
+
+Popcorn will forget the machine `NAME`. Any web clients that now
+connect to Popcorn with that `NAME` in the URL will get an error
+message saying that no such machine exists.
+
+Any existing web clients that were subscribed to this machine, will be
+notified that the machine no longer exists and will also stop getting
+updates.
+
+### Command transaction
+
+Command transactions come in the reverse direction, from a web client
+to the app, whenever the user triggers a button press or similar
+input.
+
+This is the format of a multi-line `command` transaction:
+
+```
+command MACHINE-NAME CLIENT-ID
 COMMAND LINES
 ```
 
-The format of the command lines is to be negotiated between the GUI
-clients and the app. Popcorn does not know anything about them. The
-app does not have any way of sending acknowledgements for these
-commands; all communication is in the form of machine updates.
+Where `MACHINE-NAME` is the name of the machine associated with the
+user input, `CLIENT-ID` is a unique string assigned to each web
+client, and `COMMAND LINES` is a format decided by the app developer:
+they could be a single line, or split up into multiple lines.
 
-If an app connects as a one-shot command app ("oneShotCommand"),
-then it will get one response back, either a success or a
-failure. (event type = "replySuccess" or "replyFailure").  This
-response indicates whether the machine or update it sent was
-correctly forwarded on to the broker.
+Popcorn does not know anything about `COMMAND LINES`; they are simply
+conveyed from the client to the app as they were formatted.
 
-Once it sends a machine command, then the app can send update
-commands on subsequent connections using the same machine
-name. Popcorn assumes that the same app sending the updates is the
-one that originally provided the machine.
+The app does not have any way of sending acknowledgements for these
+commands; all communication initiated by the app is in the form of
+`provide`, `update`, and `abandon` transactions.
 
-If an app connects as a fire-and-forget command app, then it gets
-nothing back. Otherwise a fire-and-forget app behaves exactly like a
-one-shot command app.
+
+## App connections and SSE protocol
+
+The above-mentioned transactions are exchanged between Popcorn and
+apps over network connections. These connections use the SSE protocol
+to carry these transactions as payloads. Here we describe how the SSE
+protocol is used to wrap these transactions.
+
+### Apps: Persistently-connected vs. Drive-by
+
+Apps can decide to connect to Popcorn in one of two ways: either they
+can keep the TCP or UNIX-domain socket open and continue to send and
+receive transactions, or they can open a new socket every time, send a
+transaction, and close the socket. We call the former type of apps
+"persistently-connected" apps, and the latter type "drive-by" apps.
+
+The SSE event type to be used depends on how the app connects to
+Popcorn: persistently connected, or drive-by.
+
+### Persistently-connected app
+
+The app should send an SSE event type `appConnect`, with a one-word
+payload string.
+
+```
+  event: appConnect
+  data: APPNAME
+```
+
+Popcorn will keep the network connection open and remember the string
+`APPNAME`. Popcorn will acknowledge this connection with a `message` event and the one-word payload `ok`:
+
+```
+  event: message
+  data: ok
+```
+
+Popcorn will henceforth use `APPNAME` as the name of this app in
+messages and logs.
+
+The app should remain connected to Popcorn and send `provide`,
+`update`, and `abandon` transactions as payloads in SSE event type
+`message`. All of these event exchanges follow the same pattern: for
+each of these SSE `message` events, Popcorn will reply with an SSE
+`message` event with the payload `ok` on success, or some other string
+to signal an error.
+
+Whenever any web client subscribed to a machine gets any user input,
+the app will see commands sent back to it through Popcorn, as
+`command` transactions in SSE event type `message`. The app should do
+whatever it needs to depending on the meaning of the command; it does
+not need to respond to Popcorn.
+
+Here is an example SSE event sequence from app to Popcorn (left
+column), and from Popcorn to app (right column), where the app is
+providing a machine named `mymachine`:
+
+```
+  event: appConnect
+  data: myApp
+                             event: message
+                             data: ok
+  event: message
+  data: provide mymachine
+  data: ...
+                             event: message
+                             data: ok
+  event: message
+  data: update mymachine
+  data: ...
+                             event: message
+                             data: ok
+  ...
+
+                             event: message
+                             data: command mymachine
+                             data: ...
+```
+
+### Drive-by apps: one-shot command, or fire-and-forget
+
+The above persistently-connected apps need to open a network
+connection to Popcorn and keep it open as they modify the machine and
+receive commands back. That can be a significant amount of work for an
+existing application to integrate with Popcorn, depending on its
+architecture.
+
+Drive-by Popcorn apps, in contrast, are designed for loose integration
+with existing applications that can be extended by calling external
+commands but cannot be modified. Drive-by apps are usually
+command-line tools, either issued manually at a terminal or called
+from scripts.
+
+Drive-by apps can perform two kinds of event exchanges with Popcorn
+during their brief connection: **one-shot command** apps send one
+event, wait for a response from Popcorn, then
+disconnect. **Fire-and-forget** apps simply send an event and
+disconnect.
+
+On UNIX-like operating systems, you can use utilities like `netcat` or
+`nc` in scripts to open a network connection to Popcorn and perform
+these string-based SSE format exchanges.
+
+### One-shot command app
+
+If an app connects as a one-shot command app (SSE event type
+`oneShotCommand`), then it will get one response back from Popcorn,
+either a success or a failure. (event type `replySuccess` or
+`replyFailure`).  This response indicates whether the `provide` or
+`update` transaction was correctly handled by Popcorn.
+
+Here is the initial SSE event from app to Popcorn, and the reply from
+Popcorn.  We show a `provide` transaction, but the same format is used
+for sending `update` transactions, too. At the end of this exchange,
+both sides close the socket.
+
+```
+  event: oneShotCommand
+  data: provide ...
+  data: ...
+
+                      event: replySuccess
+                      data: ok
+
+```
+
+### Fire-and-Forget app
+
+If an app connects as a fire-and-forget command app (SSE event type
+`fireAndForget`), then as soon as it sends the SSE event, the app
+closes the socket and gets nothing back. Other than this, a
+fire-and-forget app behaves exactly like a one-shot command app.
+
+Here is the SSE event from app to Popcorn, followed by closing the
+socket. We show a `provide` transaction, but the same format is used
+for sending `update` transactions, too.
+
+```
+  event: fireAndForget
+  data: provide ...
+  data: ...
+
+```
+
+In any drive-by apps, either the `oneShotCommand` or `fireAndForget`
+cases, once the app sends a `provide` transaction, then any app can
+send `update` transactions on subsequent connections using the same
+machine name. Popcorn assumes that the app sending the updates is the
+same one that originally provided the machine. Popcorn does not
+distinguish between different apps that are all using drive-by
+methods.
+
 
 # Deployment considerations
 
+## Launch and options file
+
 Popcorn can be deployed independently of any applications or web
 assets. The Popcorn server should be deployed under the ownership of a
-user. On launch, it reads its configuration file:
+user with permissions to listen on the chosen sockets for HTTP and TCP
+traffic.
+
+On launch, Popcorn reads its configuration file:
 
 ```
 ~/.popcorn/options.json
@@ -433,6 +907,8 @@ httpPort           HTTP port to listen on for clients
 appPort            TCP port (or UNIX socket) to listen on for apps
 machineDirs        Location of asset directory for each machine
 ```
+
+## Performance and scalability
 
 Each Popcorn server maintains a persistent websocket connection with
 each of its clients, so as a practical matter, it can work well with a
@@ -452,3 +928,17 @@ maintains in memory each state machine.  The Popcorn application takes
 about a hundred megabytes. If Popcorn is the only thing running on a
 machine, it should run well in about half a GB (in addition to the OS).
 
+## Run-time dependencies
+
+Popcorn is written in NodeJS, so it requires the NodeJS runtime. But
+it has no other dependencies. Popcorn implements both SSE and
+websocket protocols entirely on its own without including any
+third-party libraries.
+
+The commands in `bin`, namely `launch` and others, are shell scripts,
+so they either require a UNIX/Linux machine, or at least a shell
+environment such as Windows Subsystem for Linux (WSL) on Windows 10.
+
+These scripts are quite minimal; it is always possible to launch
+Popcorn using a command-line invocation of `node`, giving it the `js`
+file named `launch.js`.

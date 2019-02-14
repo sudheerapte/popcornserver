@@ -9,16 +9,30 @@ const Machine = require('../machine.js');
 let sock1, sock2; // for sendBadCommand and sendMachine, respectively
 let sse1, sse2;
 
+let mc = new Machine();
+
 const PORT=8001;
+appServer.on('appConnect', () => log(`appServer appConnect emitted`) );
+appServer.on('appDisconnect', () => log(`appServer appConnect emitted`) );
+appServer.on('provide', () => log(`appServer provide emitted`) );
+appServer.on('abandon', () => log(`appServer abandon emitted`) );
+
 appServer.startListening({port:PORT})
   .then( createSock1 )
-  .then( sendBadCommand )
+  .then( sendConnect1 ) // connect client1
+  .then( sendBadCommand1 ) // badcommand
   .then( createSock2 )
-  .then( sendMachine )
-  .then( sendOneShotCommand )
+  .then( sendConnect2 ) // connect client2
+  .then( sendProvideFoo )
+  .then( sendProvideBar )
+  .then( sendUpdateFoo )
+  .then( sendAbandonFoo )
+/*  TODO Drive-by not implemented
+  .then( sendOneShotCommand )  
   .then( sendBadOneShotCommand )
   .then( sendFireAndForget )
   .then( sendBadFireAndForget )
+*/
   .then( () => {
     log(`--- all appServer tests happy.`);
     process.exit(0);
@@ -33,7 +47,34 @@ function createSock1() {
     });
   });
 }
-function sendBadCommand() {
+
+function sendConnect1() {
+  log(`--- connect with sse1 and get back "ok"`);
+  return new Promise( (resolve, reject) => {
+    sock1.on('error', errMsg => log(`client1 got error: ${errMsg}`) );
+    sock1.on('end', () => {
+      log(`client1 got dropped.`);
+      sock1.end();
+    });
+    let connected = false; // after we get "ok" for appConnect
+    sse1 = new SSEmitter();
+    sse1.setWriteStream(sock1);
+    sse1.readFrom(sock1);
+    sse1.once('SSEvent', ev => {
+      if (! connected && ev.data === 'ok') {
+        connected = true;
+        return resolve();
+      } else {
+        return reject(`sendConnect got back |${ev.data}|`);
+      }
+    });
+    sock1.write(`event: appConnect
+data: client1\n\n`);
+  });    
+}
+
+function sendBadCommand1() {
+  log(`--- client1 sends bad command`);
   return new Promise( (resolve, reject) => {
     sock1.on('error', errMsg => log(`client1 got error: ${errMsg}`) );
     sock1.on('end', () => {
@@ -41,27 +82,26 @@ function sendBadCommand() {
       sock1.end();
       resolve();
     });
-    let done = false;
-    sse1 = new SSEmitter();
-    sse1.setWriteStream(sock1);
-    sse1.readFrom(sock1);
-    sse1.on('SSEvent', ev => {
-      if (done) { return; }
-      if (ev.data === 'ok') {
-	done = true;
-	log(`client1 got: |${ev.data}|`);
-	reject(`client1 got ok!`);
-      } else if (ev.data.length > 0) {
-	done = true;
-	log(`client1 got: |${ev.data}|`);
+    let done = false; // after we get response for badcommand
+    sse1.once('SSEvent', ev => {
+      if (! done) {
+        done = true;
+        if (ev.data === "ok") {
+          return reject(`client1 got ok, but was expecting error`);
+        } else {
+          log(`client1 got |${ev.data}|, as expected`);
+          return resolve();
+        }
+      } else {
+        log(`client1 got back |${ev.data}| after done!`);
       }
     });
-    sock1.write(`event: appConnect
-data: badcommand\n\n`);
-  });    
+    sse1.sendMessage(`badcommand`);
+  });
 }
+
 function createSock2() {
-  log(`--- appConnect sending machine command`);
+  log(`--- appConnect for sending provide command`);
   return new Promise( (resolve, reject) => {
     sock2 = net.createConnection({port:PORT}, () => {
       resolve();
@@ -69,40 +109,86 @@ function createSock2() {
   });
 }
 
-function sendMachine() {
+function sendConnect2() {
+  log(`--- connect with sse2 and get back "ok"`);
   return new Promise( (resolve, reject) => {
-    let done = false;
+    sock2.on('error', errMsg => log(`client2 got error: ${errMsg}`) );
+    sock2.on('end', () => {
+      log(`client2 got dropped.`);
+      sock2.end();
+    });
+    let connected = false; // after we get "ok" for appConnect
     sse2 = new SSEmitter();
     sse2.setWriteStream(sock2);
     sse2.readFrom(sock2);
-    sock2.on('error', errMsg => log(`client2 got error: ${errMsg}`) );
-    sock2.on('end', () => {
-      if (!done) {
-	log(`client2 got dropped! Dropping my end`);
-	sock2.end();
-	done = true;
-	reject(`client2 got dropped!`);
+    sse2.once('SSEvent', ev => {
+      if (! connected && ev.data === 'ok') {
+        connected = true;
+        return resolve();
+      } else {
+        return reject(`sendConnect got back |${ev.data}|`);
       }
     });
-    sse2.on('SSEvent', ev => {
-      if (done) { return; }
-      log(`client2 got: |${ev.data}|`);
+    sock2.write(`event: appConnect
+data: client2\n\n`);
+  });    
+}
+
+function sendProvideFoo() {
+  return new Promise( (resolve, reject) => {
+    sse2.once('SSEvent', ev => {
+      log(`client2 got after provide foo: |${ev.data}|`);
       if(ev.data === "ok") {
-	sock2.end();
-	done = true;
 	resolve();
       }
     });
-    const mc = new Machine();
-    const result = mc.interpret(["P .a", "P .b", "P .a/foo"]);
+    const result = mc.interpret(["P .a", "P .b", "P .a/foo", "P .a/bar"]);
     err(result);
-    sse2.sendEvent({type: "appConnect",
-		    data: `machine foo
-${mc.getSerialization().join('\n')}\n\n`});
-    log(`sent appConnect with machine`);
-/*    sock.write(`event: appConnect
-data: machine foo
-${mc.getSerialization().join('\n')}\n\n`, resolve); */
+    sse2.sendMessage(`provide foo
+${mc.getSerialization().join('\n')}`);
+    log(`client2 sent provide foo`);
+  });
+}
+function sendProvideBar() {
+  return new Promise( (resolve, reject) => {
+    sse2.once('SSEvent', ev => {
+      log(`client2 got after provide bar: |${ev.data}|`);
+      if(ev.data === "ok") {
+	resolve();
+      }
+    });
+    const result = mc.interpret(["P .a", "P .b", "P .a/foo", "P .a/bar"]);
+    err(result);
+    sse2.sendMessage(`provide bar
+${mc.getSerialization().join('\n')}`);
+    log(`client2 sent provide bar`);
+  });
+}
+function sendUpdateFoo() {
+  return new Promise( (resolve, reject) => {
+    sse2.once('SSEvent', ev => {
+      log(`client2 got after update foo: |${ev.data}|`);
+      if(ev.data === "ok") {
+	resolve();
+      }
+    });
+    const updateLines =["C .a bar"];
+    sse2.sendMessage(`update foo
+${updateLines.join('\n')}`);
+    log(`client2 sent update foo`);
+  });
+}
+
+function sendAbandonFoo() {
+  return new Promise( (resolve, reject) => {
+    sse2.once('SSEvent', ev => {
+      log(`client2 got after abandon foo: |${ev.data}|`);
+      if(ev.data === "ok") {
+	resolve();
+      }
+    });
+    sse2.sendMessage(`abandon foo`);
+    log(`client2 sent abandon foo`);
   });
 }
 

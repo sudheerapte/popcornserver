@@ -87,13 +87,43 @@ function subscribeSucceedTest() {
   });
 }
 
+function sendUpdateTest() {
+  let c2b, b2c, result, machine;
+  const newClientStep = new Promise( (resolve, reject) => {
+    let msg1 = "--- sendUpdateTest start";
+    log(msg1);
+    machine = new Machine();
+    result = machine.interpret(['P .a', 'P .b', 'P .a/foo', 'P .a/bar' ]);
+    if (result) { log(`interpret result = ${result}`); err(! result); }
+    // log(`machine = ${machine.getSerialization().join(' ')}`);
+    result = broker.provide("sendupdate", machine);
+    err(result);
+    c2b = new Pipe(); b2c = new Pipe();
+    const client = new Client("bar", "sendupdate", b2c, c2b, resolve, reject);
+    result = broker.addNewClient(client.clientId, client.url, c2b, b2c);
+    err(result);
+    // log("created and added client.");
+  });
+  newClientStep
+    .then(() => {
+      const result = machine.interpret(['C .a bar']);
+      err(result);
+    })
+    .catch( errMsg => err(errMsg) );
+}
+
 subscribeFailTest()
   .then( subscribeSucceedTest )
+  .then( sendUpdateTest )
   .then( () => {
+    log("--- sendUpdateTest done");
     // log(`ending test.`);
     process.exit(0);
   })
-  .catch( errMsg => err(errMsg) );
+  .catch( errMsg => {
+    log(`---- ERROR ${errMsg}`);
+    err(errMsg);
+  });
 
 // -----------------
 

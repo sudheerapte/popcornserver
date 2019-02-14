@@ -210,8 +210,8 @@ class WebsocketEmitter extends EventEmitter {
   _writeErr(errMsg) { log(`error on writeStream: ${errMsg}`); }
   _writeClose() { log(`got close event on writeStream.`); }
   sendMessage(buf, cb) {
-    if (! this.isLive()) { return false };
     if (! cb) { cb = ()=>{}; }
+    if (! this.isLive()) { cb() ; return false; };
     if (typeof buf === 'string') {
       buf = Buffer.from(buf);
     }

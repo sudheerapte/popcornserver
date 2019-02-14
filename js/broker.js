@@ -19,17 +19,6 @@
 
    const broker = require('./broker.js');
    broker.start(); // now listening on TCP port options.appPort
-
-   ... TODO when new app connects...
-   ... TODO broker automatically adds app and gets machines ...
-
-   ... on new HTTP websocket client, you call addNewClient() ...
-   broker.addNewClient(sock, clientId);
-   ... broker sends the client its machine ...
-   ... TODO broker connects app and client ...
-   // client will automatically be dropped when it disconnects
-   
-
 */
 
 const WebsocketEmitter = require('./websocket-emitter.js');
@@ -72,8 +61,12 @@ class Broker extends EventEmitter {
     });
     let machine = url;
     if (machine.startsWith('/')) { machine = url.substr(1); }
+    log(`--- self-sending ${clientId}: subscribe ${machine}`);
     this.handleMessage(clientId, `subscribe ${machine}`)
-      .then( () => log(`subscribe done`) )
+      .then( () => {
+        log(`--- self-sent subscribe ${machine} handled`);
+        log(`subscribe done`);
+      })
       .catch( errMsg => {
 	log(`subscribe failed: ${errMsg}`);
 	this.sendMessage(`error: ${errMsg}`)
@@ -111,9 +104,9 @@ class Broker extends EventEmitter {
 		.catch(reject);
 	    });
 	} else {
-	  const result = `error: bad subscribe command`;
-	  log(`sending ${result} to client ${clientId}`);
-	  this.sendMessage(clientId, `${result}`)
+	  const msg = `error: bad subscribe command`;
+	  log(`sending ${msg} to client ${clientId}`);
+	  this.sendMessage(clientId, `${msg}`)
 	    .then(resolve)
 	    .catch(reject);
 	}
@@ -129,7 +122,7 @@ class Broker extends EventEmitter {
 
   /**
      subscribe() - returns a promise.
-     write a "machine" command followed by the serialization of the
+     write a "provide" command followed by the serialization of the
      indicated machine. If no such machine, then reject.
   */
   subscribe(clientId, machine) {
@@ -161,7 +154,9 @@ class Broker extends EventEmitter {
     } else {
       this._machineMap.set(machine, m);
       log(`machine ${machine} being provided`);
-      m.addBlockListener( opArr => this.sendUpdates(machine, opArr) );
+      m.addBlockListener( opArr => {
+        this.sendUpdates(machine, opArr, () => {})
+      });
     }
     log(`looking for subscribed clients for ${machine}...`);
     let subscribedClients = 0;
@@ -189,7 +184,7 @@ class Broker extends EventEmitter {
       const serStr = ser.join('\n');
       log(`sendMachine ${machine} = |${ser.join(' ')}|`);
       const result = 
-	    wse.sendMessage(`machine ${machine}\n${serStr}\n`, errMsg => {
+	    wse.sendMessage(`provide ${machine}\n${serStr}\n`, errMsg => {
 	      if (errMsg) {
 		const fullMsg = `error sending machine: ${machine}: ${errMsg}`;
 		log(fullMsg);
@@ -200,7 +195,7 @@ class Broker extends EventEmitter {
 	      }
 	    });
       if (result) {
-	log(`wse.sendMessage reurned ${result}`);
+	log(`wse.sendMessage returned ${result}`);
       }
     });
   }
@@ -219,10 +214,14 @@ class Broker extends EventEmitter {
 	});
       }
     }
-    waitForOutstandingClients( () => cb(lastError) );
+    waitForOutstandingClients( () => {
+      log(`finished sending ${machine} updates to all clients`);
+      cb(lastError);
+    });
 
     function waitForOutstandingClients(cb) {
       if (outstandingClients > 0) {
+        log(`outstandingClients = ${outstandingClients}`);
 	setTimeout( () => waitForOutstandingClients(cb), 100 );
       } else {
 	return cb();
@@ -232,16 +231,17 @@ class Broker extends EventEmitter {
   sendUpdate(machine, opArr, wse, cb) {
     const m = this._machineMap.get(machine);
     const ser = opArr.join('\n');
-    const result = wse.sendMessage(`update ${machine}\n${ser}\n`, () => {
-      result
-	? log(`${machine} update sent`)
-	: log(`${machine} update failed: ${result}`);
-      return cb(result);
+    //    log(`sendUpdate: update ${machine} ${ser}`);
+    wse.sendMessage(`update ${machine}\n${ser}\n`, () => {
+      return cb(null);
     });
   }
   sendMessage(clientId, message) {
     return new Promise( (resolve, reject) => {
       const rec = this._clientMap.get(clientId);
+      if (!rec) {
+        return reject(`client ${clientId} not found`);
+      }
       log(`sending message ${trunc(message)}`);
       rec.wse.sendMessage(message, () => {
 	resolve();

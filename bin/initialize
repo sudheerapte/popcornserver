@@ -1,0 +1,18 @@
+#!/bin/sh
+die() { echo $@ ; exit 1; }
+[ -d ~/.popcorn ] &&
+  die "~/.popcorn already exists. Remove it first."
+echo "Initializing popcorn configuration for user $USER..."
+mkdir ~/.popcorn
+<< 'EOF' cat > ~/.popcorn/options.json && echo done
+{
+  "httpPort": "8000",
+  "machineDirs": {
+    "testmachine": "%U/d/testmachine"
+  },
+  "appPort": "8001"
+}
+EOF
+
+
+

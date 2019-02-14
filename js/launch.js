@@ -12,6 +12,7 @@ const registry = require('./registry.js');
 const Machine = require('./machine.js');
 const appServer = require('./app-server.js');
 const options = require('./get-options-sync.js');
+const demoApp = require('./demo-app.js');
 
 function launch() {
   let port = options.httpPort || "8000";
@@ -30,13 +31,25 @@ function launch() {
   // to the broker.
   const httpServer = new hsmodule(port);
   const APPPORT = options.appPort || "8001";
+  appServer.on('provide', (appName, machine, mc) => {
+    broker.provide(machine, mc);
+  })
   appServer.startListening({port: APPPORT})
     .then( () => {
       httpServer.on('wssocket', (sock, idObj) => {
 	let {origin, key, url} = idObj;
 	broker.addNewClient(origin+"|"+key, url, sock, sock);
       });
-      httpServer.start();
+      demoApp.start(APPPORT)
+        .then( () => {
+          console.log(`demoApp started on port ${APPPORT}`);
+          httpServer.start();
+        })
+        .catch(errMsg => console.log(`demoApp: ${errMsg}`) );
+    })
+    .catch( errMsg => {
+      console.log(errMsg);
+      process.exit(1);
     });
 }
 
