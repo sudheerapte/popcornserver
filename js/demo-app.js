@@ -10,6 +10,9 @@ const machineLines = [
   "P .bolt/unlocked",
   "P .bolt/locked",
 ];
+const mc = new Machine();
+const result = mc.interpret(machineLines);
+if (result) { log(`*** bad mc: ${result} ***`); }
 
 class DemoApp {
   start(port) {
@@ -64,16 +67,27 @@ data: demoApp\n\n`);
           reject(ev.data);
         }
       });
-      const mc = new Machine();
-      const result = mc.interpret(machineLines);
-      if (result) { log(`*** bad mc: ${result} ***`); }
       this._sse.sendMessage(`provide demo
 ${mc.getSerialization().join('\n')}\n\n`);
       log(`sent provide demo`);
     });
   }
-  sendUpdate(hingeOpen, boltUnlocked) {
+  makeUpdate() {
+    this.boltUnlocked = ! this.boltUnlocked;
+    if (this.boltUnlocked) {
+      this.hingeOpen = ! this.hingeOpen;
+    }
+    return [
+      `C .hinge ${this.hingeOpen ? "open" : "closed"}`,
+      `C .bolt ${this.boltUnlocked ? "unlocked" : "locked"}`,
+    ];
+  }
+  doUpdate(opArr) {
     return new Promise( (resolve, reject) => {
+      const result = mc.interpret(opArr);
+      if (result) {
+        return reject(`mc update failed: ${result}`);
+      }
       this._sse.once('SSEvent', ev => {
         log(`sendUpdate got: ${ev.data}`);
         if (ev.data === "ok") {
@@ -83,8 +97,7 @@ ${mc.getSerialization().join('\n')}\n\n`);
         }
       });
       this._sse.sendMessage(`update demo
-C .hinge ${hingeOpen ? "open" : "closed"}
-C .bolt ${boltUnlocked ? "unlocked" : "locked"}`);
+${opArr.join('\n')}`);
     });
   }
   scheduleUpdates() {
@@ -92,13 +105,10 @@ C .bolt ${boltUnlocked ? "unlocked" : "locked"}`);
       this.hingeOpen = true;
       this.boltUnlocked = true;
       setInterval( () => {
-        this.boltUnlocked = ! this.boltUnlocked;
-        if (this.boltUnlocked) {
-          this.hingeOpen = ! this.hingeOpen;
-        }
-        this.sendUpdate(this.hingeOpen, this.boltUnlocked)
+        const opArr = this.makeUpdate();
+        this.doUpdate(opArr)
           .then( () => {
-            log(`sent hingeOpen = ${this.hingeOpen} boltUnlocked = ${this.boltUnlocked}`);
+            log(`sent ${opArr.join(" ")}}`);
             return resolve();
           })
           .catch( reject );
