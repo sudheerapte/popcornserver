@@ -181,6 +181,11 @@ back to the application using the same TCP or UNIX-domain socket.
 
 # The Popcorn State Machine Model
 
+The heart of Popcorn is the state machine model, referred to here as
+the "machine". Once you understand how machines are represented and
+how they can be updated, you will find it easy to follow the rest of
+this manual to develop Popcorn apps.
+
 ## Background on state machines and states
 
 A state machine is a hierarchical tree of nodes.
@@ -195,15 +200,14 @@ states that the application model can be in.
 Each state of the application is a composition of sub-states. In
 general, any state can be of one of three types:
 
-- A list of at least one **alternative** sub-states, one of which is
-  marked current at a time (for example, a bulb can be either on or
-  off). We call such a state an **alternative-parent** state, and we
-  call these alternative sub-states "alternative children" of the
-  parent state.
+- A list of **alternative** sub-states, one of which is marked current
+  at a time (for example, a bulb can be either on or off). We call
+  such a state an **alternative-parent** state, and we call these
+  alternative sub-states "alternative children" of the parent state.
 
-- A list of sub-states, all of which are current all the time whenever
-  the parent state is current (for example, a door can have a lock
-  state and a hinge state). We call such a state a
+- A list of sub-states, all of which are considered "current" at the
+  same time (for example, a door can have a lock state and a hinge
+  state, both simultaneously). We call such a state a
   **concurrent-parent** state, and its children "concurrent children"
   of the parent state.
 
@@ -230,7 +234,8 @@ application model, and the same tree also describes one single state
 out of all of these as the current state, by marking some of the nodes
 in the tree as "current".
 
-Here is an example state machine tree for the states of a door:
+Here is a picture of an example state machine tree for the states of a
+door:
 
 ```
     root. +
@@ -246,8 +251,8 @@ Here is an example state machine tree for the states of a door:
                  + - locked
 ```
 
-The machine consists at least of one root node, which is always a
-concurrent-parent state node. The root node is always marked current.
+The machine contains one root node, which is always a
+concurrent-parent state node. The root node is always current.
 
 The rules are:
 
@@ -257,19 +262,18 @@ The rules are:
   a slash `/`. We have indicated each current alternative child node
   with an asterisk in parentheses `(*)`.
 
-1. For every concurrent-parent node, all of its children are marked as
-  current if and only if the parent node is marked as current. We have
-  indicated the concurrent-parent node above in a dot (`.`).
+1. For every concurrent-parent node, all of its children are
+  considered current. We have indicated the only concurrent-parent
+  node above by ending it in a dot (`.`).
 
-1. Every data-state node has one and exactly one data value. The node
-  is marked as current if and only if its parent node is marked as
-  current. The above example has no data-state node.
+1. Every data-state node has one and exactly one data value. The above
+  example has no data-state node.
 
-1. We allow alternative children to be leaf nodes, but not concurrent
-  children. If a concurrent child is made a leaf node, we
-  automatically assume that it is a data-state node. This is a
-  restriction in Popcorn to make it easier to define trees. In the
-  above picture, all four leaf nodes are alternative child nodes.
+1. If a concurrent child is made a leaf node, we automatically assume
+  that it is a data-state node. An alternative child can be a leaf
+  node, but it cannot have any data. This is a restriction in Popcorn
+  to make it easier to define trees. In the above picture, all four
+  leaf nodes are alternative child nodes.
 
 ## Changing the application state
 
@@ -280,8 +284,9 @@ these ways:
 - change the data of a data-node to a different value.
 
 You can make a list of multiple changes of this type in a single
-transaction. Once the tree has been modified in this way, it shows a
-new current state.
+transaction, called an `update` transaction, and send it to Popcorn.
+Popcorn modifies the machine.  Once the tree has been modified in this
+way, it shows a new current state.
 
 ## Paths to identify nodes
 
@@ -300,8 +305,8 @@ nodes.
 
 ## Example machine: open, locked, unlocked
 
-Here is our earlier example state machine tree for the states of a
-door, showing three interior nodes and four leaf nodes:
+Here is our earlier picture of the states of a door, showing three
+interior nodes and four leaf nodes:
 
 ```
     root. +
