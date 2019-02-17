@@ -10,6 +10,8 @@ rdir="../popcornrelease"
 
 version=$(git tag | sort -V | tail -1)
 echo "creating release version ${version}"
-git archive --output=${rdir}/popcorn-${version}.tar.gz --prefix=popcorn/ ${version}
+git checkout ${version} || die failed checkout ${version}
+(cd doc; pdflatex ../srcdoc/popcorn-manual.tex ) || echo Manual generation failed
+git archive --output=${rdir}/popcorn-${version}.tar.gz --prefix=popcorn/ ${version} js doc bin
 ls -lt ${rdir} | head -2
 
