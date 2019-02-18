@@ -378,10 +378,10 @@ declare a path is `P`. Here is how we can specify our 4-leaf-node
 machine to Popcorn:
 
 ```
-P .hinge/open
-P .hinge/closed
-P .bolt/unlocked
-P .bolt/locked
+  P .hinge/open
+  P .hinge/closed
+  P .bolt/unlocked
+  P .bolt/locked
 ```
 
 If we give this series of text lines to Popcorn as a `provide`
@@ -401,7 +401,7 @@ need to use a change command, `C`, which specifies an alternative
 parent and which of its alternative children we want to make current:
 
 ```
-C .hinge closed
+  C .hinge closed
 ```
 
 This command changes the `closed` alternative child to become the
@@ -413,8 +413,8 @@ commands. For example, by adding a second `C` command, we can
 simultaneously close and lock our door:
 
 ```
-C .hinge closed
-C .bolt locked
+  C .hinge closed
+  C .bolt locked
 ```
 
 Popcorn will put the machine in State 4, `closed` and `locked`.
@@ -434,12 +434,12 @@ We could model such a door by adding a new concurrent-parent, `.key`,
 to our machine:
 
 ```
-P .hinge/open
-P .hinge/closed
-P .bolt/unlocked
-P .bolt/locked
-P .key
-D .key 1234
+  P .hinge/open
+  P .hinge/closed
+  P .bolt/unlocked
+  P .bolt/locked
+  P .key
+  D .key 1234
 ```
 
 The above set of `P` commands defines our 4-state door, and also gives
@@ -455,7 +455,7 @@ for each of the 4 states of the hinge and the bolt.
 To change our key, we have to assign the new value to `key`:
 
 ```
-D .key 1235
+  D .key 1235
 ```
 
 and so on. Note that we are not representing in our model the secret
@@ -489,25 +489,64 @@ and `frags.html`, which Popcorn will send as part of the `mymachine`
 page, like this:
 
 ```
-<head>
-  ...
-  CONTENTS OF "head-frags.html"
-  ...
-</head>
-<body>
-  CONTENTS OF "frags.html"
-</body>
+  <head>
+    ...
+    CONTENTS OF "head-frags.html"
+    ...
+  </head>
+  <body>
+    CONTENTS OF "frags.html"
+  </body>
 ```
 
 ## Contents of `frags.html`
 
 You can enter any valid HTML elements that can go into the
-`<body>`. You will use popcorn-specific attributes like `data-machine`
-to point to a machine path.
+`<body>`. You will use popcorn-specific attributes of the form
+`data-XXX` to point to a machine path.
 
-- *TODO: show `data-machine` attribute examples*
+### data-alt to show a current alternative child
 
-- *TODO: show how to use data-node values.*
+To display an element only when a particular alternative child is
+current, assign to it this alternative child's path:
+
+```
+     <p data-alt=".hinge/open">The hinge is open</p>
+```
+
+The above example uses the `data-alt` attribute to mark a
+paragraph. Whenever the machine has any other child of `.hinge`
+current, then this paragraph will not be displayed.
+
+### data-onclick to change the state
+
+To directly change the state of the machine when the user clicks a
+button or any other element, assign to that element a change
+transaction:
+
+```
+    <input type="button" value="Close"
+     data-onclick="C .hinge closed"></input>
+```
+
+The above example provides a button labeled "Close". If the user
+clicks the button, Popcorn will immediately perform a change
+transaction that sets the `.hinge` current value to `closed`.
+
+For the syntax of change transactions, see *How to develop a Popcorn
+app* below.
+
+If a transaction contains more than one change command, separate them
+with commas in the string value of `data-onclick`.
+
+The `data-onclick` method of changing machine state should be used
+only for "presentation logic". The app in the back end knows nothing
+about this change. This method is suitable for changing the UI
+navigation; for example, to change to a different tab in the UI. App
+development will get very confusing if the app also sometimes sends
+the same kind of change transaction. It is better for the designer and
+the app developer to decide up front which of the paths belong to the
+UI and which ones belong to the back end.
 
 - *TODO: show how to issue commands and substitute values.*
 
