@@ -108,7 +108,7 @@ let unknownPaths = new Map(); // suppress repeated "no such path" errors
 
 function reflectMachine() {
   if (! mc) { return; }
-  const DM = "data-machine";
+  const DM = "data-alt";
   const machineElems = document.querySelectorAll(`[${DM}]`);
   //  console.log(`machineElems = ${machineElems.length} items`);
   // hide all non-current alt children and unhide all other paths

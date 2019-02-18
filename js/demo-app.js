@@ -108,7 +108,7 @@ ${opArr.join('\n')}`);
       this.doUpdate(opArr)
         .then( () => {
           log(`sent ${opArr.join(" ")}}`);
-          return resolve();
+          return;
         })
         .catch( errMsg => console.log(`scheduleUpdates: ${errMsg}`) );
     }, 10000);

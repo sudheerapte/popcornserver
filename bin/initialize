@@ -15,10 +15,14 @@ mkdir ~/.popcorn
 EOF
 mkdir ~/.popcorn/demo
 << 'EOF2' cat > ~/.popcorn/demo/frags.html && echo Created demo dir
-<span data-machine=".hinge/open">Hinge open</span>
-<span data-machine=".hinge/closed">Hinge closed</span>
-<span data-machine=".bolt/unlocked">Bolt unlocked</span>
-<span data-machine=".bolt/locked">Bolt locked</span>
+<p data-alt=".hinge/open">Hinge open
+<input type="button" value="Close" data-onclick="C .hinge closed"></input>
+</p>
+<p data-alt=".hinge/closed">Hinge closed
+<input type="button" value="Open" data-onclick="C .hinge open"></input>
+</p>
+<p data-alt=".bolt/unlocked">Bolt unlocked</p>
+<p data-alt=".bolt/locked">Bolt locked</p>
 EOF2
 
 
