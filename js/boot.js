@@ -55,6 +55,7 @@ function doFirstMessage() {
 	  const result = mc.interpret(arr.slice(1));
 	  if (result) { return rejectThis(()=>reject(result)); }
           reflectMachine();
+          addMachineHandlers();
 	  return resolveThis(resolve);
 	}
       }
@@ -149,6 +150,43 @@ function isNonCurrAlt(mPath) {
     }
   }
   return false;
+}
+
+/**
+   @function(addMachineHandlers) - set up data-onclick handlers
+*/
+function addMachineHandlers() {
+  if (! mc) { return; }
+  const mcCopy = mc.clone(); // create a copy to try the transactions on
+  if (typeof mcCopy === 'string') {
+    console.log(`failed to clone: ${mcCopy}`);
+    return;
+  }
+  const DO = "data-onclick";
+  const machineElems = document.querySelectorAll(`[${DO}]`);
+  machineElems.forEach( e => {
+    const chStr = e.getAttribute(DO);
+    if (chStr) {
+      const arr = chStr.split(',').map( elem => elem.trim() );
+      // console.log(`arr = ${arr.join(",")}`);
+      const result = mcCopy.interpret(arr);
+      if (result) {
+        console.log(`${e.tagName} ${DO}=${chStr}: ${result}`);
+      } else {
+        e.addEventListener('click', ev => {
+          const result = mc.interpret(arr);
+          if (result) {
+            console.log(`click failed: ${result}`);
+          } else {
+            //console.log(`clicked`);
+            reflectMachine();
+          }
+        });
+      }
+    } else {
+      console.log(`attribute ${DO} value not found`);
+    }
+  });
 }
 
 

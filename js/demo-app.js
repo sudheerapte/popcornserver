@@ -101,19 +101,17 @@ ${opArr.join('\n')}`);
     });
   }
   scheduleUpdates() {
-    return new Promise( (resolve, reject) => {
-      this.hingeOpen = true;
-      this.boltUnlocked = true;
-      setInterval( () => {
-        const opArr = this.makeUpdate();
-        this.doUpdate(opArr)
-          .then( () => {
-            log(`sent ${opArr.join(" ")}}`);
-            return resolve();
-          })
-          .catch( reject );
-      }, 2000);
-    });
+    this.hingeOpen = true;
+    this.boltUnlocked = true;
+    setInterval( () => {
+      const opArr = this.makeUpdate();
+      this.doUpdate(opArr)
+        .then( () => {
+          log(`sent ${opArr.join(" ")}}`);
+          return resolve();
+        })
+        .catch( errMsg => console.log(`scheduleUpdates: ${errMsg}`) );
+    }, 10000);
   }
 }
 
