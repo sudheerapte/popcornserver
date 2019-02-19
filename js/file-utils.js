@@ -151,6 +151,17 @@ class FileUtils {
     });
   }
 
+  streamFP(filePath, outStream) { // returns a Promise
+    return new Promise( (resolve, reject) => {
+      this.streamFile(filePath, outStream, eMsg => {
+        if (eMsg) {
+          return reject(eMsg);
+        } else {
+          return resolve();
+        }
+      });
+    });
+  }
 }
 
 function log(str) {
