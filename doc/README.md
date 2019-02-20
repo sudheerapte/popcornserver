@@ -1009,10 +1009,10 @@ machine, it should run well in about half a GB (in addition to the OS).
 
 ## Run-time dependencies
 
-Popcorn is written in NodeJS, so it requires the NodeJS runtime. But
-it has no other dependencies. Popcorn implements both SSE and
-websocket protocols entirely on its own without including any
-third-party libraries.
+Popcorn is written in NodeJS, so it requires the NodeJS runtime
+version 10 or newer. But it has no other dependencies. Popcorn
+implements both SSE and websocket protocols entirely on its own
+without including any third-party libraries.
 
 The commands in `bin`, namely `launch` and others, are shell scripts,
 so they either require a UNIX/Linux machine, or at least a shell
