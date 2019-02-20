@@ -267,8 +267,7 @@ function schedulePing(wse) {
 // create logging function log(str). Copy and paste these lines.
 const logger = {};
 require('./debug-log.js')
-  .registerLogger('broker', logger);
+  .registerLogger('web-broker', logger);
 function log(str) { logger.log(str); }
-
 
 module.exports = new Broker();

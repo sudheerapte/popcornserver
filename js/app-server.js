@@ -21,7 +21,7 @@
 
   Listens on a given TCP port or UNIX port, for apps to connect and
   provide machines and updates. These machines and updates are sent
-  along to the broker, which shares them with any HTTP clients.
+  along to the web broker, which shares them with any HTTP clients.
 
   Usage: this module returns a singleton object.
 

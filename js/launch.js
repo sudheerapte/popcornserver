@@ -6,7 +6,7 @@
    start happening once clients start connecting.
 */
 
-const broker = require('./broker.js');
+const broker = require('./web-broker.js');
 const hsmodule = require('./http-server.js');
 const registry = require('./registry.js');
 const Machine = require('./machine.js');
