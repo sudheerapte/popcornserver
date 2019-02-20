@@ -265,8 +265,8 @@ function streamIndexHeader(req, res, machine) {
     const mDir = registry.getMachineDir(machine);
     log(`machine = ${machine} mDir = ${mDir}`);
     const hfPath = getFilePath(machine, "head-frags.html");
-    fileUtils.streamFP(hfPath, res)
-      .then( () => {
+    const p = fileUtils.streamFP(hfPath, res);
+      p.then( () => {
         log(`header.frags found`);
       } )
       .catch(errMsg => { 

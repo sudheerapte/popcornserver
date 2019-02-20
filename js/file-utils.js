@@ -161,6 +161,7 @@ class FileUtils {
         }
       });
     });
+    log(`streamFP: returned a Promise`);
   }
 }
 

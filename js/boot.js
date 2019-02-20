@@ -50,12 +50,14 @@ function doFirstMessage() {
             const msg = `bad machine payload for ${machine}`;
 	    return rejectThis(()=> reject(msg));
 	  } else {
-	    // console.log(`provide command payload = ${arr.length-1} lines`);
+	    // console.log(`provide command payload = |${arr.join(",")}|`);
 	  }
 	  const result = mc.interpret(arr.slice(1));
 	  if (result) { return rejectThis(()=>reject(result)); }
           reflectMachine();
-          addMachineHandlers();
+          addClickChgHandlers();
+          addClickCmdHandlers();
+          // console.log(`added all the handlers`);
 	  return resolveThis(resolve);
 	}
       }
@@ -153,9 +155,9 @@ function isNonCurrAlt(mPath) {
 }
 
 /**
-   @function(addMachineHandlers) - set up data-onclick handlers
+   @function(addClickChgHandlers) - set up data-onclick handlers
 */
-function addMachineHandlers() {
+function addClickChgHandlers() {
   if (! mc) { return; }
   const mcCopy = mc.clone(); // create a copy to try the transactions on
   if (typeof mcCopy === 'string') {
@@ -174,6 +176,7 @@ function addMachineHandlers() {
         console.log(`${e.tagName} ${DO}=${chStr}: ${result}`);
       } else {
         e.addEventListener('click', ev => {
+          if (! mc) { return; }
           const result = mc.interpret(arr);
           if (result) {
             console.log(`click failed: ${result}`);
@@ -189,6 +192,33 @@ function addMachineHandlers() {
   });
 }
 
+/**
+   @function(addClickCmdHandlers) - set up data-cmdclick handlers
+*/
+function addClickCmdHandlers() {
+  if (! mc) { return; }
+  if (typeof mcCopy === 'string') {
+    console.log(`failed to clone: ${mcCopy}`);
+    return;
+  }
+  const DC = "data-cmdclick";
+  const machineElems = document.querySelectorAll(`[${DC}]`);
+  machineElems.forEach( e => {
+    const chStr = e.getAttribute(DC);
+    if (chStr) {
+      e.addEventListener('click', ev => {
+        console.log(`clicked: sending ${chStr}`);
+        try {
+          if (ws) { ws.send(`${machine} ${chStr}`); }
+        } catch (e) {
+          console.log(`websocket send failed: ${e.code}`);
+        }
+      });
+    } else {
+      console.log(`attribute ${DC} value not found`);
+    }
+  });
+}
 
 function trunc(logmsg) {
   if (! logmsg) { return 'null'; }
