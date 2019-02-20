@@ -5,7 +5,7 @@ const WebsocketEmitter = require('../websocket-emitter.js');
 const path = require('path');
 const { PassThrough } = require('stream');
 const Pipe = PassThrough;
-const broker = require('../broker.js');
+const broker = require('../web-broker.js');
 const Machine = require('../machine.js');
 
 class Client {
@@ -25,7 +25,7 @@ class Client {
 	//log(`sendMessage cb successful`);
       });
       if (! result) {
-	log(`sendMessage returned ${result}!`);
+	// log(`sendMessage returned ${result}!`);
 	err(result);
       }
     });
@@ -36,10 +36,12 @@ class Client {
   }
   handleMessage(data) {
     // log(`client got message: |${trunc(data)}|`);
-    if (data.toString().match(/^machine/)) {
+    if (data.toString().match(/^provide/)) {
+      this.resolve();
+    } else if (data.toString().match(/^update/)) {
       this.resolve();
     } else {
-      // log(`client: subscribe failed.`);
+      log(`client: subscribe failed.`);
       this.reject("not ok");
     }
   }
@@ -62,10 +64,10 @@ function subscribeFailTest() {
     let c2b, b2c;
     c2b = new Pipe(); b2c = new Pipe();
     const client = new Client("foo", "someurl", b2c, c2b, reject, resolve);
-    // log(`client foo created.`);
+    log(`client foo created.`);
     const result = broker.addNewClient(client.clientId, client.url, c2b, b2c);
     err(result);
-    // log("created and added client.");
+    log("created and added client.");
   });
 }
 function subscribeSucceedTest() {
@@ -95,17 +97,18 @@ function sendUpdateTest() {
     machine = new Machine();
     result = machine.interpret(['P .a', 'P .b', 'P .a/foo', 'P .a/bar' ]);
     if (result) { log(`interpret result = ${result}`); err(! result); }
-    // log(`machine = ${machine.getSerialization().join(' ')}`);
+    log(`machine = ${machine.getSerialization().join(' ')}`);
     result = broker.provide("sendupdate", machine);
     err(result);
     c2b = new Pipe(); b2c = new Pipe();
     const client = new Client("bar", "sendupdate", b2c, c2b, resolve, reject);
     result = broker.addNewClient(client.clientId, client.url, c2b, b2c);
     err(result);
-    // log("created and added client.");
+    log("created and added client.");
   });
   newClientStep
     .then(() => {
+      log(`---- newClientStep`);
       const result = machine.interpret(['C .a bar']);
       err(result);
     })
@@ -117,7 +120,7 @@ subscribeFailTest()
   .then( sendUpdateTest )
   .then( () => {
     log("--- sendUpdateTest done");
-    // log(`ending test.`);
+    log(`all tests successful.`);
     process.exit(0);
   })
   .catch( errMsg => {

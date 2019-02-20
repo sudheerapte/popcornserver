@@ -1,7 +1,7 @@
 "use strict";
 
 /**
-   @module(broker.js) - singleton - manage web clients and apps.
+   @module(web-broker.js) - singleton - manage web clients and apps.
 
    When a client connects, we start tracking it by clientId.
       addNewClient()
@@ -17,14 +17,14 @@
 
    Usage:
 
-   const broker = require('./broker.js');
+   const broker = require('./web-broker.js');
    broker.start(); // now listening on TCP port options.appPort
 */
 
 const WebsocketEmitter = require('./websocket-emitter.js');
 const EventEmitter = require('events');
 
-class Broker extends EventEmitter {
+class WebBroker extends EventEmitter {
   constructor() {
     super();
     this._clientMap = new Map(); // clientId -> { url, wse, machines }
@@ -270,4 +270,4 @@ require('./debug-log.js')
   .registerLogger('web-broker', logger);
 function log(str) { logger.log(str); }
 
-module.exports = new Broker();
+module.exports = new WebBroker();
