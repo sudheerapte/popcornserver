@@ -518,15 +518,41 @@ The above example uses the `data-alt` attribute to mark a
 paragraph. Whenever the machine has any other child of `.hinge`
 current, then this paragraph will not be displayed.
 
-### data-onclick to change the state
+### data-cmdclick to send commands to the app
 
-To directly change the state of the machine when the user clicks a
-button or any other element, assign to that element a change
-transaction:
+To send a command to the app when the user clicks a button or any
+other element, assign to that element the command string as the value
+of the attribute `data-cmdclick`:
 
 ```
     <input type="button" value="Close"
-     data-onclick="C .hinge closed"></input>
+     data-cmdclick="close hinge"></input>
+```
+
+The above example provides a button labeled "Close". If the user
+clicks the button, Popcorn will send the command string `close hinge`
+to the app on the back end. Presumably, this command string has been
+agreed upon between the designer and the developer to do something
+meaningful.
+
+When the user clicks this button, the command string is sent, but
+nothing changes in the UI. Or at least, not immediately: presumably
+the app will update the state machine in response to the command.
+
+Sometimes, a command is expected to take time to take effect, and the
+designer will want some feedback to be given to the user
+immediately. For those cases, you can also use a `data-chgclick`
+attribute to directly change the machine state in the UI; see below.
+
+### data-chgclick to change the state
+
+To directly change the state of the machine when the user clicks a
+button or any other element, assign to that element a change
+transaction as the value of the attribute `data-chgclick`:
+
+```
+    <input type="button" value="Close"
+     data-chgclick="C .hinge closed"></input>
 ```
 
 The above example provides a button labeled "Close". If the user
@@ -537,19 +563,28 @@ For the syntax of change transactions, see *How to develop a Popcorn
 app* below.
 
 If a transaction contains more than one change command, separate them
-with commas in the string value of `data-onclick`.
+with commas in the string value of `data-chgclick`.
 
-The `data-onclick` method of changing machine state should be used
-only for "presentation logic". The app in the back end knows nothing
-about this change. This method is suitable for changing the UI
-navigation; for example, to change to a different tab in the UI. App
-development will get very confusing if the app also sometimes sends
-the same kind of change transaction. It is better for the designer and
-the app developer to decide up front which of the paths belong to the
-UI and which ones belong to the back end.
+This `data-chgclick` method is useful in two cases:
 
-- *TODO: show how to issue commands and substitute values.*
+* UI navigation; for example, to change to a different tab. To achieve
+  this, use the `C` command to make a different alt-child current, and
+  use that alt-child as the value of a `data-alt` attribute for the
+  new tab.
 
+* Immediate feedback on issuing a long-running command. To achieve
+  this, use `data-chgclick` along with the `data-cmdclick` attribute
+  together. The `data-cmdclick` sends a command to the back end, while
+  the `data-chgclick` immediately switches to a view that says,
+  "waiting for response...".
+
+This method of changing machine state should be used only for
+"presentation logic". The app in the back end knows nothing about
+`data-chgclick` transactions. App development will get very confusing
+if the app also sometimes sends the same kind of change
+transaction. It is better for the designer and the app developer to
+decide up front which of the paths belong to the UI and which ones
+belong to the back end.
 
 ## Contents of `head-frags.html`
 

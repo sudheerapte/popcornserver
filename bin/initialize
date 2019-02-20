@@ -17,13 +17,13 @@ mkdir ~/.popcorn/demo
 << 'EOF2' cat > ~/.popcorn/demo/frags.html && echo Created demo dir
 <p data-alt=".hinge/open">Hinge open
 <input type="button" value="Close"
-  data-onclick="C .hinge closed"
+  data-chgclick="C .hinge closed"
   data-cmdclick="closing command"
 ></input>
 </p>
 <p data-alt=".hinge/closed">Hinge closed
 <input type="button" value="Open"
-  data-onclick="C .hinge open"
+  data-chgclick="C .hinge open"
   data-cmdclick="opening command"
 ></input>
 </p>

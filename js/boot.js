@@ -155,7 +155,7 @@ function isNonCurrAlt(mPath) {
 }
 
 /**
-   @function(addClickChgHandlers) - set up data-onclick handlers
+   @function(addClickChgHandlers) - set up data-chgclick handlers
 */
 function addClickChgHandlers() {
   if (! mc) { return; }
@@ -164,7 +164,7 @@ function addClickChgHandlers() {
     console.log(`failed to clone: ${mcCopy}`);
     return;
   }
-  const DO = "data-onclick";
+  const DO = "data-chgclick";
   const machineElems = document.querySelectorAll(`[${DO}]`);
   machineElems.forEach( e => {
     const chStr = e.getAttribute(DO);
