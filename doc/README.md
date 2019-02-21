@@ -39,6 +39,30 @@ NodeJS. In any case, a few command-line tools are also provided so
 that you can send your communication text strings to Popcorn by
 supplying them as arguments, without having to open sockets yourself.
 
+## Popcorn roadmap
+
+As of Feb 21, 2019:
+
+### Working today
+
+* Linux installation
+
+* Connected apps
+
+* Simple demo app included in Popcorn
+
+* Presentation-invoked changes (`data-chgclick`)
+
+* Commands (`data-cmdclick`)
+
+
+### Future
+
+* Windows port
+
+* Drive-by apps
+
+
 ## How to read the rest of this document
 
 * If you are only curious about Popcorn, read the section *How Popcorn
@@ -56,6 +80,7 @@ do Write a Popcorn Application*.
 read all the sections except *How to Design the UX of a Popcorn
 Application*.
 
+* Section *Popcorn roadmap* - what works today, and what is planned.
 
 # How Popcorn Works
 
@@ -1000,10 +1025,10 @@ Popcorn. Most apps do not update their state machines more often than
 about once a second. If an app is doing hundreds of updates a second,
 then network, CPU, and memory usage might be worth reviewing.
 
-The NodeJS runtime takes about 250MB of real memory.  Popcorn
+The NodeJS runtime takes about 20 to 25MB of real memory.  Popcorn
 maintains in memory each state machine.  The Popcorn application takes
-about a hundred megabytes. If Popcorn is the only thing running on a
-machine, it should run well in about half a GB (in addition to the OS).
+about 10MB with two or three apps running. If Popcorn is the only
+thing running, it should run well on fairly modest-sized systems.
 
 ## Run-time dependencies
 
@@ -1015,6 +1040,8 @@ without including any third-party libraries.
 The commands in `bin`, namely `launch` and others, are shell scripts,
 so they either require a UNIX/Linux machine, or at least a shell
 environment such as Windows Subsystem for Linux (WSL) on Windows 10.
+
+For a Windows port, see the section *Popcorn roadmap* for plans.
 
 These scripts are quite minimal; it is always possible to launch
 Popcorn using a command-line invocation of `node`, giving it the `js`
