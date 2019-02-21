@@ -188,7 +188,6 @@ class WebBroker extends EventEmitter {
   sendUpdates(machine, opArr, cb) {
     let outstandingClients = 0; // how many in process of sending
     let lastError = null; // message of the last update that failed
-    log(`sendUpdates: checking clients for machine ${machine}...`);
     for (const c of this._clientMap.keys()) {
       const rec = this._clientMap.get(c);
       if (rec.machines.includes(machine)) {
@@ -201,7 +200,6 @@ class WebBroker extends EventEmitter {
       }
     }
     waitForOutstandingClients( () => {
-      log(`finished sending ${machine} updates to all clients`);
       cb(lastError);
     });
 

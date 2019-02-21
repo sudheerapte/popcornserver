@@ -20,14 +20,7 @@ function upgradeToWebsocket() {
     }
     ws.addEventListener('open', function(ev) {
       console.log(`websocket is open`);
-      let mcname = window.location.pathname;
-      if (mcname.startsWith('/')) { mcname = mcname.slice(1); }
-      console.log(`subscribing to machine ${mcname}...`);
-      try {
-        if (ws) { ws.send(`subscribe ${mcname}`); }
-      } catch (e) {
-        console.log(`websocket send failed: ${e.code}`);
-      }
+      return resolve();
     });
     ws.addEventListener('close', function(ev) {
       console.log('websocket closed by server');
@@ -35,13 +28,22 @@ function upgradeToWebsocket() {
     ws.addEventListener('error', function(ev) {
       console.log(`websocket error: ${JSON.stringify(ev)}`);
     });
-    resolve();
   });
 }
 
 function doFirstMessage() {
   return new Promise( (resolve, reject) => {
     ws.addEventListener('message', handleFirstMessage);
+
+    // Send the subscribe command for our URL machine
+    let mcname = window.location.pathname;
+    if (mcname.startsWith('/')) { mcname = mcname.slice(1); }
+    console.log(`subscribing to machine ${mcname}...`);
+    try {
+      if (ws) { ws.send(`subscribe ${mcname}`); }
+    } catch (e) {
+      console.log(`websocket send failed: ${e.code}`);
+    }
     
     function handleFirstMessage(ev) {
       // the first message must be "provide machine"
