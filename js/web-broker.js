@@ -59,21 +59,6 @@ class WebBroker extends EventEmitter {
       log(`readStr closed: ${machine} ${clientId}`);
       this._clientMap.delete(readStr);
     });
-    let machine = url;
-    if (machine.startsWith('/')) { machine = url.substr(1); }
-    log(`--- self-sending ${clientId}: subscribe ${machine}`);
-    this.handleMessage(clientId, `subscribe ${machine}`)
-      .then( () => {
-        log(`--- self-sent subscribe ${machine} handled`);
-        log(`subscribe done`);
-      })
-      .catch( errMsg => {
-	log(`subscribe failed: ${errMsg}`);
-	this.sendMessage(`error: ${errMsg}`)
-	  .then(() => log(`error sent to client`) )
-	  .catch(fail =>
-		 console.log(`error failed to send to client: ${fail}`));
-      });
     this.emit('newclient', clientId);
   }
   /**
@@ -203,6 +188,7 @@ class WebBroker extends EventEmitter {
   sendUpdates(machine, opArr, cb) {
     let outstandingClients = 0; // how many in process of sending
     let lastError = null; // message of the last update that failed
+    log(`sendUpdates: checking clients for machine ${machine}...`);
     for (const c of this._clientMap.keys()) {
       const rec = this._clientMap.get(c);
       if (rec.machines.includes(machine)) {

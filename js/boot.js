@@ -20,6 +20,14 @@ function upgradeToWebsocket() {
     }
     ws.addEventListener('open', function(ev) {
       console.log(`websocket is open`);
+      let mcname = window.location.pathname;
+      if (mcname.startsWith('/')) { mcname = mcname.slice(1); }
+      console.log(`subscribing to machine ${mcname}...`);
+      try {
+        if (ws) { ws.send(`subscribe ${mcname}`); }
+      } catch (e) {
+        console.log(`websocket send failed: ${e.code}`);
+      }
     });
     ws.addEventListener('close', function(ev) {
       console.log('websocket closed by server');
