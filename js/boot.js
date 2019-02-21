@@ -219,7 +219,7 @@ function addClickCmdHandlers() {
       e.addEventListener('click', ev => {
         console.log(`clicked: sending ${chStr}`);
         try {
-          if (ws) { ws.send(`${machine} ${chStr}`); }
+          if (ws) { ws.send(`command ${machine}\n${chStr}`); }
         } catch (e) {
           console.log(`websocket send failed: ${e.code}`);
         }

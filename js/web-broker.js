@@ -95,6 +95,16 @@ class WebBroker extends EventEmitter {
 	    .then(resolve)
 	    .catch(reject);
 	}
+      }  else if (data.match(/^command\s+/)) {
+        const m = data.match(/^\s*command\s+(\w+)/);
+        const arr = data.split('\n').filter( e => e.length > 0);
+        if (!m) {
+          log(`did not match command pattern`);
+          return reject(`bad command line: ${arr[0]}`);
+        }
+        log(`emitting command ${m[1]} ${clientId}: |${arr.slice(1)}|`);
+        this.emit('command', m[1], clientId, arr.slice(1));
+        return resolve();
       } else {
 	const msg = `bad command: |${trunc(data)}|`;
 	console.log(`sending ${msg} to client ${clientId}`);

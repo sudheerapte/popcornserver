@@ -234,6 +234,20 @@ class AppServer extends EventEmitter {
       return resolve();
     }
   }
+  doCommand(machine, clientId, arr) {
+    if (this._map.has(machine)) {
+      const rec = this._map.get(machine);
+      if (rec.sse) {
+        log(`doCommand: sending to app: ${arr[0]}`);
+        rec.sse.sendMessage(`command ${machine} ${clientId}
+${arr.join("\n")}`);
+      } else {
+        log(`doCommand: rec.sse does not exist}. ${arr[0]}`);
+      }
+    } else {
+      log(`doCommand: _map has no machine: ${machine}. ${arr[0]}`);
+    }
+  }
   handleOneShotCommand(rec) {
     rec.sendError(`TODO one-shot command not implemented.`);
     log(`TODO one-shot command not implemented.`);

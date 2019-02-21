@@ -531,9 +531,7 @@ of the attribute `data-cmdclick`:
 
 The above example provides a button labeled "Close". If the user
 clicks the button, Popcorn will send the command string `close hinge`
-to the app on the back end. Presumably, this command string has been
-agreed upon between the designer and the developer to do something
-meaningful.
+to the app on the back end.
 
 When the user clicks this button, the command string is sent, but
 nothing changes in the UI. Or at least, not immediately: presumably

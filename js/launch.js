@@ -34,6 +34,9 @@ function launch() {
   appServer.on('provide', (appName, machine, mc) => {
     broker.provide(machine, mc);
   })
+  broker.on('command', (machine, clientId, arr) => {
+    appServer.doCommand(machine, clientId, arr);
+  });
   appServer.startListening({port: APPPORT})
     .then( () => {
       httpServer.on('wssocket', (sock, idObj) => {

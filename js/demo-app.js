@@ -22,7 +22,17 @@ class DemoApp {
         .then( () => this.doConnect() )
         .then( () => this.sendProvide() )
         .then( () => this.scheduleUpdates() )
-        .then( resolve )
+        .then( () => {
+          this._sse.on('SSEvent', ev => {
+            const arr = ev.data.split(/\n|\r|\r\n/);
+            if (arr.length > 1) {
+              log(`demoApp got command: ${arr[1]}`);
+            } else {
+              log(`demoApp got: ${arr[0]}`);
+            }
+          });
+          resolve();
+        })
         .catch( reject );
     });
   }
