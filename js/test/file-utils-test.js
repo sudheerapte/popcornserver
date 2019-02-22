@@ -3,43 +3,39 @@
 const [log, err] = require('./logerr.js');
 const fileUtils = require('../file-utils.js');
 const registry = require('../registry.js');
+const Pipe = require('stream').PassThrough;
 const path = require('path');
 
 let promise;
 
-let msg1 = "--- scan simple dir t1 with 2 .css files";
+let msg1 = "--- verify this source file";
 log(msg1);
-const t1Path = path.join(__dirname, "t1");
-registry.addMachine("t1", t1Path);
 
-let msg2 = "--- scan dir structure t2";
-const t2Path = path.join(__dirname, "t2");
-registry.addMachine("t2", t2Path);
-let arr = [];
-fileUtils.getAllSubdirs(t2Path)
-  .then( arr => {
-    log(msg2);
-    if (arr.length !== 4) { err('expected array of length 4'); }
-  })
-  .catch(errMsg => log(`${msg}: ${errMsg}`) );
+const pipe = new Pipe();
+function findFileUtils() {
+  return new Promise( (resolve, reject) => {
+    let foundFileUtilsDeclaration = false;
+    pipe.on('data', data => {
+      if (data.toString().match(/fileUtils/)) {
+        foundFileUtilsDeclaration = true;
+        return resolve();
+      }
+    });
+    pipe.on('error', errMsg => reject(errMsg) );
+    pipe.on('end', ()=> {
+      if (! foundFileUtilsDeclaration) {
+        reject(`failed to find fileUtils`);
+      } else {
+        log(`done scanning file ${__filename}`);
+      }
+    });
+  });
+}
+fileUtils.streamFP(__filename, pipe)
+  .then( findFileUtils )
+  .then( () => log(`done`) )
+  .catch( errMsg => err(errMsg) );
 
-let msg3 = "--- find 2 CSS files in t1";
-promise = fileUtils.getCss(t1Path);
-promise.then( (arr) => {
-  log(msg3);
-  // log(`css files = ${JSON.stringify(arr)}`);
-  arr.length === 2 || err("expecting 2 CSS files in t1!");
-})
-  .catch(errMsg => err(errMsg));
-
-let msg4 = "--- find 6 CSS files under t2";
-promise = fileUtils.getAllCss(t2Path);
-promise.then( (arr) => {
-  log(msg4);
-  // log(`css files = ${JSON.stringify(arr)}`);
-  arr.length === 6 || err("expecting 6 CSS files under t2!");
-})
-  .catch(errMsg => err(errMsg));
 
 // -----------------
 
