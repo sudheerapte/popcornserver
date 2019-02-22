@@ -33,6 +33,7 @@ const EventEmitter = require('events');
     done DIR - done traversing directory DIR
 */
 
+/*
 class DirTraverser extends EventEmitter {
   constructor(dir) {
     super();
@@ -57,8 +58,10 @@ class DirTraverser extends EventEmitter {
     });
   }
 }
+*/
 
 class FileUtils {
+  /*
   // getAllSubdirs - return an array of all subdirs, recursively
   // returns a Promise that resolves to an array of paths
   getAllSubdirs(dir) {
@@ -100,6 +103,7 @@ class FileUtils {
 
   // getAllCss - return all CSS files under toScan.
   // each CSS file is represented by its full path.
+  /*
   getAllCss(toScan) {
     let cssfiles = [];
     return new Promise((resolve, reject) => {
@@ -127,7 +131,7 @@ class FileUtils {
         .catch( errMsg => reject(errMsg) );
     });
   }
-
+*/
   streamFile(filePath, outStream, cb) { // cb(errMsg)
     fs.access(filePath, fs.constants.R_OK, eMsg => {
       if (eMsg) {
@@ -145,6 +149,19 @@ class FileUtils {
 	});
       }
     });
+  }
+
+  streamFP(filePath, outStream) { // returns a Promise
+    return new Promise( (resolve, reject) => {
+      this.streamFile(filePath, outStream, eMsg => {
+        if (eMsg) {
+          return reject(eMsg);
+        } else {
+          return resolve();
+        }
+      });
+    });
+    log(`streamFP: returned a Promise`);
   }
 }
 

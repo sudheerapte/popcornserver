@@ -1,2 +1,4 @@
 *~
-test/machine-bundle.js
+*.aux
+*.log
+

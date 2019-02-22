@@ -10,6 +10,9 @@ const machineLines = [
   "P .bolt/unlocked",
   "P .bolt/locked",
 ];
+const mc = new Machine();
+const result = mc.interpret(machineLines);
+if (result) { log(`*** bad mc: ${result} ***`); }
 
 class DemoApp {
   start(port) {
@@ -19,7 +22,17 @@ class DemoApp {
         .then( () => this.doConnect() )
         .then( () => this.sendProvide() )
         .then( () => this.scheduleUpdates() )
-        .then( resolve )
+        .then( () => {
+          this._sse.on('SSEvent', ev => {
+            const arr = ev.data.split(/\n|\r|\r\n/);
+            if (arr.length > 1) {
+              log(`demoApp got command: ${arr[1]}`);
+            } else {
+              log(`demoApp got: ${arr[0]}`);
+            }
+          });
+          resolve();
+        })
         .catch( reject );
     });
   }
@@ -64,16 +77,27 @@ data: demoApp\n\n`);
           reject(ev.data);
         }
       });
-      const mc = new Machine();
-      const result = mc.interpret(machineLines);
-      if (result) { log(`*** bad mc: ${result} ***`); }
       this._sse.sendMessage(`provide demo
 ${mc.getSerialization().join('\n')}\n\n`);
       log(`sent provide demo`);
     });
   }
-  sendUpdate(hingeOpen, boltUnlocked) {
+  makeUpdate() {
+    this.boltUnlocked = ! this.boltUnlocked;
+    if (this.boltUnlocked) {
+      this.hingeOpen = ! this.hingeOpen;
+    }
+    return [
+      `C .hinge ${this.hingeOpen ? "open" : "closed"}`,
+      `C .bolt ${this.boltUnlocked ? "unlocked" : "locked"}`,
+    ];
+  }
+  doUpdate(opArr) {
     return new Promise( (resolve, reject) => {
+      const result = mc.interpret(opArr);
+      if (result) {
+        return reject(`mc update failed: ${result}`);
+      }
       this._sse.once('SSEvent', ev => {
         log(`sendUpdate got: ${ev.data}`);
         if (ev.data === "ok") {
@@ -83,27 +107,21 @@ ${mc.getSerialization().join('\n')}\n\n`);
         }
       });
       this._sse.sendMessage(`update demo
-C .hinge ${hingeOpen ? "open" : "closed"}
-C .bolt ${boltUnlocked ? "unlocked" : "locked"}`);
+${opArr.join('\n')}`);
     });
   }
   scheduleUpdates() {
-    return new Promise( (resolve, reject) => {
-      this.hingeOpen = true;
-      this.boltUnlocked = true;
-      setInterval( () => {
-        this.boltUnlocked = ! this.boltUnlocked;
-        if (this.boltUnlocked) {
-          this.hingeOpen = ! this.hingeOpen;
-        }
-        this.sendUpdate(this.hingeOpen, this.boltUnlocked)
-          .then( () => {
-            log(`sent hingeOpen = ${this.hingeOpen} boltUnlocked = ${this.boltUnlocked}`);
-            return resolve();
-          })
-          .catch( reject );
-      }, 2000);
-    });
+    this.hingeOpen = true;
+    this.boltUnlocked = true;
+    setInterval( () => {
+      const opArr = this.makeUpdate();
+      this.doUpdate(opArr)
+        .then( () => {
+          log(`sent ${opArr.join(" ")}}`);
+          return;
+        })
+        .catch( errMsg => console.log(`scheduleUpdates: ${errMsg}`) );
+    }, 10000);
   }
 }
 

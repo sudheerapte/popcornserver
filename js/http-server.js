@@ -202,6 +202,7 @@ function getFilePath(machine, cdr) {
   return path.normalize(path.join(mDir, cdr));
 }
 
+
 function getContentType(fileName) {
   const ContentType = {
     //  file extension to Content-Type
@@ -242,27 +243,47 @@ function isOneWord(urlPath) {
  */
 
 function getIndexHtml(req, res, machine) {
-  log(`HTTP/${req.httpVersion} ${req.method} ${req.url}`);
-  log(`${JSON.stringify(req.headers)}`);
-  const origin = req.headers["host"];
-  log(`sending index.html with origin ${origin} and machine ${machine}`);
-  res.writeHead(200, {'Content-Type': 'text/html'});
-  res.write(`
+  streamIndexHeader(req, res, machine)
+    .then( streamIndexBody( req, res, machine) )
+    .then( () => log(`sent index header and body`) )
+    .catch( errMsg => log(`failed sending index.html: ${errMsg}`) );
+}
+
+function streamIndexHeader(req, res, machine) {
+  return new Promise( (resolve, reject) => {
+    log(`HTTP/${req.httpVersion} ${req.method} ${req.url}`);
+    log(`${JSON.stringify(req.headers)}`);
+    const origin = req.headers["host"];
+    log(`sending index.html with origin ${origin} and machine ${machine}`);
+    res.writeHead(200, {'Content-Type': 'text/html'});
+    res.write(`
 <html>\n<head>
     <meta charset="utf-8">
     <base href="http://${origin}/${machine}">
     <title>${machine}</title>
 `);
-  const mDir = registry.getMachineDir(machine);
-  log(`machine = ${machine} mDir = ${mDir}`);
-  const hfPath = getFilePath(machine, "head-frags.html");
-  fileUtils.streamFile(hfPath, res, errMsg => {
-    if (errMsg) {
-      res.write(`<!-- head-frags.html not found: ${errMsg} -->\n`);
-    }
-    res.write(`    <script src="boot.js"></script>
+    const mDir = registry.getMachineDir(machine);
+    log(`machine = ${machine} mDir = ${mDir}`);
+    const hfPath = getFilePath(machine, "head-frags.html");
+    const p = fileUtils.streamFP(hfPath, res);
+      p.then( () => {
+        log(`header.frags found`);
+      } )
+      .catch(errMsg => { 
+        res.write(`<!-- head-frags.html not found: ${errMsg} -->\n`);
+      })
+      .finally ( () => {
+        res.write(`    <script src="boot.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 </head>\n<body>\n`);
+        log(` sent end of head and beginning of body`);
+        return resolve();
+      });
+  });
+}  
+
+function streamIndexBody(req, res, machine) {
+  return new Promise( (resolve, reject) => {
     const fPath = getFilePath(machine, "frags.html");
     fileUtils.streamFile(fPath, res, (errMsg) => {
       if (errMsg) {
@@ -270,9 +291,11 @@ function getIndexHtml(req, res, machine) {
       }
       res.end(`</body></html>
 `);
+      return resolve();
     });
   });
 }
+
 
 // create logging function log(str). Copy and paste these lines.
 const logger = {};

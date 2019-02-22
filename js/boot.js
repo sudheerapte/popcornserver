@@ -7,17 +7,20 @@ let ws;          // websocket assigned by upgradeToWebsocket
 function boot() {
   upgradeToWebsocket()
     .then( doFirstMessage ) // which adds listener handleMessage()
-    .then( () => console.log(`first message handled. Waiting for more...`))
+    .then( () => console.log(`ready`))
     .catch( errMsg => console.log(errMsg) );
 }
 
 function upgradeToWebsocket() {
   return new Promise( (resolve, reject) => {
     const urlPath = window.location.pathname;
-    console.log(`urlPath=${urlPath}`);
     ws = new WebSocket(`ws://localhost:8000${urlPath}`);
+    if (!ws) {
+      return reject(`failed to create WebSocket(${urlPath})`);
+    }
     ws.addEventListener('open', function(ev) {
       console.log(`websocket is open`);
+      return resolve();
     });
     ws.addEventListener('close', function(ev) {
       console.log('websocket closed by server');
@@ -25,16 +28,25 @@ function upgradeToWebsocket() {
     ws.addEventListener('error', function(ev) {
       console.log(`websocket error: ${JSON.stringify(ev)}`);
     });
-    resolve();
   });
 }
 
 function doFirstMessage() {
   return new Promise( (resolve, reject) => {
     ws.addEventListener('message', handleFirstMessage);
+
+    // Send the subscribe command for our URL machine
+    let mcname = window.location.pathname;
+    if (mcname.startsWith('/')) { mcname = mcname.slice(1); }
+    console.log(`subscribing to machine ${mcname}...`);
+    try {
+      if (ws) { ws.send(`subscribe ${mcname}`); }
+    } catch (e) {
+      console.log(`websocket send failed: ${e.code}`);
+    }
     
     function handleFirstMessage(ev) {
-      console.log(`firstMessage: |${trunc(ev.data)}|`);
+      // the first message must be "provide machine"
       const data = ev.data;
       if (data.match(/^provide\s+/)) {
 	const m = data.match(/^provide\s+([a-z]+)/);
@@ -42,29 +54,32 @@ function doFirstMessage() {
 	  console.log(`bad provide command: |${trunc(data)}|`);
 	} else {
 	  machine = m[1];
-	  console.log(`reading machine ${machine}`);
+	  // console.log(`got provide ${machine}`);
 	  const arr = data.split('\n');
 	  if (! arr) {
-	    return rejectThis(()=>
-			      reject(`bad machine payload for ${machine}`));
+            const msg = `bad machine payload for ${machine}`;
+	    return rejectThis(()=> reject(msg));
 	  } else {
-	    console.log(`provide command payload = ${arr.length-1} lines`);
+	    // console.log(`provide command payload = |${arr.join(",")}|`);
 	  }
 	  const result = mc.interpret(arr.slice(1));
 	  if (result) { return rejectThis(()=>reject(result)); }
-	  const currPaths = mc.getCurrentPaths();
-	  console.log(`${machine} currPaths: ${currPaths.length}. Reflecting...`);
           reflectMachine();
+          addClickChgHandlers();
+          addClickCmdHandlers();
+          // console.log(`added all the handlers`);
 	  return resolveThis(resolve);
 	}
       }
     }
+    // resolveThis() and rejectThis() set up eventListeners first
     function resolveThis(resolve) {
       ws.removeEventListener('message', handleFirstMessage);
       ws.addEventListener('message', handleMessage);
       return resolve();
     }
     function rejectThis(rejector) {
+      // when rejecting, we don't want to handle any more events
       ws.removeEventListener('message', handleFirstMessage);
       return rejector();
     }
@@ -72,7 +87,7 @@ function doFirstMessage() {
 }
 
 function handleMessage(ev) { // handle subsequent messages
-  console.log(`handleMessage: |${trunc(ev.data)}|`);
+  // console.log(`handleMessage: |${trunc(ev.data)}|`);
   const data = ev.data;
   if (data.match(/^update\s+/)) {
     const m = data.match(/^update\s+([a-z]+)/);
@@ -81,18 +96,14 @@ function handleMessage(ev) { // handle subsequent messages
     } else if (machine !== m[1]) {
       console.log(`|update ${m[1]}|: ignoring unknown machine`);
     } else {
-      console.log(`updating machine ${machine}`);
       const arr = data.split('\n');
       if (!arr) {
 	console.log(`bad payload for |${trunc(data)}|`);
       } else {
-	console.log(`update payload = ${arr.length-1} lines`);
 	const result = mc.interpret(arr.slice(1));
 	if (result) {
 	  console.log(`update failed: ${result}`);
 	} else {
-	  console.log(`updated machine. Reflecting...`);
-	  const currPaths = mc.getCurrentPaths();
           reflectMachine();
 	}
       }
@@ -105,13 +116,13 @@ function handleMessage(ev) { // handle subsequent messages
 /**
    @function(reflectMachine) - hide and unhide elements based on machine
 */
-let unknownPaths = new Map();
+let unknownPaths = new Map(); // suppress repeated "no such path" errors
 
 function reflectMachine() {
   if (! mc) { return; }
-  const DM = "data-machine";
+  const DM = "data-alt";
   const machineElems = document.querySelectorAll(`[${DM}]`);
-  console.log(`machineElems = ${machineElems.length} items`);
+  //  console.log(`machineElems = ${machineElems.length} items`);
   // hide all non-current alt children and unhide all other paths
   machineElems.forEach( e => {
     const mPath = e.getAttribute(DM);
@@ -131,6 +142,13 @@ function reflectMachine() {
   });
 }
 
+/**
+   isNonCurrAlt(): is this path an alt-child that is not current?
+
+   These are the guys we want to hide.
+   The DOM rendering will automatically hide any child elements.
+*/
+
 function isNonCurrAlt(mPath) {
   const state = mc.getState(mPath);
   if (state) { // check if state is a non-current alternative child
@@ -146,6 +164,71 @@ function isNonCurrAlt(mPath) {
   return false;
 }
 
+/**
+   @function(addClickChgHandlers) - set up data-chgclick handlers
+*/
+function addClickChgHandlers() {
+  if (! mc) { return; }
+  const mcCopy = mc.clone(); // create a copy to try the transactions on
+  if (typeof mcCopy === 'string') {
+    console.log(`failed to clone: ${mcCopy}`);
+    return;
+  }
+  const DO = "data-chgclick";
+  const machineElems = document.querySelectorAll(`[${DO}]`);
+  machineElems.forEach( e => {
+    const chStr = e.getAttribute(DO);
+    if (chStr) {
+      const arr = chStr.split(',').map( elem => elem.trim() );
+      // console.log(`arr = ${arr.join(",")}`);
+      const result = mcCopy.interpret(arr);
+      if (result) {
+        console.log(`${e.tagName} ${DO}=${chStr}: ${result}`);
+      } else {
+        e.addEventListener('click', ev => {
+          if (! mc) { return; }
+          const result = mc.interpret(arr);
+          if (result) {
+            console.log(`click failed: ${result}`);
+          } else {
+            //console.log(`clicked`);
+            reflectMachine();
+          }
+        });
+      }
+    } else {
+      console.log(`attribute ${DO} value not found`);
+    }
+  });
+}
+
+/**
+   @function(addClickCmdHandlers) - set up data-cmdclick handlers
+*/
+function addClickCmdHandlers() {
+  if (! mc) { return; }
+  if (typeof mcCopy === 'string') {
+    console.log(`failed to clone: ${mcCopy}`);
+    return;
+  }
+  const DC = "data-cmdclick";
+  const machineElems = document.querySelectorAll(`[${DC}]`);
+  machineElems.forEach( e => {
+    const chStr = e.getAttribute(DC);
+    if (chStr) {
+      e.addEventListener('click', ev => {
+        console.log(`clicked: sending ${chStr}`);
+        try {
+          if (ws) { ws.send(`command ${machine}\n${chStr}`); }
+        } catch (e) {
+          console.log(`websocket send failed: ${e.code}`);
+        }
+      });
+    } else {
+      console.log(`attribute ${DC} value not found`);
+    }
+  });
+}
 
 function trunc(logmsg) {
   if (! logmsg) { return 'null'; }

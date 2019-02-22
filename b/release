@@ -10,6 +10,5 @@ rdir="../popcornrelease"
 
 version=$(git tag | sort -V | tail -1)
 echo "creating release version ${version}"
-git archive --output=${rdir}/popcorn-${version}.tar.gz --prefix=popcorn/ ${version}
+git archive --output=${rdir}/popcorn-${version}.tar.gz --prefix=popcorn/ ${version} js doc bin
 ls -lt ${rdir} | head -2
-

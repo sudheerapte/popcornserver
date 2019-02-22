@@ -1,7 +1,7 @@
 "use strict";
 
 /**
-   @module(broker.js) - singleton - manage web clients and apps.
+   @module(web-broker.js) - singleton - manage web clients and apps.
 
    When a client connects, we start tracking it by clientId.
       addNewClient()
@@ -17,14 +17,14 @@
 
    Usage:
 
-   const broker = require('./broker.js');
+   const broker = require('./web-broker.js');
    broker.start(); // now listening on TCP port options.appPort
 */
 
 const WebsocketEmitter = require('./websocket-emitter.js');
 const EventEmitter = require('events');
 
-class Broker extends EventEmitter {
+class WebBroker extends EventEmitter {
   constructor() {
     super();
     this._clientMap = new Map(); // clientId -> { url, wse, machines }
@@ -59,21 +59,6 @@ class Broker extends EventEmitter {
       log(`readStr closed: ${machine} ${clientId}`);
       this._clientMap.delete(readStr);
     });
-    let machine = url;
-    if (machine.startsWith('/')) { machine = url.substr(1); }
-    log(`--- self-sending ${clientId}: subscribe ${machine}`);
-    this.handleMessage(clientId, `subscribe ${machine}`)
-      .then( () => {
-        log(`--- self-sent subscribe ${machine} handled`);
-        log(`subscribe done`);
-      })
-      .catch( errMsg => {
-	log(`subscribe failed: ${errMsg}`);
-	this.sendMessage(`error: ${errMsg}`)
-	  .then(() => log(`error sent to client`) )
-	  .catch(fail =>
-		 console.log(`error failed to send to client: ${fail}`));
-      });
     this.emit('newclient', clientId);
   }
   /**
@@ -110,6 +95,16 @@ class Broker extends EventEmitter {
 	    .then(resolve)
 	    .catch(reject);
 	}
+      }  else if (data.match(/^command\s+/)) {
+        const m = data.match(/^\s*command\s+(\w+)/);
+        const arr = data.split('\n').filter( e => e.length > 0);
+        if (!m) {
+          log(`did not match command pattern`);
+          return reject(`bad command line: ${arr[0]}`);
+        }
+        log(`emitting command ${m[1]} ${clientId}: |${arr.slice(1)}|`);
+        this.emit('command', m[1], clientId, arr.slice(1));
+        return resolve();
       } else {
 	const msg = `bad command: |${trunc(data)}|`;
 	console.log(`sending ${msg} to client ${clientId}`);
@@ -215,7 +210,6 @@ class Broker extends EventEmitter {
       }
     }
     waitForOutstandingClients( () => {
-      log(`finished sending ${machine} updates to all clients`);
       cb(lastError);
     });
 
@@ -267,8 +261,7 @@ function schedulePing(wse) {
 // create logging function log(str). Copy and paste these lines.
 const logger = {};
 require('./debug-log.js')
-  .registerLogger('broker', logger);
+  .registerLogger('web-broker', logger);
 function log(str) { logger.log(str); }
 
-
-module.exports = new Broker();
+module.exports = new WebBroker();

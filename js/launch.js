@@ -6,7 +6,7 @@
    start happening once clients start connecting.
 */
 
-const broker = require('./broker.js');
+const broker = require('./web-broker.js');
 const hsmodule = require('./http-server.js');
 const registry = require('./registry.js');
 const Machine = require('./machine.js');
@@ -34,6 +34,9 @@ function launch() {
   appServer.on('provide', (appName, machine, mc) => {
     broker.provide(machine, mc);
   })
+  broker.on('command', (machine, clientId, arr) => {
+    appServer.doCommand(machine, clientId, arr);
+  });
   appServer.startListening({port: APPPORT})
     .then( () => {
       httpServer.on('wssocket', (sock, idObj) => {

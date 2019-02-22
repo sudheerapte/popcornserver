@@ -21,7 +21,7 @@
 
   Listens on a given TCP port or UNIX port, for apps to connect and
   provide machines and updates. These machines and updates are sent
-  along to the broker, which shares them with any HTTP clients.
+  along to the web broker, which shares them with any HTTP clients.
 
   Usage: this module returns a singleton object.
 
@@ -232,6 +232,20 @@ class AppServer extends EventEmitter {
       return reject(`update: ${res}`);
     } else {
       return resolve();
+    }
+  }
+  doCommand(machine, clientId, arr) {
+    if (this._map.has(machine)) {
+      const rec = this._map.get(machine);
+      if (rec.sse) {
+        log(`doCommand: sending to app: ${arr[0]}`);
+        rec.sse.sendMessage(`command ${machine} ${clientId}
+${arr.join("\n")}`);
+      } else {
+        log(`doCommand: rec.sse does not exist}. ${arr[0]}`);
+      }
+    } else {
+      log(`doCommand: _map has no machine: ${machine}. ${arr[0]}`);
     }
   }
   handleOneShotCommand(rec) {
