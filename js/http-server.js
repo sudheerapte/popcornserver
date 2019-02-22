@@ -260,15 +260,14 @@ function streamIndexHeader(req, res, machine) {
 <html>\n<head>
     <meta charset="utf-8">
     <base href="http://${origin}/${machine}">
-    <title>${machine}</title>
-`);
+    <title>${machine}</title>\n`);
     const mDir = registry.getMachineDir(machine);
     log(`machine = ${machine} mDir = ${mDir}`);
     const hfPath = getFilePath(machine, "head-frags.html");
     const p = fileUtils.streamFP(hfPath, res);
-      p.then( () => {
-        log(`header.frags found`);
-      } )
+    p.then( () => {
+      log(`head-frags sent`);
+    } )
       .catch(errMsg => { 
         res.write(`<!-- head-frags.html not found: ${errMsg} -->\n`);
       })
@@ -285,12 +284,12 @@ function streamIndexHeader(req, res, machine) {
 function streamIndexBody(req, res, machine) {
   return new Promise( (resolve, reject) => {
     const fPath = getFilePath(machine, "frags.html");
+    log(`sending frags.html...`);
     fileUtils.streamFile(fPath, res, (errMsg) => {
       if (errMsg) {
         res.write(`<!-- frags.html not found: ${errMsg} -->\n`);
       }
-      res.end(`</body></html>
-`);
+      res.end(`</body></html>\n`);
       return resolve();
     });
   });
