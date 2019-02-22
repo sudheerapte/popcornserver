@@ -93,7 +93,7 @@ class Server extends EventEmitter {
   doGet(req, res) {
     let filePath, machineDir, machine;
     // /boot.js is common, popcorn-level code.
-    if (req.url === '/boot.js') {
+    if (req.url.match(/\/boot\.js$/)) {
       this.getBootJs(req, res, () => {
 	res.end();
       });
@@ -259,7 +259,7 @@ function streamIndexHeader(req, res, machine) {
     res.write(`
 <html>\n<head>
     <meta charset="utf-8">
-    <base href="http://${origin}/${machine}">
+    <base href="http://${origin}/${machine}/">
     <title>${machine}</title>\n`);
     const mDir = registry.getMachineDir(machine);
     log(`machine = ${machine} mDir = ${mDir}`);
