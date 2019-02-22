@@ -264,20 +264,20 @@ function streamIndexHeader(req, res, machine) {
     const mDir = registry.getMachineDir(machine);
     log(`machine = ${machine} mDir = ${mDir}`);
     const hfPath = getFilePath(machine, "head-frags.html");
-    const p = fileUtils.streamFP(hfPath, res);
-    p.then( () => {
+    let hdrInitialData;
+    try {
+      hdrInitialData = fs.readFileSync(hfPath, {encoding: 'utf8'});
+      res.write(hdrInitialData);
       log(`head-frags sent`);
-    } )
-      .catch(errMsg => { 
-        res.write(`<!-- head-frags.html not found: ${errMsg} -->\n`);
-      })
-      .finally ( () => {
-        res.write(`    <script src="boot.js"></script>
+    } catch( e ) {
+      res.write(`<!-- head-frags.html not found: ${e.code} -->\n`);
+      log(`head-frags missing comment sent`);
+    }
+    res.write(`    <script src="boot.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 </head>\n<body>\n`);
-        log(` sent end of head and beginning of body`);
-        return resolve();
-      });
+    log(` sent end of head and beginning of body`);
+    return resolve();
   });
 }  
 
