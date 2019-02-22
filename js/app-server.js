@@ -192,7 +192,6 @@ class AppServer extends EventEmitter {
     }
     log(`providing machine ${machine}`);
     this._map.set(machine, {mc: mc, sse: sse});
-    log(`${mc.getSerialization().join(' ')}`);
     this._appMap.get(appName).push(machine);
     this.emit('provide', appName, machine, mc);
     return resolve();
@@ -224,9 +223,7 @@ class AppServer extends EventEmitter {
     }
     log(`update = |${arr.slice(1).join(" ")}|`);
     const mc = this._map.get(machine).mc;
-    log(`mc = |${mc.getSerialization().join(" ")}|`);
     const res = mc.interpret(arr.slice(1));
-    log(`mc.interpret = ${res}`);
     if (res) {
       log(`update: ${res}`);
       return reject(`update: ${res}`);
