@@ -56,7 +56,7 @@ class WebBroker extends EventEmitter {
       this._clientMap.delete(clientId);
     });
     readStr.on('close', () => {
-      log(`readStr closed: ${machine} ${clientId}`);
+      log(`readStr closed: ${clientId}`);
       this._clientMap.delete(readStr);
     });
     this.emit('newclient', clientId);
