@@ -14,7 +14,7 @@ function boot() {
 function upgradeToWebsocket() {
   return new Promise( (resolve, reject) => {
     const urlPath = window.location.pathname;
-    ws = new WebSocket(`ws://localhost:8000${urlPath}`);
+    ws = new WebSocket(`ws://localhost:8000${urlPath}`); // TODO FIX
     if (!ws) {
       return reject(`failed to create WebSocket(${urlPath})`);
     }
