@@ -498,8 +498,7 @@ developer.
 1. Create your assets directory for the machine, and configure Popcorn
 to find the directory.
 
-1. In your assets directory, write `frags.html` and `head-frags.html`,
-and place any images, CSS files, and other assets in it.
+1. In your assets directory, create all your HTML, CSS, and other assets.
 
 1. Launch Popcorn and view the URL for your machine.
 
@@ -509,22 +508,22 @@ When you have defined your state machine as described in the previous
 sections, you are ready to create your web assets as a hierarchy of
 files in any directory you define.
 
-In your assets directory, you create two HTML files, `head-frags.html`
-and `frags.html`, which Popcorn will send as part of the `mymachine`
-page, like this:
+In your assets directory, you create two HTML files,
+`mymachine-head-frags.html` and `mymachine-frags.html`, which Popcorn
+will send as part of the `mymachine` page, like this:
 
 ```
   <head>
     ...
-    CONTENTS OF "head-frags.html"
+    CONTENTS OF "mymachine-head-frags.html"
     ...
   </head>
   <body>
-    CONTENTS OF "frags.html"
+    CONTENTS OF "mymachine-frags.html"
   </body>
 ```
 
-## Contents of `frags.html`
+## Contents of `mymachine-frags.html`
 
 You can enter any valid HTML elements that can go into the
 `<body>`. You will use popcorn-specific attributes of the form
@@ -609,12 +608,13 @@ transaction. It is better for the designer and the app developer to
 decide up front which of the paths belong to the UI and which ones
 belong to the back end.
 
-## Contents of `head-frags.html`
+## Contents of `mymachine-head-frags.html`
 
-The `head-frags.html` file is optional. It is meant for entering
-`<link>` elements for any CSS stylesheets you need, in the order you
-need to cascade them. The `.CSS` files must be located inside the
-assets directory in the subdirectory named by the `href` attribute.
+The `mymachine-head-frags.html` file is optional. It is meant for
+entering `<link>` elements for any CSS stylesheets you need, in the
+order you need to cascade them. The `.CSS` files must be located
+inside the assets directory in the subdirectory named by the `href`
+attribute.
 
 *TODO: show `<link>` element examples*
 
