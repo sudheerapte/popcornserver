@@ -508,25 +508,35 @@ When you have defined your state machine as described in the previous
 sections, you are ready to create your web assets as a hierarchy of
 files in any directory you define.
 
-In your assets directory, you create two HTML files,
-`mymachine-head-frags.html` and `mymachine-frags.html`, which Popcorn
-will send as part of the `mymachine` page, like this:
+In your assets directory, at the top level, you create
+`mymachine-index.html`:
 
 ```
+  <html>
+  <meta charset="utf-8" />
   <head>
-    ...
-    CONTENTS OF "mymachine-head-frags.html"
+    <title>My Machine</title>
     ...
   </head>
   <body>
-    CONTENTS OF "mymachine-frags.html"
+    ...
   </body>
 ```
 
-## Contents of `mymachine-frags.html`
+If you need to define multiple machines in the same assets directory,
+you can do so by naming their index files `one-index.html`,
+`two-index.html`, etc. All of these index files can reference images,
+styles, and so on within the same directory.  Popcorn will serve each
+machine index file as a separate URL of the form `http://xyz/one`,
+`http://xyz/two`, and so on.
 
-You can enter any valid HTML elements that can go into the
-`<body>`. You will use popcorn-specific attributes of the form
+## Contents of `mymachine-index.html`
+
+Make it a valid HTML document. Please use simple, lowercase `<head>`
+and `<body>` tags. Insert `<link>` tags in the head section for any
+`css` files.
+
+In the body, you will use popcorn-specific attributes of the form
 `data-XXX` to point to a machine path.
 
 ### data-alt to show a current alternative child
@@ -607,17 +617,6 @@ if the app also sometimes sends the same kind of change
 transaction. It is better for the designer and the app developer to
 decide up front which of the paths belong to the UI and which ones
 belong to the back end.
-
-## Contents of `mymachine-head-frags.html`
-
-The `mymachine-head-frags.html` file is optional. It is meant for
-entering `<link>` elements for any CSS stylesheets you need, in the
-order you need to cascade them. The `.CSS` files must be located
-inside the assets directory in the subdirectory named by the `href`
-attribute.
-
-*TODO: show `<link>` element examples*
-
 
 ## Configure Popcorn with assets directory location
 

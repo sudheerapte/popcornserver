@@ -219,71 +219,48 @@ function isOneWord(urlPath) {
 }
 
 /**
-   @function(getIndexHtml) - compose the HTML using stock
-   boilerplate and the "frags.html" from the machine dir.
+   @function(getIndexHtml) - return "MACHINE-index.html" from the
+   machine dir, with two additions:
 
-   The stock boilerplate document contains:
    - a <base> element setting the base URL to the machine dir.
-   - in the head, a <title> containing the machine name.
-   - in the head, <link> elements for all the stylesheets.
-   - body containing the frags.html.
+   - a <script> element for boot.js.
  */
 
 function getIndexHtml(req, res, machine) {
-  streamIndexHeader(req, res, machine)
-    .then( streamIndexBody( req, res, machine) )
-    .then( () => log(`sent index header and body`) )
+  sendIndexWithReplacement(req, res, machine)
+    .then( () => log(`sent index.html`) )
     .catch( errMsg => log(`failed sending index.html: ${errMsg}`) );
 }
 
-function streamIndexHeader(req, res, machine) {
+function sendIndexWithReplacement(req, res, machine) {
   return new Promise( (resolve, reject) => {
     log(`HTTP/${req.httpVersion} ${req.method} ${req.url}`);
     log(`${JSON.stringify(req.headers)}`);
     const origin = req.headers["host"];
-    log(`sending index.html with origin ${origin} and machine ${machine}`);
+    log(`sending ${machine}-index.html with origin ${origin}`);
     res.writeHead(200, {'Content-Type': 'text/html'});
-    res.write(`
-<html>\n<head>
-    <meta charset="utf-8">
-    <base href="http://${origin}/${machine}/">
-    <title>${machine}</title>\n`);
     const mDir = registry.getMachineDir(machine);
     log(`machine = ${machine} mDir = ${mDir}`);
-    const hfPath = getFilePath(machine, `${machine}-head-frags.html`);
-    let hdrInitialData;
+    const hfPath = getFilePath(machine, `${machine}-index.html`);
+    let indexContents;
     try {
       // We had to read this file synchronously, because
       // the try-catch-finally method was not working with streaming.
-      hdrInitialData = fs.readFileSync(hfPath, {encoding: 'utf8'});
-      res.write(hdrInitialData);
-      log(`${machine}-head-frags sent`);
+      indexContents = fs.readFileSync(hfPath, {encoding: 'utf8'});
+      const ic1 = indexContents.replace(/\<\s*head.*\>/,
+                                  `<head>
+    <base href="http://${origin}/${machine}/">`);
+      const ic2 = ic1.replace(/\<\s*\/\s*head\s*\>/,
+                        `    <script src="boot.js"></script>`);                      res.write(ic2);
+      log(`${machine}-index.html sent`);
     } catch( e ) {
-      res.write(`<!-- ${machine}-head-frags.html not found: ${e.code} -->\n`);
-      log(`${machine}-head-frags missing comment sent`);
+      res.write(`<!-- ${machine}-index.html not found: ${e.code} -->\n`);
+      log(`${machine}-index.html missing comment sent`);
     }
-    res.write(`    <script src="boot.js"></script>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-</head>\n<body>\n`);
-    log(` sent end of head and beginning of body`);
+    res.end();
     return resolve();
   });
 }  
-
-function streamIndexBody(req, res, machine) {
-  return new Promise( (resolve, reject) => {
-    const fPath = getFilePath(machine, `${machine}-frags.html`);
-    log(`sending ${machine}-frags.html...`);
-    fileUtils.streamFile(fPath, res, (errMsg) => {
-      if (errMsg) {
-        res.write(`<!-- ${machine}-frags.html not found: ${errMsg} -->\n`);
-      }
-      res.end(`</body></html>\n`);
-      return resolve();
-    });
-  });
-}
-
 
 // create logging function log(str). Copy and paste these lines.
 const logger = {};

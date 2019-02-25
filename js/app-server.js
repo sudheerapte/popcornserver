@@ -187,8 +187,9 @@ class AppServer extends EventEmitter {
     }
     log(`this._appMap = ${this._appMap.size}`);
     if (this._appMap.get(appName).includes(machine)) {
-      log(`provide ${machine}: ${appName} already provides`);
-      return reject(`provide ${machine}: ${appName} already provides`);
+      const msg = `provide ${machine}: ${appName} already provides ${machine}`;
+      log(msg);
+      return resolve();
     }
     log(`providing machine ${machine}`);
     this._map.set(machine, {mc: mc, sse: sse});
