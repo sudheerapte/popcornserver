@@ -7,45 +7,32 @@
 /*
   server.js - main HTTP server. Uses HTTP/1.1 to listen on a given port.
 
-  Does two things:
-  1. Serves assets from disk on GET requests.
-     Connect to a machine as http://HOST:PORT/MACHINE
-  2. Creates a TCP socket for each websocket client.
-     The index.html under the MACHINE will automatically cause "boot.js"
-     to be loaded, which will start a websocket upgrade.
+  The UA should request a machine as:
+
+         http://HOST:PORT/MACHINE
+
+  We find the assets dir of the machine as configured in options.json.
+  Then we serve an index.html that combines the "frags.html" and any
+  "head-frags.html", with a Javascript program boot.js.
+
+  The boot.js opens a websocket back to the same server, with the URL:
+
+        ws://HOST:PORT/MACHINE
+
+  and as the first command, sends a "subscribe MACHINE".
+
+  As soon as the websocket upgrade is received, we accept it and then
+  emit a 'wssocket' event containing the socket and the client details.
 
   Usage:
   
   const httpModule = require('./http-server.js');
   const server = new httpModule(8000);
-  server.on('wssocket', (socket, machine) => { ... use the socket ... });
-     You can drop the socket by listening for events on it.
+  server.on('wssocket', (socket, rec) => { ... use the socket ... });
+     "rec" = { origin, key, url }.
+     The event handler can drop the socket when done.
+
   server.start();
-
-  Details:
-
-  On startup, the server knows about one or more machines:
-    { MACHINE1: directory1, MACHINE2: directory2, ...}
-
-  TODO: allow external configuration of machines.
-
-  Each client asks for one of these machines by connecting to
-  http://HOST:PORT/MACHINE.
-
-  The server goes through two states:
-
-  1. Ready to accept new clients.
-  2. Onboarding a client for MACHINE:
-       - Providing common popcorn assets: index.html, boot.js.
-       - Resolving assets for the MACHINE.
-       - Upgrading to websocket.
-
-  Once a client is onboarded, the server goes back to State 1.  Thus,
-  it can speak websocket with multiple clients, but it can onboard
-  only one client at a time. During State 2, it refuses any new
-  clients.
-
-  TODO: queue new incoming clients while one is being onboarded.
 
 */
 
@@ -93,7 +80,7 @@ class Server extends EventEmitter {
   doGet(req, res) {
     let filePath, machineDir, machine;
     // /boot.js is common, popcorn-level code.
-    if (req.url === '/boot.js') {
+    if (req.url.match(/\/boot\.js$/)) {
       this.getBootJs(req, res, () => {
 	res.end();
       });
@@ -259,38 +246,39 @@ function streamIndexHeader(req, res, machine) {
     res.write(`
 <html>\n<head>
     <meta charset="utf-8">
-    <base href="http://${origin}/${machine}">
-    <title>${machine}</title>
-`);
+    <base href="http://${origin}/${machine}/">
+    <title>${machine}</title>\n`);
     const mDir = registry.getMachineDir(machine);
     log(`machine = ${machine} mDir = ${mDir}`);
-    const hfPath = getFilePath(machine, "head-frags.html");
-    const p = fileUtils.streamFP(hfPath, res);
-      p.then( () => {
-        log(`header.frags found`);
-      } )
-      .catch(errMsg => { 
-        res.write(`<!-- head-frags.html not found: ${errMsg} -->\n`);
-      })
-      .finally ( () => {
-        res.write(`    <script src="boot.js"></script>
+    const hfPath = getFilePath(machine, `${machine}-head-frags.html`);
+    let hdrInitialData;
+    try {
+      // We had to read this file synchronously, because
+      // the try-catch-finally method was not working with streaming.
+      hdrInitialData = fs.readFileSync(hfPath, {encoding: 'utf8'});
+      res.write(hdrInitialData);
+      log(`${machine}-head-frags sent`);
+    } catch( e ) {
+      res.write(`<!-- ${machine}-head-frags.html not found: ${e.code} -->\n`);
+      log(`${machine}-head-frags missing comment sent`);
+    }
+    res.write(`    <script src="boot.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 </head>\n<body>\n`);
-        log(` sent end of head and beginning of body`);
-        return resolve();
-      });
+    log(` sent end of head and beginning of body`);
+    return resolve();
   });
 }  
 
 function streamIndexBody(req, res, machine) {
   return new Promise( (resolve, reject) => {
-    const fPath = getFilePath(machine, "frags.html");
+    const fPath = getFilePath(machine, `${machine}-frags.html`);
+    log(`sending ${machine}-frags.html...`);
     fileUtils.streamFile(fPath, res, (errMsg) => {
       if (errMsg) {
-        res.write(`<!-- frags.html not found: ${errMsg} -->\n`);
+        res.write(`<!-- ${machine}-frags.html not found: ${errMsg} -->\n`);
       }
-      res.end(`</body></html>
-`);
+      res.end(`</body></html>\n`);
       return resolve();
     });
   });

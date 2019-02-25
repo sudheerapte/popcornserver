@@ -11,10 +11,10 @@ const hsmodule = require('./http-server.js');
 const registry = require('./registry.js');
 const Machine = require('./machine.js');
 const appServer = require('./app-server.js');
-const options = require('./get-options-sync.js');
+const GetOptions = require('./get-options.js');
 const demoApp = require('./demo-app.js');
 
-function launch() {
+function launch(options) {
   let port = options.httpPort || "8000";
   if (port >= 65536 || port <= 0) { port = 8000; }
   console.log(`listening on http://localhost:${port}`);
@@ -56,4 +56,13 @@ function launch() {
     });
 }
 
-setImmediate(launch);
+// create logging function log(str). Copy and paste these lines.
+const logger = {};
+require('./debug-log.js')
+  .registerLogger('launch', logger);
+function log(str) { logger.log(str); }
+
+GetOptions.get()
+  .then( options => launch(options) )
+  .catch( errMsg => console.log(errMsg) );
+

@@ -13,8 +13,11 @@ function boot() {
 
 function upgradeToWebsocket() {
   return new Promise( (resolve, reject) => {
-    const urlPath = window.location.pathname;
-    ws = new WebSocket(`ws://localhost:8000${urlPath}`);
+    const href = window.location.href;
+    // replace http: with ws:
+    const wsref = href.replace(/^[^:]+/, "ws");
+    console.log(`upgrading to ${wsref}`);
+    ws = new WebSocket(wsref);
     if (!ws) {
       return reject(`failed to create WebSocket(${urlPath})`);
     }
@@ -38,7 +41,7 @@ function doFirstMessage() {
     // Send the subscribe command for our URL machine
     let mcname = window.location.pathname;
     if (mcname.startsWith('/')) { mcname = mcname.slice(1); }
-    console.log(`subscribing to machine ${mcname}...`);
+    console.log(`subscribing to machine ${mcname}`);
     try {
       if (ws) { ws.send(`subscribe ${mcname}`); }
     } catch (e) {

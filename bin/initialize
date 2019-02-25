@@ -14,7 +14,7 @@ mkdir ~/.popcorn
 }
 EOF
 mkdir ~/.popcorn/demo
-<< 'EOF2' cat > ~/.popcorn/demo/frags.html && echo Created demo dir
+<< 'EOF2' cat > ~/.popcorn/demo/demo-frags.html && echo Created demo dir
 <p data-alt=".hinge/open">Hinge open
 <input type="button" value="Close"
   data-chgclick="C .hinge closed"
@@ -30,7 +30,4 @@ mkdir ~/.popcorn/demo
 <p data-alt=".bolt/unlocked">Bolt unlocked</p>
 <p data-alt=".bolt/locked">Bolt locked</p>
 EOF2
-
-
-
 
