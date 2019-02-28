@@ -18,7 +18,6 @@ function launch(jsonOpts) {
   let options = {host: "localhost", port: "8000"};
   if (jsonOpts.httpPort) { options.port = jsonOpts.httpPort; }
   if (jsonOpts.httpHost) { options.host = jsonOpts.httpHost; }
-  console.log(`listening on http://${options.host}:${options.port}`);
   // We use the options to cache machine info into the registry.
   const machineObj = jsonOpts.machineDirs || {"demo": "%D/demo"};
   Object.keys(machineObj).forEach( k => {
@@ -48,6 +47,7 @@ function launch(jsonOpts) {
         .then( () => {
           console.log(`demoApp started on port ${APPPORT}`);
           httpServer.start();
+          console.log(`http server on ${options.host}:${options.port}`);
         })
         .catch(errMsg => console.log(`demoApp: ${errMsg}`) );
     })

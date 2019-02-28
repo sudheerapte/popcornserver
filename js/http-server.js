@@ -47,8 +47,8 @@ const fileUtils = require('./file-utils.js');
 class Server extends EventEmitter {
   constructor(options) {
     super();
-    this._host = options.host | "localhost";
-    this._port = options.port | "8000";
+    this._host = options.host || "localhost";
+    this._port = options.port || "8000";
     this._server = http.createServer( (req, res) => {
       this.handleConnect(req, res);
     });
@@ -61,6 +61,7 @@ class Server extends EventEmitter {
   }
 
   start() {
+    log(`listening on ${this._host}:${this._port}`);
     this._server.listen({host: this._host, port: this._port});
   }
 
