@@ -7,24 +7,10 @@ let P = {          // minimize pollution of global namespace
 };
 
 function boot() {
-  hideBody()
-    .then( upgradeToWebsocket )
+  upgradeToWebsocket()
     .then( doFirstMessage ) // adds listener handleMessage() and unhides body
     .then( () => console.log(`ready`))
     .catch( errMsg => console.log(errMsg) );
-}
-
-function hideBody() {
-  return new Promise( (resolve, reject) => {
-    const bodyElem = document.querySelector('body');
-    if (bodyElem) {
-      // prevent flashing until machine is loaded
-      bodyElem.setAttribute("hidden", "");
-      return resolve();
-    } else {
-      reject(`failed to find bodyElem!`);
-    }
-  });
 }
 
 // not a promise

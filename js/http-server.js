@@ -253,7 +253,10 @@ function sendIndexWithReplacement(req, res, machine) {
                                   `<head>
     <base href="http://${origin}/${machine}/">`);
       const ic2 = ic1.replace(/\<\s*\/\s*head\s*\>/,
-                        `    <script src="boot.js"></script>`);                      res.write(ic2);
+                              `    <script src="boot.js"></script>`);
+      const ic3 = ic2.replace(/\<\s*body\s*/,
+                              `<body hidden="" `);
+      res.write(ic3);
       log(`${machine}-index.html sent`);
     } catch( e ) {
       res.write(`<!-- ${machine}-index.html not found: ${e.code} -->\n`);
@@ -271,3 +274,21 @@ require('./debug-log.js')
 function log(str) { logger.log(str); }
 
 module.exports = Server;
+
+
+// --------------------
+function hideBody() {
+  return new Promise( (resolve, reject) => {
+    const bodyElem = document.querySelector('body');
+    if (bodyElem) {
+      // prevent flashing until machine is loaded
+      bodyElem.setAttribute("hidden", "");
+      return resolve();
+    } else {
+      reject(`failed to find bodyElem!`);
+    }
+  });
+}
+
+// not a promise
+
