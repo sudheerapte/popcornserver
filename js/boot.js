@@ -1,8 +1,10 @@
 window.onload = boot;
 
-let machine = ""; // name of machine
-let mc = new Machine; // filled in by messageHandlers
-let ws;          // websocket assigned by upgradeToWebsocket
+let P = {          // minimize pollution of global namespace
+  machine: "",     // name of machine
+  mc: new Machine, // filled in by message handlers
+  ws: null,        // websocket assigned by upgradeToWebsocket
+};
 
 function boot() {
   hideBody()
@@ -41,18 +43,18 @@ function upgradeToWebsocket() {
     // replace http: with ws:
     const wsref = href.replace(/^[^:]+/, "ws");
     console.log(`upgrading to ${wsref}`);
-    ws = new WebSocket(wsref);
-    if (!ws) {
-      return reject(`failed to create WebSocket(${urlPath})`);
+    P.ws = new WebSocket(wsref);
+    if (! P.ws) {
+      return reject(`failed to create WebSocket(${wsref})`);
     }
-    ws.addEventListener('open', function(ev) {
+    P.ws.addEventListener('open', function(ev) {
       console.log(`websocket is open`);
       return resolve();
     });
-    ws.addEventListener('close', function(ev) {
+    P.ws.addEventListener('close', function(ev) {
       console.log('websocket closed by server');
     });
-    ws.addEventListener('error', function(ev) {
+    P.ws.addEventListener('error', function(ev) {
       console.log(`websocket error: ${JSON.stringify(ev)}`);
     });
   });
@@ -64,14 +66,14 @@ function upgradeToWebsocket() {
 
 function doFirstMessage() {
   return new Promise( (resolve, reject) => {
-    ws.addEventListener('message', handleFirstMessage);
+    P.ws.addEventListener('message', handleFirstMessage);
 
     // Send the subscribe command for our URL machine
     let mcname = window.location.pathname;
     if (mcname.startsWith('/')) { mcname = mcname.slice(1); }
     console.log(`subscribing to machine ${mcname}`);
     try {
-      if (ws) { ws.send(`subscribe ${mcname}`); }
+      if (P.ws) { P.ws.send(`subscribe ${mcname}`); }
     } catch (e) {
       console.log(`websocket send failed: ${e.code}`);
     }
@@ -84,16 +86,16 @@ function doFirstMessage() {
 	if (!m) {
 	  console.log(`bad provide command: |${trunc(data)}|`);
 	} else {
-	  machine = m[1];
-	  // console.log(`got provide ${machine}`);
+	  P.machine = m[1];
+	  // console.log(`got provide ${P.machine}`);
 	  const arr = data.split('\n');
 	  if (! arr) {
-            const msg = `bad machine payload for ${machine}`;
+            const msg = `bad machine payload for ${P.machine}`;
 	    return rejectThis(()=> reject(msg));
 	  } else {
 	    // console.log(`provide command payload = |${arr.join(",")}|`);
 	  }
-	  const result = mc.interpret(arr.slice(1));
+	  const result = P.mc.interpret(arr.slice(1));
 	  if (result) { return rejectThis(()=>reject(result)); }
           reflectMachine();
           addClickChgHandlers();
@@ -106,14 +108,14 @@ function doFirstMessage() {
     // resolveThis() and rejectThis() set up eventListeners first,
     // and also unhide the body.
     function resolveThis(resolve) {
-      ws.removeEventListener('message', handleFirstMessage);
-      ws.addEventListener('message', handleMessage);
+      P.ws.removeEventListener('message', handleFirstMessage);
+      P.ws.addEventListener('message', handleMessage);
       unhideBody();
       return resolve();
     }
     function rejectThis(rejector) {
       // when rejecting, we don't want to handle any more events
-      ws.removeEventListener('message', handleFirstMessage);
+      P.ws.removeEventListener('message', handleFirstMessage);
       unhideBody();
       return rejector();
     }
@@ -127,14 +129,14 @@ function handleMessage(ev) { // handle subsequent messages
     const m = data.match(/^update\s+([a-z]+)/);
     if (!m) {
       console.log(`ignoring bad update command: |${trunc(data)}|`);
-    } else if (machine !== m[1]) {
+    } else if (P.machine !== m[1]) {
       console.log(`|update ${m[1]}|: ignoring unknown machine`);
     } else {
       const arr = data.split('\n');
       if (!arr) {
 	console.log(`bad payload for |${trunc(data)}|`);
       } else {
-	const result = mc.interpret(arr.slice(1));
+	const result = P.mc.interpret(arr.slice(1));
 	if (result) {
 	  console.log(`update failed: ${result}`);
 	} else {
@@ -153,7 +155,7 @@ function handleMessage(ev) { // handle subsequent messages
 let unknownPaths = new Map(); // suppress repeated "no such path" errors
 
 function reflectMachine() {
-  if (! mc) { return; }
+  if (! P.mc) { return; }
   const DM = "data-alt";
   const machineElems = document.querySelectorAll(`[${DM}]`);
   //  console.log(`machineElems = ${machineElems.length} items`);
@@ -161,7 +163,7 @@ function reflectMachine() {
   machineElems.forEach( e => {
     const mPath = e.getAttribute(DM);
     if (mPath) {
-      if (! mc.exists(mPath) && ! unknownPaths.has(mPath)) {
+      if (! P.mc.exists(mPath) && ! unknownPaths.has(mPath)) {
         console.log(`no such path: ${mPath}`);
         unknownPaths.set(mPath, true);
         return;
@@ -184,7 +186,7 @@ function reflectMachine() {
 */
 
 function isNonCurrAlt(mPath) {
-  const state = mc.getState(mPath);
+  const state = P.mc.getState(mPath);
   if (state) { // check if state is a non-current alternative child
     const parent = state.parent;
     if (parent.hasOwnProperty("curr") && parent.hasOwnProperty("cc")) {
@@ -202,8 +204,8 @@ function isNonCurrAlt(mPath) {
    @function(addClickChgHandlers) - set up data-chgclick handlers
 */
 function addClickChgHandlers() {
-  if (! mc) { return; }
-  const mcCopy = mc.clone(); // create a copy to try the transactions on
+  if (! P.mc) { return; }
+  const mcCopy = P.mc.clone(); // create a copy to try the transactions on
   if (typeof mcCopy === 'string') {
     console.log(`failed to clone: ${mcCopy}`);
     return;
@@ -220,8 +222,8 @@ function addClickChgHandlers() {
         console.log(`${e.tagName} ${DO}=${chStr}: ${result}`);
       } else {
         e.addEventListener('click', ev => {
-          if (! mc) { return; }
-          const result = mc.interpret(arr);
+          if (! P.mc) { return; }
+          const result = P.mc.interpret(arr);
           if (result) {
             console.log(`click failed: ${result}`);
           } else {
@@ -240,7 +242,7 @@ function addClickChgHandlers() {
    @function(addClickCmdHandlers) - set up data-cmdclick handlers
 */
 function addClickCmdHandlers() {
-  if (! mc) { return; }
+  if (! P.mc) { return; }
   if (typeof mcCopy === 'string') {
     console.log(`failed to clone: ${mcCopy}`);
     return;
@@ -253,7 +255,7 @@ function addClickCmdHandlers() {
       e.addEventListener('click', ev => {
         console.log(`clicked: sending ${chStr}`);
         try {
-          if (ws) { ws.send(`command ${machine}\n${chStr}`); }
+          if (P.ws) { P.ws.send(`command ${P.machine}\n${chStr}`); }
         } catch (e) {
           console.log(`websocket send failed: ${e.code}`);
         }
