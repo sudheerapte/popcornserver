@@ -27,7 +27,7 @@
   Usage:
   
   const httpModule = require('./http-server.js');
-  const server = new httpModule(8000);
+  const server = new httpModule({port: 8000}); // default localhost:8000
   server.on('wssocket', (socket, rec) => { ... use the socket ... });
      "rec" = { origin, key, url }.
      The event handler can drop the socket when done.
@@ -45,9 +45,10 @@ const fileUtils = require('./file-utils.js');
 
 
 class Server extends EventEmitter {
-  constructor(port) {
+  constructor(options) {
     super();
-    this._port = port;
+    this._host = options.host | "localhost";
+    this._port = options.port | "8000";
     this._server = http.createServer( (req, res) => {
       this.handleConnect(req, res);
     });
@@ -60,7 +61,7 @@ class Server extends EventEmitter {
   }
 
   start() {
-    this._server.listen(this._port);
+    this._server.listen({host: this._host, port: this._port});
   }
 
   handleConnect(req, res) {
