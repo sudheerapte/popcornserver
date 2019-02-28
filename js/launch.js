@@ -14,12 +14,12 @@ const appServer = require('./app-server.js');
 const GetOptions = require('./get-options.js');
 const demoApp = require('./demo-app.js');
 
-function launch(options) {
-  let port = options.httpPort || "8000";
-  if (port >= 65536 || port <= 0) { port = 8000; }
-  console.log(`listening on http://localhost:${port}`);
+function launch(jsonOpts) {
+  let options = {host: "localhost", port: "8000"};
+  if (jsonOpts.httpPort) { options.port = jsonOpts.httpPort; }
+  if (jsonOpts.httpHost) { options.host = jsonOpts.httpHost; }
   // We use the options to cache machine info into the registry.
-  const machineObj = options.machineDirs || {"demo": "%D/demo"};
+  const machineObj = jsonOpts.machineDirs || {"demo": "%D/demo"};
   Object.keys(machineObj).forEach( k => {
     if (k.match(/^[a-z0-9]+$/)) {
       registry.addMachine(k, machineObj[k]);
@@ -29,8 +29,8 @@ function launch(options) {
   });
   // Whenever httpServer gets a new websocket, add the new client
   // to the broker.
-  const httpServer = new hsmodule(port);
-  const APPPORT = options.appPort || "8001";
+  const httpServer = new hsmodule(options);
+  const APPPORT = jsonOpts.appPort || "8001";
   appServer.on('provide', (appName, machine, mc) => {
     broker.provide(machine, mc);
   })
@@ -47,6 +47,7 @@ function launch(options) {
         .then( () => {
           console.log(`demoApp started on port ${APPPORT}`);
           httpServer.start();
+          console.log(`http server on ${options.host}:${options.port}`);
         })
         .catch(errMsg => console.log(`demoApp: ${errMsg}`) );
     })
@@ -63,6 +64,6 @@ require('./debug-log.js')
 function log(str) { logger.log(str); }
 
 GetOptions.get()
-  .then( options => launch(options) )
+  .then( jsonOpts => launch(jsonOpts) )
   .catch( errMsg => console.log(errMsg) );
 

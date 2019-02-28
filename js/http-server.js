@@ -27,7 +27,7 @@
   Usage:
   
   const httpModule = require('./http-server.js');
-  const server = new httpModule(8000);
+  const server = new httpModule({port: 8000}); // default localhost:8000
   server.on('wssocket', (socket, rec) => { ... use the socket ... });
      "rec" = { origin, key, url }.
      The event handler can drop the socket when done.
@@ -45,9 +45,10 @@ const fileUtils = require('./file-utils.js');
 
 
 class Server extends EventEmitter {
-  constructor(port) {
+  constructor(options) {
     super();
-    this._port = port;
+    this._host = options.host || "localhost";
+    this._port = options.port || "8000";
     this._server = http.createServer( (req, res) => {
       this.handleConnect(req, res);
     });
@@ -60,7 +61,8 @@ class Server extends EventEmitter {
   }
 
   start() {
-    this._server.listen(this._port);
+    log(`listening on ${this._host}:${this._port}`);
+    this._server.listen({host: this._host, port: this._port});
   }
 
   handleConnect(req, res) {
@@ -251,7 +253,10 @@ function sendIndexWithReplacement(req, res, machine) {
                                   `<head>
     <base href="http://${origin}/${machine}/">`);
       const ic2 = ic1.replace(/\<\s*\/\s*head\s*\>/,
-                        `    <script src="boot.js"></script>`);                      res.write(ic2);
+                              `    <script src="boot.js"></script>`);
+      const ic3 = ic2.replace(/\<\s*body\s*/,
+                              `<body hidden="" `);
+      res.write(ic3);
       log(`${machine}-index.html sent`);
     } catch( e ) {
       res.write(`<!-- ${machine}-index.html not found: ${e.code} -->\n`);
@@ -269,3 +274,21 @@ require('./debug-log.js')
 function log(str) { logger.log(str); }
 
 module.exports = Server;
+
+
+// --------------------
+function hideBody() {
+  return new Promise( (resolve, reject) => {
+    const bodyElem = document.querySelector('body');
+    if (bodyElem) {
+      // prevent flashing until machine is loaded
+      bodyElem.setAttribute("hidden", "");
+      return resolve();
+    } else {
+      reject(`failed to find bodyElem!`);
+    }
+  });
+}
+
+// not a promise
+
