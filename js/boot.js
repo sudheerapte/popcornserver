@@ -5,10 +5,34 @@ let mc = new Machine; // filled in by messageHandlers
 let ws;          // websocket assigned by upgradeToWebsocket
 
 function boot() {
-  upgradeToWebsocket()
-    .then( doFirstMessage ) // which adds listener handleMessage()
+  hideBody()
+    .then( upgradeToWebsocket )
+    .then( doFirstMessage ) // adds listener handleMessage() and unhides body
     .then( () => console.log(`ready`))
     .catch( errMsg => console.log(errMsg) );
+}
+
+function hideBody() {
+  return new Promise( (resolve, reject) => {
+    const bodyElem = document.querySelector('body');
+    if (bodyElem) {
+      // prevent flashing until machine is loaded
+      bodyElem.setAttribute("hidden", "");
+      return resolve();
+    } else {
+      reject(`failed to find bodyElem!`);
+    }
+  });
+}
+
+// not a promise
+function unhideBody() {
+  const bodyElem = document.querySelector('body');
+  if (bodyElem) {
+    bodyElem.removeAttribute("hidden");
+  } else {
+    console.log(`failed to find bodyElem!`);
+  }
 }
 
 function upgradeToWebsocket() {
@@ -33,6 +57,10 @@ function upgradeToWebsocket() {
     });
   });
 }
+
+/**
+   @function(doFirstMessage) - get the URL machine and display it
+*/
 
 function doFirstMessage() {
   return new Promise( (resolve, reject) => {
@@ -75,15 +103,18 @@ function doFirstMessage() {
 	}
       }
     }
-    // resolveThis() and rejectThis() set up eventListeners first
+    // resolveThis() and rejectThis() set up eventListeners first,
+    // and also unhide the body.
     function resolveThis(resolve) {
       ws.removeEventListener('message', handleFirstMessage);
       ws.addEventListener('message', handleMessage);
+      unhideBody();
       return resolve();
     }
     function rejectThis(rejector) {
       // when rejecting, we don't want to handle any more events
       ws.removeEventListener('message', handleFirstMessage);
+      unhideBody();
       return rejector();
     }
   });
