@@ -18,7 +18,6 @@ appServer.on('provide', () => log(`appServer provide emitted`) );
 appServer.on('abandon', () => log(`appServer abandon emitted`) );
 
 appServer.startListening({port:PORT})
-/*
   .then( createSock1 )
   .then( sendConnect1 ) // connect client1
   .then( sendBadCommand1 ) // badcommand
@@ -28,7 +27,6 @@ appServer.startListening({port:PORT})
   .then( sendProvideBar )
   .then( sendUpdateFoo )
   .then( sendAbandonFoo )
-*/
   .then( sendOneShotProvide )  
   .then( sendOneShotUpdate )  
   .then( sendOneShotBadUpdate )  
