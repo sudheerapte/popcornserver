@@ -1,5 +1,6 @@
 "use strict";
 
+const fs = require('fs');
 const net = require('net');
 const GetOptions = require('./get-options.js');
 const logger = {};
@@ -9,7 +10,7 @@ require('./debug-log.js')
 let commandArr; // read in by slurpCommand()
 
 slurpCommand()
-  .then( getOptions.get )
+  .then( GetOptions.get )
   .then( pOptions => {
     // log(`pOptions = ${JSON.stringify(pOptions)}`);
     const options = {host: "localhost", port: pOptions.appPort};
