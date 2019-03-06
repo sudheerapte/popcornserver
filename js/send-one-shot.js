@@ -3,52 +3,82 @@
 const fs = require('fs');
 const net = require('net');
 const GetOptions = require('./get-options.js');
+
+/**
+   @module(send-one-shot) - send a one-shot command to Popcorn
+
+   You can either give it a string contents to be sent,
+   or the name of a file to be opened; the file's contents will be sent.
+
+   Usage:
+
+   Directly passing the command string:
+
+     const S = require('./send-one-shot.js');
+     S.open()
+       .then( () => S.doIt(`P .a\nP .b`) )
+       .then( ok => console.log('ok') )
+       .catch( errMsg => console.log(errMsg) );
+
+   Or, with a file:
+
+     const S = require('./send-one-shot.js');
+     S.doIt('/tmp/command.txt');
+       .then( ok => console.log('ok') )
+       .catch( errMsg => console.log(errMsg) );
+
+*/
+
+// create logging function log(str). Copy and paste these lines.
 const logger = {};
+function log(str) { logger.log(str); }
 require('./debug-log.js')
   .registerLogger('send-one-shot', logger);
 
-let commandArr; // read in by slurpCommand()
+let appPort = null; // will be read from options.json and kept around 
 
-slurpCommand()
-  .then( GetOptions.get )
-  .then( pOptions => {
-    // log(`pOptions = ${JSON.stringify(pOptions)}`);
-    const options = {host: "localhost", port: pOptions.appPort};
-    // log(`options = ${JSON.stringify(options)}`);
-    const sock = net.createConnection(options, () => {
-      sendArr(sock, ["data: provide foo", "data: P .a", "data: P .b"])
-        .then( () => log(`done`) )
-        .catch( errMsg => log(errMsg) );
-    });
-  })
-  .catch( errMsg => console.log(errMsg) );
-
-
-function slurpCommand() {
+function doIt(filename) {
   return new Promise( (resolve, reject) => {
-    log(`send-one-shot argv.length = ${process.argv.length}`);
-    if (process.argv.length !== 3) {
-      console.log(`Usage:
-  Read from stdin:
-      node send-one-shot.js -
-  Read from file:
-      node send-one-shot.js FILENAME`);
-      process.exit(0);
-    }
-    const filename = process.argv[2];
-    if (filename === '-') {
-      log(`reading from stdin`);
-      console.log(`TODO STDIN not implemented`);
-      process.exit(0);
-    } else {
-      log(`reading from file ${filename}`);
-      fs.readFileSync(filename);
-    }
-    
+    slurpCommand(filename)
+      .then( cmd => resolve(cmd) )
+    /*
+      .then( GetOptions.get )
+      .then( pOptions => {
+      // log(`pOptions = ${JSON.stringify(pOptions)}`);
+      const options = {host: "localhost", port: pOptions.appPort};
+      // log(`options = ${JSON.stringify(options)}`);
+      const sock = net.createConnection(options, () => {
+      sendArr(sock, ["data: provide foo", "data: P .a", "data: P .b"])
+      .then( () => log(`done`) )
+      .catch( errMsg => log(errMsg) );
+      });
+      })
+    */
+      .catch( errMsg => {
+        return reject(errMsg);
+      });
   });
 }
 
-function sendArr(sock, arr) {
+function slurpCommand(filename) {
+  return new Promise( (resolve, reject) => {
+    if (typeof filename === 'string') {
+      log(`reading from file ${filename}`);
+      try {
+        const contents = fs.readFileSync(filename);
+        const arr = contents.toString().split('\n');
+        return resolve(arr);
+      } catch( e ) {
+        return reject(e.message);
+      }
+    } else { // must be string
+      const arr = filename.split('\n');
+      return resolve(arr);
+    }
+  });
+}
+
+function sendArr(arr) {
   return new Promise( (resolve, reject) => {
     let done = false;
     sock.on('error', errMsg => {
@@ -81,5 +111,24 @@ function sendArr(sock, arr) {
   });
 }
 
-// create logging function log(str). Copy and paste these lines.
-function log(str) { logger.log(str); }
+function open() {
+  return new Promise( (resolve, reject) => {
+    GetOptions.get()
+      .then( options => {
+        if (options.appPort) {
+          appPort = options.appPort;
+          return resolve(options.appPort);
+        } else {
+          return reject(`no application port!`);
+        }
+      })
+      .catch( reject );
+  });
+}
+
+module.exports = {
+  open: open,
+  slurpCommand: slurpCommand,
+  doIt: doIt,
+  sendArr: sendArr,
+};
