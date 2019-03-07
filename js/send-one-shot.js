@@ -12,21 +12,7 @@ const GetOptions = require('./get-options.js');
 
    Usage:
 
-   Directly passing the command string:
-
-     const S = require('./send-one-shot.js');
-     S.open()
-       .then( () => S.doIt(`P .a\nP .b`) )
-       .then( ok => console.log('ok') )
-       .catch( errMsg => console.log(errMsg) );
-
-   Or, with a file:
-
-     const S = require('./send-one-shot.js');
-     S.doIt('/tmp/command.txt');
-       .then( ok => console.log('ok') )
-       .catch( errMsg => console.log(errMsg) );
-
+   See test/send-one-shot-test.js
 */
 
 // create logging function log(str). Copy and paste these lines.
@@ -37,26 +23,22 @@ require('./debug-log.js')
 
 let appPort = null; // will be read from options.json and kept around 
 
-function doIt(filename) {
+function sendFileP(filename) {
   return new Promise( (resolve, reject) => {
-    slurpCommand(filename)
-      .then( cmd => resolve(cmd) )
-    /*
-      .then( GetOptions.get )
-      .then( pOptions => {
-      // log(`pOptions = ${JSON.stringify(pOptions)}`);
-      const options = {host: "localhost", port: pOptions.appPort};
-      // log(`options = ${JSON.stringify(options)}`);
-      const sock = net.createConnection(options, () => {
-      sendArr(sock, ["data: provide foo", "data: P .a", "data: P .b"])
-      .then( () => log(`done`) )
-      .catch( errMsg => log(errMsg) );
-      });
+    let theOptions;
+    GetOptions.get()
+      .then(options => {
+        theOptions = theOptions;
+        return slurpCommand(filename);
       })
-    */
-      .catch( errMsg => {
-        return reject(errMsg);
-      });
+      .then( cmdString => {
+        const options = {host: "localhost", port: theOptions.appPort};
+        const sock = net.createConnection(options, () => {
+          const arr = cmdString.split('\n');
+          sendArr(sock, arr);
+        });
+      })
+      .catch( reject );
   });
 }
 
@@ -126,9 +108,9 @@ function open() {
   });
 }
 
+function sendStringP() {}
+
 module.exports = {
-  open: open,
-  slurpCommand: slurpCommand,
-  doIt: doIt,
-  sendArr: sendArr,
+  sendFileP: sendFileP,
+  sendStringP: sendStringP,
 };
