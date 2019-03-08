@@ -60,37 +60,50 @@ function slurpCommand(filename) {
   });
 }
 
-function sendArr(arr) {
+function sendArrP(sock, arr) {
   return new Promise( (resolve, reject) => {
     let done = false;
     sock.on('error', errMsg => {
+      log(`sock got error`);
       done = true;
       return reject(errMsg);
     });
     sock.on('end', () => {
+      log(`sock got end; done = ${done}`);
       if (done) { return; }
-      log(`got dropped.`);
+      log(`got dropped. Ending my side`);
       done = true;
       sock.end();
-      return resolve();
+      // return resolve("(no reply)");
     });
     sock.on('data', data => {
+      log(`sock got data`);
       data = data.toString();
       if (data && data.includes(' replySuccess')) {
-        done = true;
-        return resolve();
+        const cdr = extractCdr(data);
+        log(`cdr = |${cdr}|`);
+        return resolve(cdr);
       } else {
         done = true;
-        const replyArr = data.split(/\r\n|\n/);
-        const msg = (replyArr.length < 2) ? "data: (replyError)" : replyArr[1];
-        return reject(msg.slice(6)); // remove "data: "
+        return reject(extractCdr(data));
       }
     });
-    const firstCommand = `event: oneShotCommand` +
-          arr.join('\n') + '\n\n';
-    log(`sending first command: |${arr.join(", ")}|`);
+    const cdr = arr.map(line => 'data: ' + line);
+    const firstCommand = `event: oneShotCommand\n` +
+          cdr.join('\n') + '\n\n';
+    // log(`sending first command: |${firstCommand}|`);
     sock.write(firstCommand);
   });
+}
+
+function extractCdr(msg) {
+  const replyArr = msg.split(/\r\n|\n/);
+  if (replyArr.length <=1) {
+    return "";
+  } else {
+    const extractArr =  replyArr.filter(line => line.match(/^data:\s/) );
+    return extractArr.map( line => line.slice(6) ).join('\n');
+  }
 }
 
 function open() {
@@ -108,9 +121,17 @@ function open() {
   });
 }
 
-function sendStringP() {}
+function sendStringP(sock, cmd) {
+  return new Promise( (resolve, reject) => {
+    const arr = cmd.split('\n');
+    sendArrP(sock, arr)
+      .then( resolve )
+      .catch( reject);
+  });
+}
 
 module.exports = {
-  sendFileP: sendFileP,
   sendStringP: sendStringP,
+  sendArrP: sendArrP,
+  sendFileP: sendFileP,
 };

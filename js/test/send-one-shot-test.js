@@ -2,9 +2,42 @@
 
 const [log, err] = require('./logerr.js');
 const SendOneShot = require('../send-one-shot.js');
+const appServer = require('../app-server.js');
 const fs = require('fs');
+const net = require('net');
 
-sendFileTest();
+// We use an actual instance of appConnect to test send-one-shot.
+
+const PORT=8001;
+appServer.on('appConnect', () => log(`appServer appConnect emitted`) );
+appServer.on('appDisconnect', () => log(`appServer appConnect emitted`) );
+appServer.on('provide', () => log(`appServer provide emitted`) );
+appServer.on('abandon', () => log(`appServer abandon emitted`) );
+
+appServer.startListening({port: PORT})
+  .then( createSock )
+  .then( sock => sendStringTest(sock) )
+  .then( () => {
+    log(`success`);
+    /* setImmediate( () => process.exit(0) ); */
+  })
+  .then(appServer.stopListeningP )
+  .catch( err );
+
+function createSock() {
+  return new Promise( (resolve, reject) => {
+    let success = false;
+    setTimeout( () => {
+      if (! success) { return reject(`timeout`); }
+    }, 2000);
+    log(`--- creating sock to appConnect`);
+    const sock = net.createConnection({port:PORT}, () => {
+      log(`sock created success`);
+      success = true;
+      resolve(sock);
+    });
+  });
+}
 
 function sendFileTest() {
   return new Promise( (resolve, reject) => {
@@ -33,16 +66,18 @@ function createTempFile() {
   });
 }
 
-function sendStringTest() {
+function sendStringTest(sock) {
   return new Promise( (resolve, reject) => {
     log(`--- sendString test`);
     createString()
-      .then( SendOneShot.sendString ) // takes filename argument
-      .then( contents => {
-        if (! contents.toString().includes('provide')) {
-          err(`provide not found`);
+      .then( cmd => SendOneShot.sendStringP(sock, cmd) )
+      .then( reply => {
+        if (! reply.toString().includes('ok')) {
+          err(`ok not found`);
+        } else {
+          sock.end();
+          resolve(`ok`);
         }
-        log(`done`);
       })
       .catch( reject );
   });
@@ -50,13 +85,12 @@ function sendStringTest() {
 
 function createString() {
   return new Promise( (resolve, reject) => {
-    return (`provide foo
-.a
-.b
+    return resolve(`provide foo
+P .a
+P .b
 `);
   });
 }
-
 
 // -----------------
 

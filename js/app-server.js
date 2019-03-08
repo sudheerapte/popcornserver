@@ -334,6 +334,21 @@ ${arr.join("\n")}`);
   handleFireAndForget(data) {
     log(`TODO fire-and-forget not implemented.`);
   }
+
+  stopListeningP() {
+    log(`stopping...`);
+    return new Promise( (resolve, reject) => {
+      this.server.close( (arg) => {
+        if (arg) { // server was not listening
+          log(`close: server was not listening`);
+          return reject(arg);
+        } else {
+          log(`stopped`);
+          return resolve();
+        }
+      });
+    });
+  }
 }
 
 // create logging function log(str). Copy and paste these lines.
