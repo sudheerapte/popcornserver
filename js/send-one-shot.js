@@ -70,11 +70,14 @@ function sendArrP(sock, arr) {
     });
     sock.on('end', () => {
       log(`sock got end; done = ${done}`);
-      if (done) { return; }
-      log(`got dropped. Ending my side`);
-      done = true;
-      sock.end();
-      // return resolve("(no reply)");
+      if (done) {
+        return;
+      } else {
+        log(`got dropped. Ending my side`);
+        done = true;
+        sock.end();
+        return resolve("(no reply)");
+      }
     });
     sock.on('data', data => {
       log(`sock got data`);

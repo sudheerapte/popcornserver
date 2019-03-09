@@ -21,7 +21,11 @@ appServer.startListening({port: PORT})
     log(`success`);
     /* setImmediate( () => process.exit(0) ); */
   })
-  .then(appServer.stopListeningP )
+  .then( () => {
+    appServer.stopListeningP()
+      .then(()=> log(`stopListeningP resolved.`))
+      .catch( errMsg );
+  })
   .catch( err );
 
 function createSock() {
