@@ -60,8 +60,6 @@ As of Feb 21, 2019:
 
 * Windows port
 
-* Drive-by apps
-
 
 ## How to read the rest of this document
 
@@ -841,16 +839,16 @@ apps over network connections. These connections use the SSE protocol
 to carry these transactions as payloads. Here we describe how the SSE
 protocol is used to wrap these transactions.
 
-### Apps: Persistently-connected vs. Drive-by
+### Apps: Persistently-connected vs. One-shot
 
 Apps can decide to connect to Popcorn in one of two ways: either they
 can keep the TCP or UNIX-domain socket open and continue to send and
 receive transactions, or they can open a new socket every time, send a
 transaction, and close the socket. We call the former type of apps
-"persistently-connected" apps, and the latter type "drive-by" apps.
+"persistently-connected" apps, and the latter type "one-shot" apps.
 
 The SSE event type to be used depends on how the app connects to
-Popcorn: persistently connected, or drive-by.
+Popcorn: persistently connected, or one-shot.
 
 ### Persistently-connected app
 
@@ -912,7 +910,7 @@ providing a machine named `mymachine`:
                              data: ...
 ```
 
-### Drive-by apps: one-shot command, or fire-and-forget
+### One-shot command
 
 The above persistently-connected apps need to open a network
 connection to Popcorn and keep it open as they modify the machine and
@@ -920,17 +918,15 @@ receive commands back. That can be a significant amount of work for an
 existing application to integrate with Popcorn, depending on its
 architecture.
 
-Drive-by Popcorn apps, in contrast, are designed for loose integration
+One-shot Popcorn apps, in contrast, are designed for loose integration
 with existing applications that can be extended by calling external
-commands but cannot be modified. Drive-by apps are usually
+commands but cannot be modified. One-shot apps are usually
 command-line tools, either issued manually at a terminal or called
 from scripts.
 
-Drive-by apps can perform two kinds of event exchanges with Popcorn
-during their brief connection: **one-shot command** apps send one
-event, wait for a response from Popcorn, then
-disconnect. **Fire-and-forget** apps simply send an event and
-disconnect.
+One-shot apps perform one event exchange with Popcorn during their
+brief connection: the app sends one event, waits for a response from
+Popcorn, then disconnects.
 
 On UNIX-like operating systems, you can use utilities like `netcat` or
 `nc` in scripts to open a network connection to Popcorn and perform
@@ -959,32 +955,30 @@ both sides close the socket.
 
 ```
 
-### Fire-and-Forget app
-
-If an app connects as a fire-and-forget command app (SSE event type
-`fireAndForget`), then as soon as it sends the SSE event, the app
-closes the socket and gets nothing back. Other than this, a
-fire-and-forget app behaves exactly like a one-shot command app.
-
-Here is the SSE event from app to Popcorn, followed by closing the
-socket. We show a `provide` transaction, but the same format is used
-for sending `update` transactions, too.
-
-```
-  event: fireAndForget
-  data: provide ...
-  data: ...
-
-```
-
-In any drive-by apps, either the `oneShotCommand` or `fireAndForget`
-cases, once the app sends a `provide` transaction, then any app can
+If any one-shot app sends a `provide` transaction, then any app can
 send `update` transactions on subsequent connections using the same
 machine name. Popcorn assumes that the app sending the updates is the
 same one that originally provided the machine. Popcorn does not
-distinguish between different apps that are all using drive-by
-methods.
+distinguish between different apps that are all using the one-shot
+method.
 
+For convenience on Linux, we provide a shell command
+`one-shot-command`, which connects to the Popcorn app server and sends
+one command. Here is how one invokes it. `$` is your command prompt:
+
+```
+$ echo 'provide foo
+P .a
+P .b' | one-shot-command
+```
+
+This command returns `0` on success. On error, it returns non-zero,
+and also prints out any error message.
+
+By default, the `one-shot-command` assumes that the Popcorn app-server
+is listening on the local host at port `8001`. You can override this
+default with the environment variables `POPCORNHOST` and
+`POPCORNPORT`.
 
 # Deployment considerations
 
