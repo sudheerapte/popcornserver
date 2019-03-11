@@ -2,7 +2,7 @@
 
 const fs = require('fs');
 const net = require('net');
-const GetOptions = require('./get-options.js');
+const SSE = require('./sse.js');
 
 /**
    @module(send-one-shot) - send a one-shot command to Popcorn
@@ -23,118 +23,45 @@ require('./debug-log.js')
 
 let appPort = null; // will be read from options.json and kept around 
 
-function sendFileP(filename) {
+function getPopcornSocketP() {
   return new Promise( (resolve, reject) => {
-    let theOptions;
-    GetOptions.get()
-      .then(options => {
-        theOptions = theOptions;
-        return slurpCommand(filename);
-      })
-      .then( cmdString => {
-        const options = {host: "localhost", port: theOptions.appPort};
-        const sock = net.createConnection(options, () => {
-          const arr = cmdString.split('\n');
-          sendArr(sock, arr);
-        });
-      })
-      .catch( reject );
-  });
-}
-
-function slurpCommand(filename) {
-  return new Promise( (resolve, reject) => {
-    if (typeof filename === 'string') {
-      log(`reading from file ${filename}`);
-      try {
-        const contents = fs.readFileSync(filename);
-        const arr = contents.toString().split('\n');
-        return resolve(arr);
-      } catch( e ) {
-        return reject(e.message);
-      }
-    } else { // must be string
-      const arr = filename.split('\n');
-      return resolve(arr);
+    let options = {host: "localhost", port: "8001"};
+    if (process.env["POPCORNHOST"]) {
+      options.host = process.env["POPCORNHOST"];
     }
-  });
-}
-
-function sendArrP(sock, arr) {
-  return new Promise( (resolve, reject) => {
-    let done = false;
-    sock.on('error', errMsg => {
-      log(`sock got error`);
-      done = true;
-      return reject(errMsg);
+    if (process.env["POPCORNPORT"]) {
+      options.port = process.env["POPCORNPORT"];
+    }
+    let success = false;
+    setTimeout( () => {
+      if (! success) { return reject(`timeout`); }
+    }, 2000);
+    log(`--- connecting to ${JSON.stringify(options)}`);
+    const sock = net.createConnection(options, () => {
+      log(`sock created success`);
+      success = true;
+      resolve(sock);
     });
-    sock.on('end', () => {
-      log(`sock got end; done = ${done}`);
-      if (done) {
-        return;
-      } else {
-        log(`got dropped. Ending my side`);
-        done = true;
-        sock.end();
-        return resolve("(no reply)");
-      }
-    });
-    sock.on('data', data => {
-      log(`sock got data`);
-      data = data.toString();
-      if (data && data.includes(' replySuccess')) {
-        const cdr = extractCdr(data);
-        log(`cdr = |${cdr}|`);
-        return resolve(cdr);
-      } else {
-        done = true;
-        return reject(extractCdr(data));
-      }
-    });
-    const cdr = arr.map(line => 'data: ' + line);
-    const firstCommand = `event: oneShotCommand\n` +
-          cdr.join('\n') + '\n\n';
-    // log(`sending first command: |${firstCommand}|`);
-    sock.write(firstCommand);
-  });
-}
-
-function extractCdr(msg) {
-  const replyArr = msg.split(/\r\n|\n/);
-  if (replyArr.length <=1) {
-    return "";
-  } else {
-    const extractArr =  replyArr.filter(line => line.match(/^data:\s/) );
-    return extractArr.map( line => line.slice(6) ).join('\n');
-  }
-}
-
-function open() {
-  return new Promise( (resolve, reject) => {
-    GetOptions.get()
-      .then( options => {
-        if (options.appPort) {
-          appPort = options.appPort;
-          return resolve(options.appPort);
-        } else {
-          return reject(`no application port!`);
-        }
-      })
-      .catch( reject );
   });
 }
 
 function sendStringP(sock, cmd) {
   return new Promise( (resolve, reject) => {
-    const arr = cmd.split('\n');
-    sendArrP(sock, arr)
-      .then( resolve )
-      .catch( reject);
+    const sse = new SSE;
+    sse.readFrom(sock);
+    sse.setWriteStream(sock);
+    sse.on('SSEvent', ev => {
+      if (ev.type === 'replySuccess') {
+        return resolve(ev.data);
+      } else {
+        return reject(ev.data);
+      }
+    });
+    sse.sendEvent({ type: "oneShotCommand", data: cmd });
   });
 }
 
 module.exports = {
   sendStringP: sendStringP,
-  sendArrP: sendArrP,
-  sendFileP: sendFileP,
+  getPopcornSocketP: getPopcornSocketP,
 };
