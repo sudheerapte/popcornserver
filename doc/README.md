@@ -562,34 +562,39 @@ A "template" is a sub-tree that can be instantiated at multiple places
 within the machine. When defining a machine, you use templates to
 define reusable portions of the state machine.
 
-You define a template with a `T` command and subsequent dash
-commands. A template is not a path in the machine, but a separate
-entity associated with the machine.  The `T` command gives the
-template a name, and any subsequent `P` commands that start with the
-name of the template (as opposed to the root path) define the
-sub-tree.
+You define a template with a `T` command and subsequent `P`
+commands. A template is an entity associated with the machine,
+separate from all the paths.  The `T` command creates a template and
+gives it a name. Any subsequent `P` commands that start with the name
+of the template (as opposed to the root path) define the sub-tree.
 
 ```
   TCOMMAND  ::= 'T' <space> WORD
 ```
 
 Once a template is defined with at least one path, you can instantiate
-the template by creating a child of any non-alt parent node. Instead
-of using a `P` command to create a `.` segment under the non-alt
-parent, you use an `I` command with a similar syntax:
+the template by creating a child of any non-alt parent node.  You use
+an `I` command to create the child:
 
 ```
   ICOMMAND  ::= 'I' <space> WORD <space> PATH
 ```
 
-The `I` command refers to the template name `WORD` and provides a path
-to the new child node. The child node must not already exist. A new
-child node is created at that path, with all the paths in the
-template's sub-tree instantiated underneath it. This instantiates the
-template.
+The `I` command refers to the template name `WORD` that was defined
+earlier, and provides a path to the new child node. The child node
+must not already exist. A new child node is created at that path, with
+all the paths in the template's sub-tree instantiated underneath
+it. The template name (`WORD`) itself is not part of the sub-tree.
 
-From this point on, you can use the usual `C`, `D`, and similar
-commands to modify the sub-tree as usual.
+The `I` command thus creates one instance of the template.
+
+The template can contain either `.` children or `/` children (but not
+both). Accordingly, the instantiated node will be either an
+concurrent-parent or a alternative-parent.
+
+From this point on, the new child and its sub-tree become part of the
+machine.  You can use the usual `C`, `D`, and similar commands to
+modify the paths in the sub-tree as usual.
 
 ### Template macros
 
@@ -599,10 +604,50 @@ location where the template will be instantiated:
 ```
    NAME - name of the instantiated child node
    PATH - full path of the instantiated child node
-   PARENTNAME - name of the parent of the child node
-   PARENTPATH - full path of the parent of the child node
+   PARENTNAME - name of the parent of the instantiated child node
+   PARENTPATH - full path of the parent of the instantiated child node
 ```
 
+The macros are used as follows. The paths in the defined sub-tree can
+contain strings like `{NAME}` or `{PATH}`; these will be substituted
+at instantiation time by the corresponding value.
+
+### Arrays
+
+You can instantiate a template multiple times under a concurrent node,
+creating an array of similar children. The command for creating an
+array is `R`:
+
+```
+  RCOMMAND ::= 'R' <space> WORD <space> PPATH
+```
+
+`PPATH` should be the path to an existing leaf node.  The `R` command
+converts the leaf node at `PPATH` into an *array node*.
+
+An array node remembers the template that its elements will be based
+upon (`WORD` in our example above), and it has a child node named
+`PPATH.length`, a leaf node that has a data element with the string
+value `0`. The idea is that `PPATH` will later have children
+instantiated from the template `WORD`. These children are the array
+elements, and the number of elements will be in the data string
+assigned to `PPATH.length`. The children will be named `0`, `1`, `2`,
+etc., decimal strings in increasing order up to `length - 1`, and they
+will of course each have underneath the same sub-tree defined in the
+template `WORD`.
+
+The array can be manipulated with the `E` command:
+
+```
+  ECOMMAND ::= 'E' <space> PPATH <space> CMD
+  CMD      ::= 'push' |
+               'pop'  |
+               'shift' |
+               'unshift' |
+               'delete' NUM
+```
+
+The 
 
 # How to Design the UX of a Popcorn Application
 
