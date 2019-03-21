@@ -58,8 +58,8 @@ As of Feb 21, 2019:
 
 ### Future
 
+* Arrays
 * Windows port
-
 
 ## How to read the rest of this document
 
@@ -485,6 +485,124 @@ and so on. Note that we are not representing in our model the secret
 key needed to unlock our door, only the visible key value that anyone
 can change. We could, of course, add the secret key to our model if we
 wanted, by adding another data-node.
+
+
+### Machine definition syntax
+
+A machine can be described by `PATH`s, which are a series of segments:
+
+```
+  PATH    ::=  ROOT [ SEGMENT ]
+  ROOT    ::=  ''
+  SEGMENT ::=  '.' WORD | '/' WORD
+  WORD    ::=  [a-z0-9-]+
+```
+
+You define a machine by a series of commands, as follows.
+
+```
+  COMMAND ::= PCOMMAND | CCOMMAND | DCOMMAND
+```
+
+You define `PATH`s using a `P` command:
+
+```
+  PCOMMAND ::= 'P' <space> PATH
+```
+
+If any of the segments in a path has not already been defined earlier,
+then it gets defined with this `P` command. Any segments in the `PATH`
+that already exist in the machine are left alone.
+
+If a series of `P` commands defines a series of alt-child nodes for an
+alt parent, then the first of these alt-child nodes is automatically
+assumed to be the current child. For example:
+
+```
+  P .a/foo
+  P .a/bar
+  P .a/baz
+```
+
+The above three `P` commands define three alt-child nodes of `.a`, of
+which `foo` is automatically made the current child, because its
+command comes first.
+
+You change the current child of an alt-node using the `C` command:
+
+```
+  CCOMMAND ::= 'C' <space> PATH <space> WORD
+```
+
+The child node `WORD` must already exist as a child of the `PATH`. If
+this child is not already the current child, then this command makes
+it the current child. Otherwise it remains the current child.
+
+If multiple `C` commands are applied to the same `PATH`, then the last
+`C` command wins.
+
+You assign the data of a non-alt leaf node using the `D` command:
+
+```
+  DCOMMAND ::= 'D' <space> PATH <space> DATA
+  DATA ::= <any UTF-8 string not containing a newline>
+```
+
+If multiple `D` commands assign data to the same `PATH`, then the last
+`D` command wins.
+
+A sequence of commands forms a transaction. You can apply the
+transaction to a machine, which simultaneously makes all the changes
+described by the commands.
+
+
+### Templates
+
+A "template" is a sub-tree that can be instantiated at multiple places
+within the machine. When defining a machine, you use templates to
+define reusable portions of the state machine.
+
+You define a template with a `T` command and subsequent dash
+commands. A template is not a path in the machine, but a separate
+entity associated with the machine.  The `T` command gives the
+template a name, and any subsequent `P` commands that start with the
+name of the template (as opposed to the root path) define the
+sub-tree.
+
+```
+  TCOMMAND  ::= 'T' <space> WORD
+```
+
+Once a template is defined with at least one path, you can instantiate
+the template by creating a child of any non-alt parent node. Instead
+of using a `P` command to create a `.` segment under the non-alt
+parent, you use an `I` command with a similar syntax:
+
+```
+  ICOMMAND  ::= 'I' <space> WORD <space> PATH
+```
+
+The `I` command refers to the template name `WORD` and provides a path
+to the new child node. The child node must not already exist. A new
+child node is created at that path, with all the paths in the
+template's sub-tree instantiated underneath it. This instantiates the
+template.
+
+From this point on, you can use the usual `C`, `D`, and similar
+commands to modify the sub-tree as usual.
+
+### Template macros
+
+When defining a template, you can use special keywords to refer to the
+location where the template will be instantiated:
+
+```
+   NAME - name of the instantiated child node
+   PATH - full path of the instantiated child node
+   PARENTNAME - name of the parent of the child node
+   PARENTPATH - full path of the parent of the child node
+```
+
 
 # How to Design the UX of a Popcorn Application
 
