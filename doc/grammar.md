@@ -1,6 +1,10 @@
-### Machine definition syntax
+## Machine definition syntax
 
-A machine can be described by `PATH`s, which are a series of segments:
+### Paths
+
+A machine can be described by `PATH`s, which are each a series of
+separator-word pairs. A separator is a dot or a slash, and a *word* is
+made of lowercase letters, digits, and hyphens `[a-z0-9-]`.
 
 ```
   PATH    ::=  ROOT [ SEGMENT ]
@@ -9,11 +13,27 @@ A machine can be described by `PATH`s, which are a series of segments:
   WORD    ::=  [a-z0-9-]+
 ```
 
-You define a machine by a series of commands, as follows.
+A machine can be defined in terms of paths by using a "machine
+definition language", a series of single-letter *commands* with
+arguments.
+
+An argument can be:
+
+- A *word*, made of lowercase letters, digits, and hyphens `[a-z0-9-]`.
+
+- A *path*, made of words and single-character separators `.` and `/`
+
+- A *line*, made of any utf-8 characters except newline (`\n`).
+
+You define a machine by a series of one-line commands. There are three
+basic commands: path command `P`, change command `C`, and data command
+`D`.
 
 ```
   COMMAND ::= PCOMMAND | CCOMMAND | DCOMMAND
 ```
+
+### P command - define a path
 
 You define `PATH`s using a `P` command:
 
@@ -21,7 +41,7 @@ You define `PATH`s using a `P` command:
   PCOMMAND ::= 'P' <space> PATH
 ```
 
-If any of the segments in a path has not already been defined earlier,
+If any of the segments in `PATH` has not already been defined earlier,
 then it gets defined with this `P` command. Any segments in the `PATH`
 that already exist in the machine are left alone.
 
@@ -39,28 +59,34 @@ The above three `P` commands define three alt-child nodes of `.a`, of
 which `foo` is automatically made the current child, because its
 command comes first.
 
-You change the current child of an alt-node using the `C` command:
+### C command - set a current alt-child
+
+You change an alt-node to set its current child using the `C` command:
 
 ```
   CCOMMAND ::= 'C' <space> PATH <space> WORD
 ```
 
-The child node `WORD` must already exist as a child of the `PATH`. If
-this child is not already the current child, then this command makes
-it the current child. Otherwise it remains the current child.
+`PATH` must be an existing alt-parent node in the machine.  The child
+node `WORD` must already exist as a child of the `PATH`. If this child
+is not already the current child, then this command makes it the
+current child. Otherwise it remains the current child.
 
 If multiple `C` commands are applied to the same `PATH`, then the last
 `C` command wins.
 
+### D command - assign data value to a non-alt leaf
+
 You assign the data of a non-alt leaf node using the `D` command:
 
 ```
-  DCOMMAND ::= 'D' <space> PATH <space> DATA
+  DCOMMAND ::= 'D' <space> PATH <space> LINE
   DATA ::= <any UTF-8 string not containing a newline>
 ```
 
-If multiple `D` commands assign data to the same `PATH`, then the last
-`D` command wins.
+`PATH` must be an existing non-alt leaf node.  If multiple `D`
+commands assign data to the same `PATH`, then the last `D` command
+wins.
 
 A sequence of commands forms a transaction. You can apply the
 transaction to a machine, which simultaneously makes all the changes
@@ -69,44 +95,69 @@ described by the commands.
 
 ### Templates
 
-A "template" is a sub-tree that can be instantiated at multiple places
-within the machine. When defining a machine, you use templates to
-define reusable portions of the state machine.
+A "template" is a predefined sub-tree that can be instantiated at
+multiple places within the machine. When defining a machine, you use
+templates to define reusable portions of the state machine.
 
-You define a template with a `T` command and subsequent `P`
-commands. A template is an entity associated with the machine,
-separate from all the paths.  The `T` command creates a template and
-gives it a name. Any subsequent `P` commands that start with the name
-of the template (as opposed to the root path) define the sub-tree.
+You define a template with a `T` command, and specify its predefined
+sub-tree using a series of `P`, `C`, and `D` commands. A template is
+an entity associated with the machine, separate from all the paths.
+The `T` command creates a template and gives it a name. Any subsequent
+`P` commands that start with the name of the template (as opposed to
+the root path) define the sub-tree.
 
 ```
-  TCOMMAND  ::= 'T' [ <space> WORD ]+
+  TCOMMAND  ::= 'T' <space> WORD [ <space> WORD ]*
 ```
 
 That is, the command name `T` followed by a list of space-separated
-`WORD`s. The first `WORD` (there must be at least one) is taken as the
-name of the template, which must be unique within the machine.
+`WORD`s. The first `WORD` in the list (there must be at least one) is
+taken as the name of the template, which must be unique within the
+machine.  Any subsequent `WORD`s in the `T` definition are taken as
+macro arguments.
 
-Any subsequent `WORD`s in the `T` definition are taken as macro
-arguments; they are all optional.
+Once the template name is defined, you can use a series of `P`, `C`,
+and `D` commands to define the sub-tree.
 
-Once a template is defined with at least one path, you can instantiate
-the template by creating a child of any concurrent parent node.  You
-use an `I` command to create the child:
+For example, the following definition defines a template `person`,
+which takes two arguments and defines a sub-tree containing six
+paths:
 
 ```
-  ICOMMAND ::= 'I' <space> WORD <space> PATH [<space> WORD <space> ARG]*
-  ARG      ::= (any Unicode character except newline)
+  T person first last
+  P person.id {$NAME}
+  P person.first
+  D person.first {first}
+  P person.last {last}
+  D person.last {last}
+  P person.function/individual
+  P person.function/manager
+  P person.department
 ```
 
-The `I` command refers to the template name `WORD` that was defined
-earlier, and provides a `PATH` to the new child node. The child node
-must not already exist. Any arguments to the macro can be inserted in
-the instantiated sub-tree as follows.
+The curly brackets `{` `}` are used to embed template macros,
+discussed later below.
 
-A new child node is created at that path, with
-all the paths in the template's sub-tree instantiated underneath
-it. The template name (`WORD`) itself is not part of the sub-tree.
+Once a template is defined with at a sub-tree containing at least one
+path, you can instantiate the template by creating a child of any
+concurrent parent node.  You use an `I` command and a series of `A`
+commands to create the child:
+
+```
+  ICOMMAND ::= 'I' <space> WORD <space> PATH
+  GCOMMAND ::= 'G' <space> PATH <space> WORD <space> LINE
+```
+
+The `I` and `G` commands refer to the template name `WORD` that was
+defined earlier.
+
+The `I` command provides a `PATH` to the new child node. The child
+node must not already exist. Any arguments to the macro can be
+inserted in the instantiated sub-tree as follows.
+
+A new child node is created at `PATH`, with all the paths in the
+template's sub-tree instantiated underneath it. The template name
+(`WORD`) itself is not part of the sub-tree.
 
 The `I` command thus creates one instance of the template.
 
@@ -114,14 +165,33 @@ The template can contain either `.` children or `/` children (but not
 both). Accordingly, the instantiated node will be either a
 concurrent-parent or an alternative-parent.
 
+The `G` command provides a value for one of the template arguments,
+`WORD`, defined in the `T` command. The `LINE` value in the `G`
+command is the value that will be used when instantiating the
+template. The `PATH` in the `G` command refers to the node where a
+template is being instantiated.
+
+There should be one `G` command per template argument. They can appear
+in any order, but all the arguments of the macro must be defined
+before the series of `G` commands is over.
+
+Once all the `G` commands are processed, the instantiation of the
+template is over.
+
 From this point on, the new child and its sub-tree become part of the
 machine.  You can use the usual `C`, `D`, and similar commands to
 modify the paths in the sub-tree as usual.
 
 ### Template macros
 
-When defining a template, you can use special keywords to refer to the
-location where the template will be instantiated:
+When defining a template, you can embed template macros: each argument
+of the template definition (in our example, `first` and `last`), can
+be surrounded by `{` curly braces `}` to interpolate its actual values
+as specified in the `I` command.
+
+In addition to the template arguments, four special keyword macros are
+available. These keyword macros refer to the location where the
+template will be instantiated:
 
 ```
    $NAME - name of the instantiated child node
@@ -130,40 +200,41 @@ location where the template will be instantiated:
    $PARENTPATH - full path of the parent of the instantiated child node
 ```
 
-Above, the first two keywords `NAME` and `PATH` refer to the new node
-instantiated by the `I` command using the `WORD` argument above in the
-syntax of the command. The latter two keywords refer to the parent of
-this new node.
+Above, the first two keywords `$NAME` and `$PATH` refer to the new
+node instantiated by the `I` command using the first `WORD` argument.
+The latter two keywords `$PARENTNAME` and `$PARENTPATH` refer to the
+parent of this new node.
 
-The keywords are used as follows. The paths in the defined sub-tree
-can contain strings like `{$NAME}` or `{$PATH}`; these will be
-substituted at instantiation time by the corresponding value. These
-keywords are usable in any of the `P` and `D` commands that define the
-template sub-tree.
+These macros are usable in any of the `P`, `C`, and `D` commands that
+define the template sub-tree.
 
-For example, the following definition defines a template "person":
+Take the example template `person` from above:
 
 ```
   T person first last
   P person.id {$NAME}
-  P person.{first}
-  P person.{last}
+  P person.first
+  D person.first {first}
+  P person.last {last}
+  D person.last {last}
   P person.function/individual
   P person.function/manager
   P person.department
 ```
 
 To instantiate the above template for a new employee with ID 1221, you
-can issue the following transaction:
+can issue a transaction containing these three commands:
 
 ```
-  I person .1221 first Joe last DiMaggio
+  I person .1221
+  G .1221 first Joe
+  G .1221 last DiMaggio
 ```
 
-This transaction will create a sub-tree at the new path `.1221`, with
-these concurrent child nodes:
+This transaction will create a sub-tree at the new path `.1221`
+(directy under the root node), with these concurrent child nodes:
 
-- `id` with the data value `.1221`.
+- `id` with the data value `1221`.
 
 - `first` and `last` with the given string data values.
 
@@ -171,42 +242,49 @@ these concurrent child nodes:
 
 - `function`, an alt-parent with `individual` as the current value.
 
+The resulting instantiated sub-tree will look like this:
 
+```
+   .1221.id                 (with data value = "1221")
+   .1221.first              (with data value = "Joe")
+   .1221.last               (with data value = "DiMaggio")
+   .1221.function/individual
+   .1221.function/manager
+   .1221.department         (with empty data value)
+```
 
 ### Arrays
 
-You can instantiate a template multiple times under a concurrent node,
-creating an array of similar children. The command for creating an
-array is `R`:
+You can instantiate a template multiple times under a single
+concurrent node, creating an array of similar children. The command
+for creating an array is `R`:
 
 ```
-  RCOMMAND ::= 'R' <space> WORD <space> PPATH
+  RCOMMAND ::= 'R' <space> WORD <space> PATH
 ```
 
-`PPATH` should be the path to an existing leaf node.  The `R` command
-converts the leaf node at `PPATH` into an *array node*.
+`PATH` should be the path to an existing leaf node.  The `R` command
+converts the leaf node at `PATH` into an *array node*.
 
-An array node remembers the template that its elements will be based
-upon (`WORD` in our example above), and it has a child node named
-`PPATH.length`, a leaf node that has a data element with the string
-value `0`. The idea is that `PPATH` will later have children
-instantiated from the template `WORD`. These children are the array
-elements, and the number of elements will be in the data string
-assigned to `PPATH.length`. The children will be named `0`, `1`, `2`,
-etc., decimal strings in increasing order up to `length - 1`, and they
-will of course each have underneath the same sub-tree defined in the
-template `WORD`.
+An array node remembers the template named `WORD` that its elements
+will be instantiating.  `PATH` will later have children instantiated
+from the template `WORD`. These children are the array elements, and
+the number of elements will be in the data string assigned to
+`PATH.length`. The children will be named `0`, `1`, `2`, etc., decimal
+strings in increasing order up to `length - 1`, and they will of
+course each have underneath the same sub-tree defined in the template
+`WORD`.
 
 The array can be manipulated with the `E` command:
 
 ```
-  ECOMMAND ::= 'E' <space> PPATH <space> CMD
+  ECOMMAND ::= 'E' <space> PATH <space> CMD
   CMD      ::= 'push' |
                'pop'  |
                'shift' |
                'unshift' |
-               'delete' NUM
+               'delete'
 ```
 
-The 
+The `E` command will be followed by a group of `G` commands
 
