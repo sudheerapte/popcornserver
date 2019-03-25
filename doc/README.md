@@ -486,7 +486,7 @@ key needed to unlock our door, only the visible key value that anyone
 can change. We could, of course, add the secret key to our model if we
 wanted, by adding another data-node.
 
-See full [grammar rules](https://github.com/sudheerapte/popcornserver/tree/master/doc/grammar.md).
+See full [grammar rules](./grammar.md).
 
 # How to Design the UX of a Popcorn Application
 
