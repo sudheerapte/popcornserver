@@ -608,9 +608,50 @@ location where the template will be instantiated:
    PARENTPATH - full path of the parent of the instantiated child node
 ```
 
-The macros are used as follows. The paths in the defined sub-tree can
-contain strings like `{NAME}` or `{PATH}`; these will be substituted
-at instantiation time by the corresponding value.
+Above, the first two keywords `NAME` and `PATH` refer to the new node
+instantiated by the `I` command using the `WORD` argument above in the
+syntax of the command. The latter two keywords refer to the parent of
+this new node.
+
+The keywords are used as follows. The paths in the defined sub-tree
+can contain strings like `{NAME}` or `{PATH}`; these will be
+substituted at instantiation time by the corresponding value. These
+keywords are usable in any of the `P` and `D` commands that define the
+template sub-tree.
+
+For example, the following definition defines a template "person":
+
+```
+  T person
+  P person.id {NAME}
+  P person.first
+  P person.last
+  P person.function/individual
+  P person.function/manager
+  P person.department
+```
+
+To instantiate the above template for a new employee with ID 1221, you
+can issue the following transaction:
+
+```
+  I person .1221
+  D .1221.first Joe
+  D .1221.last DiMaggio
+```
+
+This transaction will create a sub-tree at the new path `.1221`, with
+these concurrent child nodes:
+
+- `id` with the data value `.1221`.
+
+- `first` and `last` with the given string data values.
+
+- `department`, with no data value.
+
+- `function`, an alt-parent with `individual` as the current value.
+
+
 
 ### Arrays
 
