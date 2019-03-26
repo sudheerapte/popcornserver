@@ -118,12 +118,18 @@ taken as the name of the template, which must be unique within the
 machine.  Any subsequent `WORD`s in the `T` definition are taken as
 macro arguments.
 
+For example, this command defines a template named `person`, with two
+arguments named `first` and `last`.
+
+```
+  T person first last
+```
+
 Once the template name is defined, you can use a series of `P`, `C`,
 and `D` commands to define the sub-tree.
 
-For example, the following definition defines a template `person`,
-which takes two arguments and defines a sub-tree containing six
-paths:
+The following definition defines a template `person`, which takes two
+arguments as above and defines a sub-tree containing six paths:
 
 ```
   T person first last
@@ -140,32 +146,35 @@ paths:
 The curly brackets `{` `}` are used to embed template macros,
 discussed later below.
 
+The template can contain either `.` children or `/` children (but not
+both). Accordingly, the instantiated node will be either a
+concurrent-parent or an alternative-parent.
+
 Once a template is defined with at a sub-tree containing at least one
 path, you can instantiate the template by creating a child of any
-concurrent parent node.  You use an `I` command and a series of `A`
-commands to create the child:
+concurrent parent node.  You use an `I` command to create the child:
+
+```
+  I person .1221
+```
+
+The `I` command refers to the template name `person` and provides a
+`PATH` to the new child node, which is named `1221` above. The child
+node must not already exist.
+
+A new child node is created at `PATH`, with all the paths in the
+template's sub-tree instantiated underneath it. The template name
+(`WORD`) itself is not part of the sub-tree. The `I` command thus
+creates one instance of the template.
+
+Any arguments to the macro can be inserted in the instantiated
+sub-tree with a series of `G` commands referring to the same template
+name. The syntax of the `I` and `G` commands is:
 
 ```
   ICOMMAND ::= 'I' <space> WORD <space> PATH
   GCOMMAND ::= 'G' <space> PATH <space> WORD <space> LINE
 ```
-
-The `I` and `G` commands refer to the template name `WORD` that was
-defined earlier.
-
-The `I` command provides a `PATH` to the new child node. The child
-node must not already exist. Any arguments to the macro can be
-inserted in the instantiated sub-tree as follows.
-
-A new child node is created at `PATH`, with all the paths in the
-template's sub-tree instantiated underneath it. The template name
-(`WORD`) itself is not part of the sub-tree.
-
-The `I` command thus creates one instance of the template.
-
-The template can contain either `.` children or `/` children (but not
-both). Accordingly, the instantiated node will be either a
-concurrent-parent or an alternative-parent.
 
 The `G` command provides a value for one of the template arguments,
 `WORD`, defined in the `T` command. The `LINE` value in the `G`
@@ -178,7 +187,9 @@ in any order, but all the arguments of the macro must be defined
 before the series of `G` commands is over.
 
 Once all the `G` commands are processed, the instantiation of the
-template is over.
+template is over. The new node will be either a concurrent-parent or
+an alternative-parent, depending on the top-level node defined in the
+template.
 
 From this point on, the new child and its sub-tree become part of the
 machine.  You can use the usual `C`, `D`, and similar commands to
@@ -234,7 +245,7 @@ can issue a transaction containing these three commands:
 ```
 
 This transaction will create a sub-tree at the new path `.1221`
-(directy under the root node), with these concurrent child nodes:
+(directly under the root node), with these concurrent child nodes:
 
 - `id` with the data value `1221`.
 
@@ -265,24 +276,25 @@ for creating an array is `R`:
   RCOMMAND ::= 'R' <space> WORD <space> PATH
 ```
 
-`PATH` should be the path to an existing leaf node.  The `R`
-command converts the leaf node at `PATH` into an *array node*.
+`PATH` should be the path to an existing leaf node.  The `R` command
+converts the leaf node at `PATH` into an *array node*.
 
 An array node is a leaf node at `PATH` that is a concurrent
-parent. This array node:
+parent. This array node will:
 
-- maintains an array of concurrent-child nodes, the array elements.
+- maintain an array of concurrent-child nodes, the array elements.
 
-- remembers the template named `WORD` that its elements
-will be instantiating.
+- remember the template named `WORD` that its elements will be
+instantiating.
 
-- allows addition and removal of elements using the array commands
+- allow addition and removal of elements using the array commands
   below.
 
-The array element nodes will be named `0`, `1`, `2`, etc., decimal
-strings in increasing order. The last node will have the name `LENGTH
-- 1`, where LENGTH is the total number of elements.  Each element will
-have underneath the same sub-tree defined in the template `WORD`.
+The array element nodes will be named `0`, `1`, `2`, etc., strings
+encoding successive decimal numbers in numerically increasing
+order. The last node will have the name `LENGTH - 1`, where LENGTH is
+the total number of elements.  Each element will have underneath the
+same sub-tree defined in the template `WORD`.
 
 The array can be manipulated with the `E` command:
 
@@ -337,3 +349,20 @@ must be an alt-parent node.
 `PARENT` `PATH` returns the path of the parent node of `PATH`. `PATH`
 must not be the root node.
 
+### Array expansion queries
+
+`LENGTH` `PATH` returns the number of elements in the array `PATH`.
+
+`EACH` `PATH` `LINE` is an iterator. You give it a macro string
+containing `{NAME}` or `{PATH}` macros. It evaluates the macro string
+once for each element in the array at `PATH`.
+
+*TODO expand on array expansions.*
+
+`CONCAT` `PATH` `PATH` returns a new `PATH` formed by concatenating
+the two given paths in sequence. The first `PATH` must already exist.
+Within the second `PATH`, you can use `..` as a navigator from one
+node to its parent node. This allows you to (for example) navigate to
+sibling nodes.
+
+A machine query can be embedded within `{` curly braces `}`.
