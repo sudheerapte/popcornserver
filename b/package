@@ -1,0 +1,33 @@
+#!/bin/sh
+this=$(readlink -f ${0})
+here=$(readlink -f $(dirname ${this}))
+
+die() { echo $@; exit 1; }
+
+cd ${here}/..
+
+version=$(git tag | sort -V | tail -1)
+echo "packaging popcorn_${version}"
+
+pdir="/tmp/popcorn_${version}"
+popdir="${pdir}/opt/popcorn";
+mkdir -p ${popdir} || die "Failed creating ${popdir}: $!"
+
+cp -r js doc bin ${popdir}
+rm -rf "${popdir}/js/test"
+rm -f ${popdir}/*/*~
+mkdir ${pdir}/DEBIAN
+cat > ${pdir}/DEBIAN/control <<EOF
+Package: popcorn
+Version: ${version}
+Section: base
+Priority: optional
+Architecture: i386
+Depends: 
+Maintainer: Sudheer Apte <sudheerapte@yahoo.com>
+Description: Popcorn
+ Make beautiful web apps
+EOF
+
+cd ${pdir}
+ls -lt
