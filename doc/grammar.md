@@ -13,6 +13,8 @@ made of lowercase letters, digits, and hyphens `[a-z0-9-]`.
   WORD    ::=  [a-z0-9-]+
 ```
 
+### Machine definition language commands
+
 A machine can be defined in terms of paths by using a "machine
 definition language", a series of single-letter *commands* with
 arguments.
@@ -263,17 +265,24 @@ for creating an array is `R`:
   RCOMMAND ::= 'R' <space> WORD <space> PATH
 ```
 
-`PATH` should be the path to an existing leaf node.  The `R` command
-converts the leaf node at `PATH` into an *array node*.
+`PATH` should be the path to an existing leaf node.  The `R`
+command converts the leaf node at `PATH` into an *array node*.
 
-An array node remembers the template named `WORD` that its elements
-will be instantiating.  `PATH` will later have children instantiated
-from the template `WORD`. These children are the array elements, and
-the number of elements will be in the data string assigned to
-`PATH.length`. The children will be named `0`, `1`, `2`, etc., decimal
-strings in increasing order up to `length - 1`, and they will of
-course each have underneath the same sub-tree defined in the template
-`WORD`.
+An array node is a leaf node at `PATH` that is a concurrent
+parent. This array node:
+
+- maintains an array of concurrent-child nodes, the array elements.
+
+- remembers the template named `WORD` that its elements
+will be instantiating.
+
+- allows addition and removal of elements using the array commands
+  below.
+
+The array element nodes will be named `0`, `1`, `2`, etc., decimal
+strings in increasing order. The last node will have the name `LENGTH
+- 1`, where LENGTH is the total number of elements.  Each element will
+have underneath the same sub-tree defined in the template `WORD`.
 
 The array can be manipulated with the `E` command:
 
@@ -283,8 +292,48 @@ The array can be manipulated with the `E` command:
                'pop'  |
                'shift' |
                'unshift' |
-               'delete'
+               'insert' WORD |
+               'delete' WORD
 ```
 
-The `E` command will be followed by a group of `G` commands
+The `E` commands `push`, `unshift`, and `insert` will be followed by a
+group of `G` commands.
+
+`push` requires a set of `G` commands to define a new element. The new
+element will be pushed to the end of the array. The array's length
+will increase by one.
+
+`pop` does not require any more commands. The last element will be
+removed from the array, and its length will decrease by 1.
+
+`shift` and `unshift` are similar to `pop` and `push`, respectively,
+except that they work on the front of the array.
+
+`insert` takes an index between 0 and `LENGTH-1`, and a set of `G`
+commands to define a new element. The new element will be inserted at
+that index, with all subsequent array elements moved up by one. The
+array length will increase by 1.
+
+`delete` takes an index between 0 and `LENGTH-1`. The element at that
+index will be removed from the array, and subsequent elements will be
+moved down by one. The array length will decrease by 1.
+
+### Machine query language
+
+Within renderers and also within apps, a machine can be queried to
+obtain information about it:
+
+`EXISTS` `PATH` returns true iff the machine has a node at that path.
+
+`ISLEAF` `PATH` returns true iff a node exists at `PATH` with no child
+nodes.
+
+`DATA` `PATH` returns the data assigned to the node at `PATH` using a
+`D` command.
+
+`CURR` `PATH` returns the name of the current child of `PATH`, which
+must be an alt-parent node.
+
+`PARENT` `PATH` returns the path of the parent node of `PATH`. `PATH`
+must not be the root node.
 
