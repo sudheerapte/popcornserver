@@ -346,8 +346,16 @@ nodes.
 `CURR` `PATH` returns the name of the current child of `PATH`, which
 must be an alt-parent node.
 
-`PARENT` `PATH` returns the path of the parent node of `PATH`. `PATH`
-must not be the root node.
+`PARENT` `PATH` returns the path of the parent node of `PATH`. If
+`PATH` is the root path (empty string), then the result is also the
+root path. See also `CONCAT` below.
+
+`CONCAT` `PATH` `PATH` returns a new `PATH` formed by concatenating
+the two given paths in sequence. The first `PATH` must already
+exist. The second `PATH` is a string parsed relative to the first.
+Within the second `PATH`, you can use `..` as a navigator from one
+node to its parent node. This allows you to (for example) navigate to
+sibling nodes.
 
 ### Array expansion queries
 
@@ -357,12 +365,26 @@ must not be the root node.
 containing `{NAME}` or `{PATH}` macros. It evaluates the macro string
 once for each element in the array at `PATH`.
 
-*TODO expand on array expansions.*
+### Using machine queries in renderers
 
-`CONCAT` `PATH` `PATH` returns a new `PATH` formed by concatenating
-the two given paths in sequence. The first `PATH` must already exist.
-Within the second `PATH`, you can use `..` as a navigator from one
-node to its parent node. This allows you to (for example) navigate to
-sibling nodes.
+A machine query can be embedded within `{` curly braces `}` to
+evaluate it in a renderer program. For example, for the plain HTML
+renderer, you can create a table of `person` instances as follows:
 
-A machine query can be embedded within `{` curly braces `}`.
+TODO describe how to expand the EACH below
+
+```
+<table>
+  <tr>
+    <td>First name</td>
+    <td>Last name</td>
+    <td>Departent</td>
+    <td>ID</td>
+  </tr>
+  <tr data-path="{EACH .}" >
+    <td>{}</td>
+  </tr>
+</table>
+```
+
+
