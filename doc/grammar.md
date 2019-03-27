@@ -296,7 +296,16 @@ order. The last node will have the name `LENGTH - 1`, where LENGTH is
 the total number of elements.  Each element will have underneath the
 same sub-tree defined in the template `WORD`.
 
-The array can be manipulated with the `E` command:
+For example, this `R` command:
+
+```
+  R person .people
+```
+
+defines an array at the node `.people`. This array has no elements
+initially.
+
+The array can be populated and manipulated with the `E` commands:
 
 ```
   ECOMMAND ::= 'E' <space> PATH <space> CMD
@@ -314,6 +323,17 @@ group of `G` commands.
 `push` requires a set of `G` commands to define a new element. The new
 element will be pushed to the end of the array. The array's length
 will increase by one.
+
+Example:
+
+```
+  E .people push
+  G .people first Joe
+  G .people last DiMaggio
+```
+
+The above example defines a new element from the template `person` and
+adds this element at the end of the (empty) array at `.people`.
 
 `pop` does not require any more commands. The last element will be
 removed from the array, and its length will decrease by 1.
@@ -335,22 +355,22 @@ moved down by one. The array length will decrease by 1.
 Within renderers and also within apps, a machine can be queried to
 obtain information about it:
 
-`EXISTS` `PATH` returns true iff the machine has a node at that path.
+`exists` `PATH` returns true iff the machine has a node at that path.
 
-`ISLEAF` `PATH` returns true iff a node exists at `PATH` with no child
+`isleaf` `PATH` returns true iff a node exists at `PATH` with no child
 nodes.
 
-`DATA` `PATH` returns the data assigned to the node at `PATH` using a
+`data` `PATH` returns the data assigned to the node at `PATH` using a
 `D` command.
 
-`CURR` `PATH` returns the name of the current child of `PATH`, which
+`curr` `PATH` returns the name of the current child of `PATH`, which
 must be an alt-parent node.
 
-`PARENT` `PATH` returns the path of the parent node of `PATH`. If
+`parent` `PATH` returns the path of the parent node of `PATH`. If
 `PATH` is the root path (empty string), then the result is also the
 root path. See also `CONCAT` below.
 
-`CONCAT` `PATH` `PATH` returns a new `PATH` formed by concatenating
+`concat` `PATH` `PATH` returns a new `PATH` formed by concatenating
 the two given paths in sequence. The first `PATH` must already
 exist. The second `PATH` is a string parsed relative to the first.
 Within the second `PATH`, you can use `..` as a navigator from one
@@ -359,10 +379,10 @@ sibling nodes.
 
 ### Array expansion queries
 
-`LENGTH` `PATH` returns the number of elements in the array `PATH`.
+`length` `PATH` returns the number of elements in the array `PATH`.
 
-`EACH` `PATH` `LINE` is an iterator. You give it a macro string
-containing `{NAME}` or `{PATH}` macros. It evaluates the macro string
+`each` `PATH` `LINE` is an iterator. You give it a macro string
+containing `{$NAME}` or `{$PATH}` macros. It evaluates the macro string
 once for each element in the array at `PATH`.
 
 ### Using machine queries in renderers
@@ -371,20 +391,45 @@ A machine query can be embedded within `{` curly braces `}` to
 evaluate it in a renderer program. For example, for the plain HTML
 renderer, you can create a table of `person` instances as follows:
 
-TODO describe how to expand the EACH below
-
 ```
 <table>
+  <thead>
   <tr>
     <td>First name</td>
     <td>Last name</td>
     <td>Departent</td>
     <td>ID</td>
   </tr>
-  <tr data-path="{EACH .}" >
-    <td>{}</td>
-  </tr>
+  </thead>
+  <tbody>
+  {each .people peoplerow}
+  </tbody>
 </table>
 ```
+
+The above table contains the machine query line `each .people
+peoplerow`, which is asking the renderer to find an HTML template
+whose `id` is `peoplerow`, and evaluate it in the context of each
+element of `.people`.
+
+The following HTML template should be defined:
+
+```
+<template id="peoplerow">
+    <td>{data {$PATH}.first}</td>
+    <td>{data {$PATH}.last}</td>
+    <td>{data {$PATH}.department}</td>
+    <td>{data {$PATH}.id}</td>
+</template>
+```
+
+The above template uses `data` machine queries to construct strings
+for each array element, inserting one table row. The `data` query
+argument is a string containing a `{$PATH}` macro.
+
+The `{$PATH}` macro is first evaluated for the element, to get a
+string like `data .people.0.first`. This string is evaluated as a
+machine query, to get the data value, which is `Joe`. In this way,
+`Joe` is inserted as the text content of the `<td>` element.
 
 
