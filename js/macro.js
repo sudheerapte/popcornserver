@@ -3,30 +3,33 @@
 /**
    @function(expandOneLevel) - chop up text into deepest macros
 
-   Returns an array of strings as follows:
+   Returns an array of tokens as follows:
 
-   prefix1, macro1, suffix1, macro2, suffix2, ..., macroN, suffixN
+   T, M1, T1, M2, T2,..., MN, TN
 
-   The "prefix1" will always be present; it might be zero-length if
-   the first macro starts at the beginning of the text.
+   The "T" tokens are text, and the "M" tokens are macros.
 
-   "suffixN" will always be present for each macroN, even if it
-   is zero-length in the case where macroN is at the end of text or
-   where macro(N+1) is immediately after macroN.
+   The "T" will always be present; it might be zero-length if
+   the first macro starts at the beginning of the text. Thus, if you
+   pass in text that does not contain any macros, you will get just
+   one "T" token.
+
+   Each token has a corresponding text value. It might be an empty
+   string.
 
 */
 
-function expandOneLevel(result, text) { // result starts with empty array
-  let pair;;
+function expandOneLevel(result, text) { // call with empty array result
+  let pair;
   do {
     pair = biteOne(text);
     if (pair) {
-      result.push(text.substring(0, pair[0]));
-      result.push(text.substring(pair[0], pair[1]));
+      result.push({ tok: "T", txt: text.substring(0, pair[0]) });
+      result.push({ tok: "M", txt: text.substring(pair[0], pair[1]) });
       text = text.substring(pair[1]);
     }
   } while (pair);
-  result.push(text);
+  result.push({tok: "T", txt: text});
 }  
 
 function biteOne(text) { // returns null or [ start, end ]
