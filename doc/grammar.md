@@ -385,9 +385,9 @@ sibling nodes.
 containing `{$NAME}` or `{$PATH}` macros. It evaluates the macro string
 once for each element in the array at `PATH`.
 
-### Using machine queries in renderers
+### Using machine query lines in renderers
 
-A machine query can be embedded within `{` curly braces `}` to
+A machine query line can be embedded within `{` curly braces `}` to
 evaluate it in a renderer program. For example, for the plain HTML
 renderer, you can create a table of `person` instances as follows:
 
@@ -402,15 +402,14 @@ renderer, you can create a table of `person` instances as follows:
   </tr>
   </thead>
   <tbody>
-  {each .people peoplerow}
+  {each .people template=peoplerow}
   </tbody>
 </table>
 ```
 
-The above table contains the machine query line `each .people
-peoplerow`, which is asking the renderer to find an HTML template
-whose `id` is `peoplerow`, and evaluate it in the context of each
-element of `.people`.
+The above table contains an `each` machine query line, which is asking
+the renderer to find an HTML template whose `id` is `peoplerow`, and
+evaluate it in the context of each element of `.people`.
 
 The following HTML template should be defined:
 
