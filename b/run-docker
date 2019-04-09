@@ -4,6 +4,7 @@ here=$(readlink -f $(dirname ${this}))
 
 die() { echo $@; exit 1; }
 
-docker image inspect popcorn:latest | grep -q NODE_VERSION &&
-    cd ${here}/.. &&
-    docker run -d --name poppy -p8000-8001:8000-8001 popcorn:latest
+cd ${here}/.. &&
+    v=$(git tag | sort -Vr | head -1) &&
+    docker image inspect "popcorn:${v}" | grep -q NODE_VERSION &&
+    docker run -d --name poppy -p8000-8001:8000-8001 "popcorn:${v}"

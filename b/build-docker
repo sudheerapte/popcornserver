@@ -5,4 +5,6 @@ here=$(readlink -f $(dirname ${this}))
 die() { echo $@; exit 1; }
 
 cd ${here}/.. &&
-    docker build -t popcorn:latest .
+    v=$(git tag | sort -Vr | head -1) &&
+    docker build -t "popcorn:${v}" . &&
+    docker images | grep "${v}"
