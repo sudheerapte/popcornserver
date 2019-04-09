@@ -48,10 +48,6 @@
      A machine is being abandoned by app.  You should call
      machine.removeBlockListener().
 
-  'appConnect' (app) - an app just connected.
-
-  'appDisconnect' (app) - an app just disconnected.
-
   To send a command to an app, just call sendCommand(app, name, command).
   The name is the name of a machine, and "command" is a string.
 
@@ -246,12 +242,112 @@ ${arr.join("\n")}`);
       log(`doCommand: _map has no machine: ${machine}. ${arr[0]}`);
     }
   }
+
+  // ------------------- handleOneShotCommand and friends
   handleOneShotCommand(rec) {
-    rec.sendError(`TODO one-shot command not implemented.`);
-    log(`TODO one-shot command not implemented.`);
+    if (typeof rec.lines !== 'string') {
+      const msg = `bad command: ${typeof rec.lines}`;
+      return rec.sendError(msg, () => log(msg) );
+    }
+    const arr = rec.lines.split(/\n|\r\n|\r/);
+    if (! arr || arr.length <= 0) {
+      const msg = `bad command: ${typeof rec.lines}`;
+      return rec.sendError(msg, () => log(msg) );
+    }
+    const m = arr[0].match(/^\s*(\w+)/);
+    if (!m) {
+      const msg = `bad command: ${arr[0]}`;
+      return rec.sendError(msg, () => log(msg) );
+    }
+    const cmd = m[1];
+    if (/^update$/.test(cmd)) {
+      const m = arr[0].match(/^\s*(\w+)\s+(\w+)\s*$/);
+      if (! m) {
+        const msg = `bad update command: ${arr[0]}`;
+        return rec.sendError(msg, () => log(msg) );
+      }
+      const machine = m[2];
+      this.processUpdate(machine, arr.slice(1))
+        .then(() => {
+          rec.sendSuccess('ok', () => {});
+          this.emit('update', 'Drive-By', machine, arr.slice(1));
+        })
+        .catch( errMsg => {
+          rec.sendError(errMsg, () => log(errMsg) );
+        });
+    } else if (/^provide$/.test(cmd)) {
+      const m = arr[0].match(/^\s*(\w+)\s+(\w+)\s*$/);
+      if (! m) {
+        const msg = `bad provide command: ${arr[0]}`;
+        return rec.sendError(msg, () => log(msg) );
+      }
+      const machine = m[2];
+      this.processProvide(machine, arr.slice(1))
+        .then(() => {
+          rec.sendSuccess('ok', () => {});
+          this.emit('provide', 'Drive-By', machine, arr.slice(1));
+        })
+        .catch( errMsg => {
+          rec.sendError(errMsg, () => log(errMsg) );
+        });
+    } else {
+      const msg = (`bad command: ${cmd}`);
+      return rec.sendError(msg, () => log(msg) );
+    }
+  }    
+  processProvide(machine, arr) {
+    return new Promise((resolve,reject) => {
+      if (! arr.length > 0) {
+        return reject(`provide ${machine}: no payload!`);
+      }
+      if (this._map.has(machine)) {
+        return resolve(`already have ${machine}`);
+      }
+      const mc = new Machine;
+      const result = mc.interpret(arr);
+      if (result) {
+        return reject(`provide failed: ${result}`);
+      } else {
+        this._map.set(machine, {mc: mc})
+        return resolve();
+      }
+    });
   }
+  processUpdate(machine, arr) {
+    return new Promise((resolve,reject) => {
+      if (! arr.length > 0) {
+        return reject(`update: no payload!`);
+      }
+      const mc = this._map.get(machine).mc;
+      if (!mc) {
+        return reject(`update: no such machine: ${machine}`);
+      }
+      const result = mc.interpret(arr);
+      if (result) {
+        return reject(`update failed: ${result}`);
+      } else {
+        return resolve();
+      }
+    });
+  }
+
   handleFireAndForget(data) {
     log(`TODO fire-and-forget not implemented.`);
+  }
+
+  stopListeningP() {
+    log(`stopping...`);
+    return new Promise( (resolve, reject) => {
+      this.server.close( (arg) => {
+        if (arg) { // server was not listening
+          log(`close: server was not listening`);
+          return reject(arg);
+        } else {
+          log(`stopped`);
+          return resolve();
+        }
+      });
+    });
   }
 }
 

@@ -6,7 +6,7 @@ echo "Initializing popcorn configuration for user $USER..."
 mkdir ~/.popcorn
 << 'EOF' cat > ~/.popcorn/options.json && echo Created options.json
 {
-  "httpHost": "localhost",
+  "httpHost": "0.0.0.0",
   "httpPort": "8000",
   "machineDirs": {
     "demo": "%U/.popcorn/demo"

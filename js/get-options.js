@@ -24,7 +24,9 @@ function populateOptions() {
     let options = {};
     let optPath = getPopcornConfigPath();
 
-    // The following line will crash node if it fails. Good.
+    if (! optPath) {
+      return reject(`popcorn config dir ~/.popcorn not found`);
+    }
     log(`optPath = ${optPath}`);
     setImmediate( () => {
       const contents = fs.readFileSync(optPath);

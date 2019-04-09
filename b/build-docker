@@ -1,0 +1,8 @@
+#!/bin/sh
+this=$(readlink -f ${0})
+here=$(readlink -f $(dirname ${this}))
+
+die() { echo $@; exit 1; }
+
+cd ${here}/.. &&
+    docker build -t popcorn:latest .

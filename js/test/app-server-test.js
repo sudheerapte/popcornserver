@@ -27,9 +27,12 @@ appServer.startListening({port:PORT})
   .then( sendProvideBar )
   .then( sendUpdateFoo )
   .then( sendAbandonFoo )
-/*  TODO Drive-by not implemented
-  .then( sendOneShotCommand )  
+  .then( sendOneShotProvide )  
+  .then( sendOneShotUpdate )  
+  .then( sendOneShotBadUpdate )  
   .then( sendBadOneShotCommand )
+  .then( sendBadOneShotProvide )
+/*  TODO fireAndForget not implemented
   .then( sendFireAndForget )
   .then( sendBadFireAndForget )
 */
@@ -193,76 +196,209 @@ function sendAbandonFoo() {
 }
 
 let sock3, sse3;
-function sendOneShotCommand() {
-  log(`--- oneShotCommand machine bar`);
+function sendOneShotProvide() {
+  const testName = "sendOneShotProvide";
+  log(`--- ${testName}`);
   return new Promise( (resolve, reject) => {
     sock3 = net.createConnection({port:PORT}, () => {
       let done = false;
-      sse3 = new SSEmitter();
-      sse3.setWriteStream(sock3);
-      sse3.readFrom(sock3);
-      sock3.on('error', errMsg => log(`sendOneShotCommand got: ${errMsg}`) );
+      sock3.on('error', errMsg => log(`${testName} got: ${errMsg}`) );
+      sock3.on('data', data => {
+        data = data.toString();
+        log(`${testName} got: |${data.split('\n').join("\\n")}|}`);
+        if (data.trim().endsWith('ok')) {
+          done = true;
+          return resolve();
+        } else {
+          done = true;
+          log(`${testName} got error: ${data}`);
+          return reject();
+        }
+      });
       sock3.on('end', () => {
 	if (!done) {
-	  log(`sendOneShotCommand got dropped! Dropping my end`);
+	  log(`${testName} got dropped! Dropping my end`);
 	  sock3.end();
 	  done = true;
-	  reject(`sendOneShotCommand got dropped!`);
-	}
-      });
-      sse3.on('SSEvent', ev => {
-	if (done) { return; }
-	log(`sendOneShotCommand got: |${ev.data}|`);
-	if(ev.data === "ok") {
-	  sock3.end();
-	  done = true;
-	  resolve();
-	}
+          resolve();
+	} else {
+	  log(`${testName} got dropped. I had already dropped my end`);
+        }
       });
       const mc = new Machine();
-      const result = mc.interpret(["P .a", "P .b", "P .a/foo"]);
+      const result = mc.interpret(["P .a", "P .b", "P .a/foo", "P .a/bar"]);
       err(result);
-      sse3.sendEvent({type: "oneShotCommand",
-		      data: `machine bar
-${mc.getSerialization().join('\n')}\n\n`});
-      log(`sent oneShotCommand with machine bar`);
+      const sseEv = `event: oneShotCommand
+data: provide bar
+${mc.getSerialization().map( line => 'data: ' + line).join('\n')}\n\n`;
+      // log(`sending: |${sseEv}|`);
+      sock3.write(sseEv);
+      log(`${testName} sent oneShotCommand with provide bar`);
+    });
+  });
+}
+
+function sendOneShotUpdate() {
+  const testName = "sendOneShotUpdate";
+  log(`--- ${testName}`);
+  return new Promise( (resolve, reject) => {
+    sock3.destroy();
+    sock3 = net.createConnection({port:PORT}, () => {
+      let done = false;
+      sock3.on('error', errMsg => log(`${testName} got: ${errMsg}`) );
+      sock3.on('data', data => {
+        data = data.toString();
+        log(`${testName} got: |${data.split('\n').join("\\n")}|}`);
+        if (data.trim().endsWith('ok')) {
+          done = true;
+          return resolve();
+        } else {
+          done = true;
+          log(`${testName} got error: ${data}`);
+          return reject();
+        }
+      });
+      sock3.on('end', () => {
+	if (!done) {
+	  log(`${testName} got dropped! Dropping my end`);
+	  sock3.end();
+	  done = true;
+          resolve();
+	} else {
+	  log(`${testName} got dropped. I had already dropped my end`);
+        }
+      });
+      const sseEv = `event: oneShotCommand
+data: update bar
+data: C .a bar\n\n`;
+      log(`sending: |${sseEv}|`);
+      sock3.write(sseEv);
+      log(`${testName} sent update bar`);
+    });
+  });
+}
+function sendOneShotBadUpdate() {
+  const testName = "sendOneShotBadUpdate";
+  log(`--- ${testName}`);
+  return new Promise( (resolve, reject) => {
+    sock3.destroy();
+    sock3 = net.createConnection({port:PORT}, () => {
+      let done = false;
+      sock3.on('error', errMsg => log(`${testName} got: ${errMsg}`) );
+      sock3.on('data', data => {
+        data = data.toString();
+        log(`${testName} got: |${data}|`);
+        if (data.trim().endsWith('ok')) {
+          done = true;
+          return reject(`${testName} got OK!`);
+        } else {
+          done = true;
+          log(`${testName} got: ${data}`);
+          return resolve();
+        }
+      });
+      sock3.on('end', () => {
+	if (!done) {
+	  log(`${testName} got dropped! Dropping my end`);
+	  sock3.end();
+	  done = true;
+          resolve();
+	} else {
+	  log(`${testName} got dropped. I had already dropped my end`);
+        }
+      });
+      const sseEv = `event: oneShotCommand
+data: update bar
+data: C .c bar\n\n`;
+      log(`sending: |${sseEv}|`);
+      sock3.write(sseEv);
+      log(`${testName} sent update bar`);
     });
   });
 }
 
 function sendBadOneShotCommand() {
   log(`--- oneShotCommand sending bad command`);
-  sock3.destroy();
+  const testName = "sendBadOneShotCommand";
   return new Promise( (resolve, reject) => {
+    sock3.destroy();
     sock3 = net.createConnection({port:PORT}, () => {
       let done = false;
-      sse3 = new SSEmitter();
-      sse3.setWriteStream(sock3);
-      sse3.readFrom(sock3);
-      sock3.on('error', errMsg => log(`sendBadOneShotCommand got: ${errMsg}`) );
+      sock3.on('error', errMsg =>
+               log(`sendOneShotCommand got error: ${errMsg}`) );
+      sock3.on('data', data => {
+        data = data.toString();
+        // log(`sendOneShot got: |${data}|`);
+        if (data.trim().endsWith('ok')) {
+          done = true;
+          return reject(`got OK! expecting an error`);
+        } else {
+          done = true;
+          // log(`sendOneShot got error: ${data}`);
+          return resolve();
+        }
+      });
       sock3.on('end', () => {
 	if (!done) {
-	  log(`sendBadOneShotCommand got dropped. Dropping my end`);
+	  log(`${testName} got dropped! Dropping my end`);
 	  sock3.end();
 	  done = true;
-	  reject(`sendBadOneShotCommand got dropped!`);
-	}
-      });
-      sse3.on('SSEvent', ev => {
-	if (done) { return; }
-	if(ev.type === "replyError") {
-	  sock3.end();
-	  done = true;
-	  resolve();
-	}
+          resolve();
+	} else {
+	  log(`${testName} got dropped. I had already dropped my end`);
+        }
       });
       const mc = new Machine();
       const result = mc.interpret(["P .a", "P .b", "P .a/foo"]);
       err(result);
-      sse3.sendEvent({type: "oneShotCommand",
-		      data: `badcommand
-${mc.getSerialization().join('\n')}\n\n`});
-      log(`sent oneShotCommand with badcommand`);
+      const sseEv = `event: oneShotCommand
+data: something bar
+${mc.getSerialization().map( line => 'data: ' + line).join('\n')}\n\n`;
+      // log(`sending: |${sseEv}|`);
+      sock3.write(sseEv);
+      log(`${testName}: sent oneShotCommand with bad command`);
+    });
+  });
+}
+
+function sendBadOneShotProvide() {
+  log(`--- oneShotCommand bad provide`);
+  return new Promise( (resolve, reject) => {
+    sock3.destroy();
+    sock3 = net.createConnection({port:PORT}, () => {
+      let done = false;
+      sock3.on('error', errMsg =>
+               log(`sendOneShotCommand got error: ${errMsg}`) );
+      sock3.on('data', data => {
+        data = data.toString();
+        // log(`sendOneShot got: |${data}|`);
+        if (data.trim().endsWith('ok')) {
+          done = true;
+          return reject(`got OK! expecting an error`);
+        } else {
+          done = true;
+          // log(`sendOneShot got error: ${data}`);
+          return resolve();
+        }
+      });
+      sock3.on('end', () => {
+	if (!done) {
+	  log(`sendOneShotCommand got dropped! Dropping my end`);
+	  sock3.end();
+	  done = true;
+          resolve();
+	} else {
+	  log(`sendOneShotCommand got dropped. I had already dropped my end`);
+        }
+      });
+      const mc = new Machine();
+      const result = mc.interpret(["P .a", "P .b", "P .a/foo"]);
+      err(result);
+      const sseEv = `event: oneShotCommand
+data: provide bar\n\n`;
+      // log(`sending: |${sseEv}|`);
+      sock3.write(sseEv);
+      log(`sent oneShotCommand with bad provide bar payload`);
     });
   });
 }

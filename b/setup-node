@@ -1,0 +1,14 @@
+#!/bin/sh
+if [ "" = "$(which node)" ] ; then
+    echo "* Installing Node.js..."
+    curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash -
+    sudo apt-get install -y nodejs
+fi
+echo "* Existing Node.js version = $(node -v)"
+if node -v | grep -Eq '^v10' - ; then
+   echo "* Node.js v10 is OK."
+else
+    echo "* Installing Node.js..."
+    curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash -
+    sudo apt-get install -y nodejs
+fi
