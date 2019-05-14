@@ -132,4 +132,7 @@ function composePath(args) {
 module.exports = {
   tokenize: tokenize,
   printTokens: printTokens,
+  evaluate: evaluate,
+
+  composePath: composePath,
 };
