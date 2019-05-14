@@ -2,8 +2,12 @@
 
 const [log, err] = require('./logerr.js');
 const Queries = require('../queries.js');
+const Machine = require('../machine.js');
 
-const testString = "{{EXISTS some.words}}";
+const machine = new Machine();
+machine.interpret( [ 'P .a.b.c.d'] );
+
+const testString = "{{EXISTS .a.b.c.d }}";
 
 const result = Queries.tokenize(null, testString);
 
@@ -12,19 +16,4 @@ if (result[0]) {
   process.exit(1);
 }
 
-let str = '';
-result[1].forEach( tok => {
-  if (tok) {
-    if (tok.name === 'WORD') {
-      str += ` "${tok.value}"`;
-    } else if (tok.name === 'COMMAND') {
-      str += ` ${tok.value}`;
-    } else {
-      str += ' ' + tok.name;
-    }
-  } else {
-    str += ' (null)';
-  }
-});
-
-console.log(str);
+console.log(Queries.printTokens(result[1]));
