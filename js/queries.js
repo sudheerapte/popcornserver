@@ -107,7 +107,7 @@ function executeCommand(machine, cmd, args) {
       if (machine.isVariableParent(mPath)) {
         const curr = machine.getCurrentChildName(mPath);
         if (curr) {
-          return [ null, curr ];
+          return [ null, {name: 'WORD', value: curr} ];
         } else {
           return [`CURRENT: no current child`, null];
         }
@@ -128,7 +128,11 @@ function executeCommand(machine, cmd, args) {
     if (machine.exists(mPath)) {
       if (machine.isDataLeaf(mPath)) {
         const data = machine.getData(mPath);
-        return [ null, data ];
+        if (typeof data === 'string') {
+          return [ null, {name: 'OBJECT', value: data} ];
+        } else {
+          return [ null, {name: 'ARRAY', value: data} ];
+        }
       } else {
         return [`DATA: not a data leaf: ${mPath}`, null];
       }
