@@ -70,16 +70,17 @@ function printTokens(arr) {
 
 function evaluate(machine, tokenArray) {
   if (tokenArray.length === 0) {
-    return [ null ];
+    return [ null, null ];
   }
   if (tokenArray.length === 1) {
-    return [ tokenArray[0] ];
+    return [ null, tokenArray[0] ];
   }
   if (tokenArray[0].name === 'BEGIN' && tokenArray[tokenArray.length-1] === 'END') {
     return evaluate(machine, tokenArray.slice(1, tokenArray.length-1));
   }
   if (tokenArray[0].name === 'COMMAND') {
-    return executeCommand(machine, tokenArray[0].value, tokenArray.slice(1));
+    const result = executeCommand(machine, tokenArray[0].value, tokenArray.slice(1));
+    return result;
   }
 }
 
@@ -88,11 +89,33 @@ function executeCommand(machine, cmd, args) {
     const mPath = composePath(args);
     if (! mPath) {
       return [ `bad syntax for path: ${printTokens(args)}`, null ];
-      if (machine.containsPath(mPath)) {
-        return [ null, 1 ];
+    }
+    if (machine.exists(mPath)) {
+      return [ null, 1 ];
+    } else {
+      return [ null, 0 ];
+    }
+  } else if (cmd === 'CURRENT') {
+    if (args.length < 1) {
+      return [`CURRENT needs at least 1 arg`, null];
+    }
+    const mPath = composePath(args);
+    if (! mPath) {
+      return [ `CURRENT: bad syntax for path: ${printTokens(args)}`, null ];
+    }
+    if (machine.exists(mPath)) {
+      if (machine.isVariableParent(mPath)) {
+        const curr = machine.getCurrentChildName(mPath);
+        if (curr) {
+          return [ null, curr ];
+        } else {
+          return [`CURRENT: no current child`, null];
+        }
       } else {
-        return [ null, 0 ];
+        return [`CURRENT: not a variable parent`, null];
       }
+    } else {
+      return [ `CURRENT: no such path`, null ];
     }
   }
 }
