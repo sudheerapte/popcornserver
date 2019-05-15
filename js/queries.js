@@ -115,7 +115,25 @@ function executeCommand(machine, cmd, args) {
         return [`CURRENT: not a variable parent`, null];
       }
     } else {
-      return [ `CURRENT: no such path`, null ];
+      return [ `CURRENT: no such path: ${mPath}`, null ];
+    }
+  } else if (cmd === 'DATA') {
+    if (args.length < 1) {
+      return [`DATA needs at least 1 arg`, null];
+    }
+    const mPath = composePath(args);
+    if (! mPath) {
+      return [ `DATA: bad syntax for path: ${printTokens(args)}`, null ];
+    }
+    if (machine.exists(mPath)) {
+      if (machine.isDataLeaf(mPath)) {
+        const data = machine.getData(mPath);
+        return [ null, data ];
+      } else {
+        return [`DATA: not a data leaf: ${mPath}`, null];
+      }
+    } else {
+      return [ `DATA: no such path: ${mPath}`, null ];
     }
   }
 }
