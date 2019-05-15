@@ -6,7 +6,9 @@ const Machine = require('./machine.js');
    @function(tokenize) - parse string and return [errMsg, tokenArray ]
 */
 
-const TOKENS = [
+// RULES - parsing rules for different types of tokens
+
+const RULES = [
   { re: /^{{/,   type: 'BEGIN',   makeToken: true, useValue: false },
   { re: /^}}/,   type: 'END',     makeToken: true, useValue: false },
   { re: /^\s+/,  type: 'SPACES',  makeToken: false, useValue: false },
@@ -27,7 +29,7 @@ function tokenize(machine, str) {
     const s = str.slice(i);
     let m;
     let found = false;
-    TOKENS.forEach( rec => {
+    RULES.forEach( rec => {
       if (found) { return; }
       m = s.match(rec.re);
       if (m) {
@@ -47,21 +49,36 @@ function tokenize(machine, str) {
 }
 
 function printTokens(arr) {
-  let str = '';
-  arr.forEach( tok => {
+  if (! arr) { return " (null)"; }
+
+  if (arr.hasOwnProperty('length')) {
+    let str = '';
+    arr.forEach( (tok,i) => {
+      if (tok.name === 'STRING' && i > 0) {
+        str += "|";
+      }
+      str += printTok(tok);
+    });
+    return str;
+  } else {
+    return printTok(arr);
+  }
+
+  function printTok(tok) {
     if (tok) {
       if (tok.name === 'WORD') {
-        str += ` "${tok.value}"`;
+        return ` "${tok.value}"`;
       } else if (tok.name === 'COMMAND') {
-        str += ` ${tok.value}`;
+        return ` ${tok.value}`;
+      } else if (tok.name === 'STRING') {
+        return tok.value;
       } else {
-        str += ' ' + tok.name;
+        return ' ' + tok.name;
       }
     } else {
-      str += ' (null)';
+      return ' (null)';
     }
-  });
-  return str;
+  }
 }
 
 /**
@@ -91,9 +108,9 @@ function executeCommand(machine, cmd, args) {
       return [ `bad syntax for path: ${printTokens(args)}`, null ];
     }
     if (machine.exists(mPath)) {
-      return [ null, 1 ];
+      return [ null, {name: 'NUMBER', value: "1"} ];
     } else {
-      return [ null, 0 ];
+      return [ null, {name: 'NUMBER', value: "0"}];
     }
   } else if (cmd === 'CURRENT') {
     if (args.length < 1) {
@@ -129,9 +146,11 @@ function executeCommand(machine, cmd, args) {
       if (machine.isDataLeaf(mPath)) {
         const data = machine.getData(mPath);
         if (typeof data === 'string') {
-          return [ null, {name: 'OBJECT', value: data} ];
+          return [ null, {name: 'STRING', value: data} ];
         } else {
-          return [ null, {name: 'ARRAY', value: data} ];
+          return [ null, data.map( d => {
+            return {name: 'STRING', value: d};
+          }) ];
         }
       } else {
         return [`DATA: not a data leaf: ${mPath}`, null];
