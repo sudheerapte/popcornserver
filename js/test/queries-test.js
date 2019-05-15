@@ -4,7 +4,9 @@ const [log, err] = require('./logerr.js');
 const Queries = require('../queries.js');
 const Machine = require('../machine.js');
 
-const machine = new Machine();
+let machine;
+
+machine = new Machine();
 machine.interpret( [ 'P .a.b.c.d'] );
 
 let result;
@@ -32,4 +34,16 @@ result = Queries.evaluate(machine, result[1]);
 err(result[0]);
 if (result[1] !== 1) {
   err(`bad result: ${result[1]}`);
+}
+
+log(`------ test 4: CURRENT .a`);
+machine = new Machine();
+result = machine.interpret(['P .a/foo', 'P .a/bar']);
+err(result);
+result = Queries.tokenize(machine, 'CURRENT .a');
+err(result[0]);
+result = Queries.evaluate(machine, result[1]);
+err(result[0]);
+if (result[1] !== 'foo') {
+  err(`bad result: ${result[1]} - should have been "foo"`);
 }
