@@ -138,6 +138,7 @@ class Server extends EventEmitter {
   getBootJs(req, res, cb) {
     const machineJsPath = path.join(__dirname, "machine.js");
     const bootJsPath = path.join(__dirname, "boot.js");
+    const queriesJsPath = path.join(__dirname, "queries.js");
     res.writeHead(200, {'Content-Type': 'application/javascript'});
     res.write("var module = {};\n");
     fileUtils.streamFile(machineJsPath, res, (errMsg) => {
@@ -145,12 +146,20 @@ class Server extends EventEmitter {
 	doError(res, `machine.js: ${errMsg}`);
 	cb();
       } else {
-	fileUtils.streamFile(bootJsPath, res, (errMsg) => {
+        res.write(`var machine_module = module;\nvar module={};\n`);
+	fileUtils.streamFile(queriesJsPath, res, (errMsg) => {
 	  if (errMsg) {
-	    doError(res, `boot.js: ${errMsg}`);
+	    doError(res, `queries.js: ${errMsg}`);
 	    cb();
 	  } else {
-	    cb();
+            fileUtils.streamFile(bootJsPath, res, (errMsg) => {
+              if (errMsg) {
+                doError(res, `boot.js: ${errMsg}`);
+                cb();
+              } else {
+	        cb();
+              }
+            });
 	  }
 	});
       }

@@ -4,13 +4,13 @@ let P = {          // minimize pollution of global namespace
   machine: "",     // name of machine
   mc: new Machine, // filled in by message handlers
   ws: null,        // websocket assigned by upgradeToWebsocket
+  queries: new Queries,
 };
 
 function boot() {
   upgradeToWebsocket()
     .then( doFirstMessage ) // adds listener handleMessage() and unhides body
     .then( () => {
-      readInitScript();
       console.log(`ready`);
     })
     .catch( errMsg => console.log(errMsg) );
@@ -41,6 +41,31 @@ function readInitScript() {
   } else {
     console.log(`initScript not found`);
   }
+}
+
+function generateXY() {
+  const nodeList = document.querySelectorAll('svg use');
+  console.log(`generateXY: nodeList length = ${nodeList.length}`);
+  nodeList.forEach( useNode => {
+    [ 'x', 'y' ].forEach( coord => {
+      const formula = useNode.getAttribute(`data-${coord}`);
+      if (formula) {
+        console.log(`data-${coord}="${formula}"`);
+        let result = P.queries.tokenize(P.mc, formula);
+        if (result[0]) {
+          console.log(`tokenize failure: ${result[0]}`);
+        } else {
+          let eResult = P.queries.evaluate(P.mc, result[1]);
+          if (eResult[0]) {
+            console.log(`eval failure: ${eResult[0]}`);
+          } else {
+            console.log(`eval=${JSON.stringify(eResult[1])}. Using value.`);
+            useNode.setAttribute(coord, eResult[1].value);
+          }
+        }
+      }
+    });
+  });
 }
 
 function upgradeToWebsocket() {
@@ -103,6 +128,7 @@ function doFirstMessage() {
 	  }
 	  const result = P.mc.interpret(arr.slice(1));
 	  if (result) { return rejectThis(()=>reject(result)); }
+          readInitScript();
           reflectMachine();
           addClickChgHandlers();
           addClickCmdHandlers();
@@ -111,6 +137,10 @@ function doFirstMessage() {
 	}
       } else if (data.match(/no\ssuch\smachine/)) {
         console.log(`No app--- proceeding with assets alone`);
+        readInitScript();
+        reflectMachine();
+        addClickChgHandlers();
+        addClickCmdHandlers();
       } else {
         console.log(`first message = ${data}`);
       }
@@ -161,12 +191,13 @@ function handleMessage(ev) { // handle subsequent messages
 }
 
 /**
-   @function(reflectMachine) - hide and unhide elements based on machine
+   @function(reflectMachine) - generate, unhide elements based on machine
 */
 let unknownPaths = new Map(); // suppress repeated "no such path" errors
 
 function reflectMachine() {
   if (! P.mc) { return; }
+  generateXY();
   const DM = "data-alt";
   const machineElems = document.querySelectorAll(`[${DM}]`);
   //  console.log(`machineElems = ${machineElems.length} items`);
