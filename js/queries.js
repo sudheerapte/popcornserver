@@ -86,12 +86,38 @@ function printTokens(arr) {
 */
 
 function evaluate(machine, tokenArray) {
+  log(`evaluate |${printTokens(tokenArray)}|`);
   if (tokenArray.length === 0) {
     return [ null, null ];
   }
   if (tokenArray.length === 1) {
     return [ null, tokenArray[0] ];
   }
+  let i = tokenArray.findIndex( tok => tok.name === 'BEGIN' );
+  if (i >= 0) {
+    let j = tokenArray.slice(i).findIndex( tok => tok.name === 'END' );
+    if (j >= 0) {
+      let subEval = evaluate(machine, tokenArray.slice(i+1, i+j));
+      log(`subEval = ${JSON.stringify(subEval)}`);
+      if (subEval[0]) { // error
+        return subEval;
+      } else {
+        let newArray = tokenArray.slice(0, i);
+        // subEval could be single token or an array
+        if (subEval[1].hasOwnProperty('length')) {
+          subEval[1].forEach( tok => newArray.push(tok) );
+        } else {
+          newArray.push(subEval[1]);
+        }
+        tokenArray.slice(i+j+1, tokenArray.length)
+          .forEach( tok => newArray.push(tok));
+        return evaluate(machine, newArray);
+      }
+    } else {
+      return [`BEGIN without END`, null];
+    }
+  }
+
   if (tokenArray[0].name === 'BEGIN' && tokenArray[tokenArray.length-1] === 'END') {
     return evaluate(machine, tokenArray.slice(1, tokenArray.length-1));
   }
@@ -192,6 +218,12 @@ function composePath(args) {
   }
   return str;
 }
+
+// create logging function log(str). Copy and paste these lines.
+const logger = {};
+require('./debug-log.js')
+  .registerLogger('queries', logger);
+function log(str) { logger.log(str); }
 
 module.exports = {
   tokenize: tokenize,

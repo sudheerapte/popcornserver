@@ -9,7 +9,10 @@ let P = {          // minimize pollution of global namespace
 function boot() {
   upgradeToWebsocket()
     .then( doFirstMessage ) // adds listener handleMessage() and unhides body
-    .then( () => console.log(`ready`))
+    .then( () => {
+      readInitScript();
+      console.log(`ready`);
+    })
     .catch( errMsg => console.log(errMsg) );
 }
 
@@ -20,6 +23,23 @@ function unhideBody() {
     bodyElem.removeAttribute("hidden");
   } else {
     console.log(`failed to find bodyElem!`);
+  }
+}
+
+function readInitScript() {
+  const initScript = document.querySelector('script#init');
+  if (initScript) {
+    const str = initScript.textContent;
+    const lines = str.split(/\n|\r\n/)
+          .filter(line => ! line.match(/^\s*$/))
+          .map(line => line.trim());
+    console.log(`init script = ${lines.length} lines`);
+    const result = P.mc.interpret(lines);
+    if (result) {
+      console.log(`interpret result = ${result}`);
+    }
+  } else {
+    console.log(`initScript not found`);
   }
 }
 
@@ -89,10 +109,12 @@ function doFirstMessage() {
           // console.log(`added all the handlers`);
 	  return resolveThis(resolve);
 	}
+      } else if (data.match(/no\ssuch\smachine/)) {
+        console.log(`No app--- proceeding with assets alone`);
       } else {
         console.log(`first message = ${data}`);
-        return resolveThis(resolve);
       }
+      return resolveThis(resolve);
     }
     // resolveThis() and rejectThis() set up eventListeners first,
     // and also unhide the body.

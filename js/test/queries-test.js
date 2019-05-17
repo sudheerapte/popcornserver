@@ -88,7 +88,6 @@ result = machine.interpret(['P .a', 'D .a fu-manchu']);
 err(result);
 result = Queries.evaluate(machine, tokens);
 err(result[0]);
-log(`  output = |${Queries.printTokens(result[1])}|`);
 if (result[1].value !== 'fu-manchu') {
   err(`bad result: ${result[1].value} - should have been "fu-manchu"`);
 }
@@ -96,7 +95,6 @@ result = machine.interpret(['D .a petrie']);
 err(result);
 result = Queries.evaluate(machine, tokens);
 err(result[0]);
-log(`  output = |${Queries.printTokens(result[1])}|`);
 if (result[1].value !== 'petrie') {
   err(`bad result: ${result[1].value} - should have been "petrie"`);
 }
@@ -104,7 +102,6 @@ result = machine.interpret(['A .a karamaneh']);
 err(result);
 result = Queries.evaluate(machine, tokens);
 err(result[0]);
-log(`  output = |${Queries.printTokens(result[1])}|`);
 if (typeof result[1] !== 'object') {
   err(`bad result: ${result[1]} - should have been an array`);
 }
@@ -116,4 +113,34 @@ if (result[1][0].value !== 'petrie') {
 }
 if (result[1][1].value !== 'karamaneh') {
   err(`expected "karamaneh", got ${result[1][1].value}`);
+}
+
+const input = "DATA .loc.{{CURRENT .fly1.pos}}.x";
+log(`---- test 6: ${input}`);
+machine = new Machine();
+result = machine.interpret([
+  'P .fly1.pos/a',
+  'P .loc.a.x',
+  'D .loc.a.x 500']);
+err(result);
+let tResult, eResult;
+tResult = Queries.tokenize(machine, input);
+err(tResult[0]);
+tokens = tResult[1];
+eResult = Queries.evaluate(machine, tokens);
+err(eResult[0]);
+if (eResult[1].name !== 'STRING') {
+  err(`expecting STRING; got ${eResult[1].name}`);
+}
+if (eResult[1].value !== '500') {
+  err(`expecting 500; got ${eResult[1].value}`);
+}
+
+log(`---- test 7: missing END in same input`);
+tResult = Queries.tokenize(machine, input.slice(0,-4));
+err(tResult[0]);
+tokens = tResult[1];
+eResult = Queries.evaluate(machine, tokens);
+if (! eResult[0].match(/BEGIN\swithout\sEND/)) {
+  err(`expecting BEGIN without END error; got ${eResult[0]}`);
 }
