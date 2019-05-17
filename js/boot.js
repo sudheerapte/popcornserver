@@ -89,6 +89,9 @@ function doFirstMessage() {
           // console.log(`added all the handlers`);
 	  return resolveThis(resolve);
 	}
+      } else {
+        console.log(`first message = ${data}`);
+        return resolveThis(resolve);
       }
     }
     // resolveThis() and rejectThis() set up eventListeners first,
