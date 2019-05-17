@@ -253,7 +253,7 @@ function sendIndexWithReplacement(req, res, machine) {
                                   `<head>
     <base href="http://${origin}/${machine}/">`);
       const ic2 = ic1.replace(/\<\s*\/\s*head\s*\>/,
-                              `    <script src="boot.js"></script>`);
+                              `    <script src="boot.js"></script></head>`);
       const ic3 = ic2.replace(/\<\s*body\s*/,
                               `<body hidden="" `);
       res.write(ic3);
