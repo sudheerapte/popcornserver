@@ -33,39 +33,46 @@ function readInitScript() {
     const lines = str.split(/\n|\r\n/)
           .filter(line => ! line.match(/^\s*$/))
           .map(line => line.trim());
-    console.log(`init script = ${lines.length} lines`);
     const result = P.mc.interpret(lines);
     if (result) {
-      console.log(`interpret result = ${result}`);
+      console.log(`init script: ${result}`);
     }
   } else {
-    console.log(`initScript not found`);
+    console.log(`init script not found; continuing`);
   }
 }
 
 function generateXY() {
-  const nodeList = document.querySelectorAll('svg use');
-  console.log(`generateXY: nodeList length = ${nodeList.length}`);
+  const nodeList = document.querySelectorAll(`svg use`);
+  let numFormulas = 0;
   nodeList.forEach( useNode => {
     [ 'x', 'y' ].forEach( coord => {
       const formula = useNode.getAttribute(`data-${coord}`);
       if (formula) {
-        console.log(`data-${coord}="${formula}"`);
+        numFormulas++;
         let result = P.queries.tokenize(P.mc, formula);
         if (result[0]) {
-          console.log(`tokenize failure: ${result[0]}`);
+          console.log(`use formula ${numFormulas}:
+     ${formula}:
+     ${result[0]}`);
         } else {
           let eResult = P.queries.evaluate(P.mc, result[1]);
           if (eResult[0]) {
-            console.log(`eval failure: ${eResult[0]}`);
           } else {
-            console.log(`eval=${JSON.stringify(eResult[1])}. Using value.`);
-            useNode.setAttribute(coord, eResult[1].value);
+            const tok = eResult[1];
+            if (tok && tok.hasOwnProperty("length")) {
+              console.log(`use formula ${numFormulas}:
+     ${formula}:
+     array result! Expecting ${coord} value. Ignoring.`);
+            } else {
+              useNode.setAttribute(coord, eResult[1].value);
+            }
           }
         }
       }
     });
   });
+  console.log(`processed ${numFormulas} formulas`);
 }
 
 function upgradeToWebsocket() {
@@ -285,6 +292,7 @@ function addClickChgHandlers() {
 */
 function addClickCmdHandlers() {
   if (! P.mc) { return; }
+  const mcCopy = P.mc.clone(); // create a copy to try the transactions on
   if (typeof mcCopy === 'string') {
     console.log(`failed to clone: ${mcCopy}`);
     return;
