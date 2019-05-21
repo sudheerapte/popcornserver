@@ -153,3 +153,18 @@ tResult = queries.tokenize(machine, input.slice(0,-4));
 err(tResult[0]);
 tokens = tResult[1];
 eResult = queries.evaluate(machine, tokens);
+
+log(`---- test 9: scanString`);
+function checkScan(input, output) {
+  let result = queries.scanString(input);
+  if (result[0] !== output[0] || result[1] !== output[1]) {
+    err(`input |${input}| should produce |${output}|, got |${result}|`);
+  }
+}
+
+checkScan("foo bar", [-1, -1]);
+checkScan("foo }}bar}}", [ -1, 4]);
+checkScan("foo {{bar", [ 4, -1 ]);
+checkScan("foo {{bar}}", [ 4, 9 ]);
+
+

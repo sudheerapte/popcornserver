@@ -2,6 +2,47 @@
 
 class Queries {
 
+  // scanString: return [-1 -1] if no BEGIN or END.
+  // return [B, E] where E = first END and B = last BEGIN before END.
+  // return [-2, 0] if END was found before BEGIN.
+  // return [-2, -2] if BEGIN was found but no END was found.
+  scanString(str) {
+    const BEGIN=/(?<!\\){{/; const END=/(?<!\\)}}/;
+    const EITHER=/(?<!\\){{|(?<!\\)}}/g;
+    const m = str.match(EITHER);
+    if (!m) { return [-1, -1]; }
+    let foundEnd = -1;
+    let foundBegin = -1;
+    let offset = 0; // starting point of remainingStr
+    for (let i=0; i<m.length; i++) {
+      if (m[i].match(BEGIN)) {
+        const remainingStr = str.slice(offset);
+        const index = remainingStr.search(BEGIN);
+        if (index < 0) {
+          throw(new Error(`internal error! impossible`));
+        }
+        foundBegin = index+offset;
+        offset = foundBegin;
+      } else {
+        const remainingStr = str.slice(offset);
+        const index = remainingStr.search(END);
+        if (index < 0) {
+          throw(new Error(`internal error! impossible`));
+        }
+        foundEnd = index+offset;
+        offset = foundEnd;
+        break;
+      }
+    }
+    if (foundBegin < 0) {
+      return [-1, foundEnd];
+    }
+    if (foundEnd < 0) {
+      return [foundBegin, -1];
+    }
+    return [ foundBegin, foundEnd ];
+  }
+
   tokenize(machine, str) {
     // RULES - parsing rules for different types of tokens
     const RULES = [
