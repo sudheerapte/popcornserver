@@ -55,18 +55,40 @@ class Tokenizer {
 
      If there is no error, then call the function 'f' with the
      token array parsed from the BEGIN-END pair. The function 'f' should
-     return [ errString, outputString ]. If it works, then outputString 
-     will be substituted in the original string to form the remainderString.
+     return [ errString, tokenlist ]. If it works, then the token
+     output will be substituted in the original string to form
+     the remainderString.
 
      If no function 'f' is passed in, then the remainderString will
      be the tokens printed into string form.
+
+     If the string might have more expressions to be evaluated, then
+     a third element is returned as "true".
+
   */
   processOnce(str, f) {
+    let result;
     let [ b, e ] = this.scanString(str);
-    console.log(`                       [${b}, ${e}]`);
+    if (b < 0 && e < 0) {  // Simple case -- evaluate entire string
+      result = this.tokenize(str);
+      if (result[0]) {
+        return [ result[0], null ];
+      }
+      const tokens = result[1];
+      if (f) {
+        const pResult = f(tokens);
+        if (pResult[0]) {
+          return [ pResult[0], this.printTokens(tokens) ];
+        } else {
+          return [ null, this.printTokens(pResult[1])];
+        }
+      } else {
+        return [ null, this.printTokens(tokens) ];
+      }
+    }
     if (b < 0) { return ["No BEGIN found", null]; }
     if (e < 0) { return ["No END found", null]; }
-    const result = this.tokenize(str.slice(b+2, e));
+    result = this.tokenize(str.slice(b+2, e));
     if (result[0]) {
       return [ result[0], null ];
     }
@@ -76,7 +98,11 @@ class Tokenizer {
         return [ pResult[0], result[1] ];
       } else {
         return [ null, 
-                 str.slice(0,b) + pResult[1] + str.slice(e,str.length) ];
+                 str.slice(0,b) +
+                 this.printTokens(pResult[1]) +
+                 str.slice(e+2,str.length),
+                 true
+               ];
       }
     } else {
       return [ null, this.printTokens(result[1]) ];
@@ -90,8 +116,8 @@ class Tokenizer {
       { re: /^}}/,   type: 'END',     makeToken: true, useValue: false },
       { re: /^\s+/,  type: 'SPACES',  makeToken: false, useValue: false },
       { re: /^[A-Z]+/, type: 'COMMAND', makeToken: true, useValue: true },
-      { re: /^[a-z]+[a-z0-9]*/,type: 'WORD',makeToken: true,useValue: true },
-      { re: /^[0-9]+/, type: 'NUMBER', makeToken: true, useValue: true },
+      { re: /^[a-z]+[a-z0-9-]*/,type: 'WORD',makeToken: true,useValue: true },
+      { re: /^\d+/, type: 'NUMBER', makeToken: true, useValue: true },
       { re: /^\./,    type: 'DOT',     makeToken: true, useValue: false },
       { re: /^\//,    type: 'SLASH',   makeToken: true, useValue: false },
     ];
