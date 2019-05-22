@@ -37,8 +37,10 @@ class Tokenizer {
      return [B, -1] if BEGIN was found but no END was found.
   */
   scanString(str) {
-    const BEGIN=/(?<!\\){{/; const END=/(?<!\\)}}/;
-    const EITHER=/(?<!\\){{|(?<!\\)}}/g;
+    // const BEGIN=/(?<!\\){{/; const END=/(?<!\\)}}/;
+    // const EITHER=/(?<!\\){{|(?<!\\)}}/g;
+    const BEGIN=/{{/; const END=/}}/;
+    const EITHER=/{{|}}/g;
     const m = str.match(EITHER);
     if (!m) { return [-1, -1]; }
     // console.log(`|${str}| ${JSON.stringify(m)}`);
@@ -284,6 +286,6 @@ class Tokenizer {
   }
 }
 
-Tokenizer.SPECIALCHAR = /[./+=()*&%$#@!~:;,\[\]\^{}]/;
+Tokenizer.SPECIALCHAR = /[./+=()*&%$#@!~:;,\[\]\^\{\}]/;
 
 module.exports = new Tokenizer;

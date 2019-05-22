@@ -2,7 +2,6 @@
 
 const [log, err] = require('./logerr.js');
 const fileUtils = require('../file-utils.js');
-const registry = require('../registry.js');
 const Pipe = require('stream').PassThrough;
 const path = require('path');
 

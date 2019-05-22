@@ -139,31 +139,25 @@ class Server extends EventEmitter {
     const machineJsPath = path.join(__dirname, "machine.js");
     const bootJsPath = path.join(__dirname, "boot.js");
     const queriesJsPath = path.join(__dirname, "queries.js");
+    const tokenizerJsPath = path.join(__dirname, "tokenizer.js");
     res.writeHead(200, {'Content-Type': 'application/javascript'});
-    res.write("var module = {};\n");
-    fileUtils.streamFile(machineJsPath, res, (errMsg) => {
-      if (errMsg) {
-	doError(res, `machine.js: ${errMsg}`);
-	cb();
-      } else {
-        res.write(`var machine_module = module;\nvar module={};\n`);
-	fileUtils.streamFile(queriesJsPath, res, (errMsg) => {
-	  if (errMsg) {
-	    doError(res, `queries.js: ${errMsg}`);
-	    cb();
-	  } else {
-            fileUtils.streamFile(bootJsPath, res, (errMsg) => {
-              if (errMsg) {
-                doError(res, `boot.js: ${errMsg}`);
-                cb();
-              } else {
-	        cb();
-              }
-            });
-	  }
+    res.write("'use strict';\nvar module = {};\n");
+    fileUtils.streamJsModuleFP('machine.js', res)
+      .then( () => {
+        return fileUtils.streamJsModuleFP('queries.js', res);
+      })
+      .then( () => {
+        return fileUtils.streamJsModuleFP('tokenizer.js', res);
+      })
+      .then( () => {
+        return fileUtils.streamJsModuleFP('boot.js', res);
+      })
+      .then( cb )
+      .catch(
+        (errMsg) => {
+          doError(res, `boot.js: ${errMsg}`);
+          cb();
 	});
-      }
-    });
   }
 
   handleUpgrade(req, socket, head) {

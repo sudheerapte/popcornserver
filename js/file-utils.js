@@ -51,7 +51,25 @@ class FileUtils {
         }
       });
     });
-    log(`streamFP: returned a Promise`);
+    log(`streamFP(${filePath}): returned a Promise`);
+  }
+
+  // streamJsModuleFP: resolves the name to a file under this file's
+  // directory, and automatically sets up a "module" variable so that
+  // the "export" in the module has no effect.
+  streamJsModuleFP(fileName, outStream) { // returns a Promise
+    const filePath = path.join(__dirname, fileName);
+    return new Promise( (resolve, reject) => {
+      outStream.write('\nmodule = {};\n');
+      this.streamFile(filePath, outStream, eMsg => {
+        if (eMsg) {
+          return reject(eMsg);
+        } else {
+          return resolve();
+        }
+      });
+    });
+    log(`streamJsModuleFP(${filePath}): returned a Promise`);
   }
 }
 

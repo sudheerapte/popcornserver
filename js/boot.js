@@ -59,13 +59,13 @@ function generateXY() {
      ${formula}:
      ${result[0]}`);
         } else {
-          const output = eResult[1];
-          if (! output || ! output.match(/[0-9]+/)) {
+          const output = result[1];
+          if (! output || ! output.match(/^"/) || ! output.match(/[0-9]+/)) {
             console.log(`use formula ${numFormulas}:
      ${formula}:
      Non-numeric result |${output}|! Expecting ${coord} value. Ignoring.`);
           } else {
-            useNode.setAttribute(coord, output.trim());
+            useNode.setAttribute(coord, output.trim().slice(1));
           }
         }
       }
