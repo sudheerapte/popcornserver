@@ -5,6 +5,7 @@ let P = {          // minimize pollution of global namespace
   mc: new Machine, // filled in by message handlers
   ws: null,        // websocket assigned by upgradeToWebsocket
   queries: new Queries,
+  tokenizer: new Tokenizer,
 };
 
 function boot() {
@@ -44,29 +45,27 @@ function readInitScript() {
 
 function generateXY() {
   const nodeList = document.querySelectorAll(`svg use`);
+  const evalFunc =  P.queries.getEvalFunc(P.mc);
+
   let numFormulas = 0;
   nodeList.forEach( useNode => {
     [ 'x', 'y' ].forEach( coord => {
       const formula = useNode.getAttribute(`data-${coord}`);
       if (formula) {
         numFormulas++;
-        let result = P.queries.tokenize(P.mc, formula);
+        let result = P.tokenizer.process(formula, evalFunc);
         if (result[0]) {
           console.log(`use formula ${numFormulas}:
      ${formula}:
      ${result[0]}`);
         } else {
-          let eResult = P.queries.evaluate(P.mc, result[1]);
-          if (eResult[0]) {
-          } else {
-            const tok = eResult[1];
-            if (tok && tok.hasOwnProperty("length")) {
-              console.log(`use formula ${numFormulas}:
+          const output = eResult[1];
+          if (! output || ! output.match(/[0-9]+/)) {
+            console.log(`use formula ${numFormulas}:
      ${formula}:
-     array result! Expecting ${coord} value. Ignoring.`);
-            } else {
-              useNode.setAttribute(coord, eResult[1].value);
-            }
+     Non-numeric result |${output}|! Expecting ${coord} value. Ignoring.`);
+          } else {
+            useNode.setAttribute(coord, output.trim());
           }
         }
       }

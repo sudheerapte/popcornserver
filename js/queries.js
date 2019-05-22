@@ -1,6 +1,13 @@
 "use strict";
 
+// To use this class, you need the class Machine.
+// We avoid doing a "require" here to make this file UI-ready.
+
 class Queries {
+
+  // getEvalFunc - return a function suitable to pass in to
+  // Tokenizer.process().
+
   getEvalFunc(machine) {
     return (tokens => {
       const eResult = this.evaluate(machine, tokens);

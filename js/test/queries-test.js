@@ -26,20 +26,25 @@ err(result);
 const evalFunc =  queries.getEvalFunc(machine);
 
 function checkProcess(input, output) {
-  let tResult = [ null, input];
-  let more = true;
-  while (more) {
-    const str = tResult[1];
-    log(` processing |${str}|`);
-    tResult = t.processOnce(str, evalFunc);
-    err(tResult[0]);
-    log(`             |${tResult[1]}|`);
-    more = tResult[2];
-  }
+  log(`   process |${input}|`);
+  let tResult;
+  tResult = t.process(input, evalFunc);
+  err(tResult[0]);
   if (tResult[1] !== output) {
     err(`expected |${output}|, but got |${tResult[1]}|`);
   }
 }
 
 checkProcess("DATA .loc.{{CURRENT .fly1.pos}}.x", "\"500");
-    
+checkProcess("CURRENT .fly1.pos", " a");
+
+result = machine.interpret(["D .loc.a.x \"CURRENT .fly1.pos"]);
+err(result);
+
+checkProcess("DATA .loc.a.x", "\"\"CURRENT .fly1.pos");
+
+result = machine.interpret(["D .loc.a.x CURRENT .fly1.pos"]);
+err(result);
+checkProcess("DATA .loc.a.x", "\"CURRENT .fly1.pos");
+
+

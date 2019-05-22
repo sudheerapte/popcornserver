@@ -1,11 +1,41 @@
 "use strict";
 
+/**
+   Tokens are of these six types: BEGIN END COMMAND WORD STRING, plus
+   one type each for the special characters ./+=()*&%$#@!~:;,[]^{}
+     
+   They are represented as objects: {name: 'COMMAND', value: 'CURRENT'}
+
+   The STRING token is treated specially. If the input string
+   contains any character not recognized as a token, then the entire
+   input string from that character on is put into a STRING token.
+   
+   WORD is a popcorn machine path segment, [a-z][a-z0-9-]*.
+   COMMAND is any all-capitals word. Their value fields have the
+   actual string value.
+
+   Spaces are always ignored and can be used to separate adjacent
+   tokens that might otherwise be merged (really, only WORD WORD or
+   COMMAND COMMAND).
+
+   BEGIN and END are {{ and }} respectively. (You can escape them
+   with a backslash if you want to hide them).
+
+   DOT and SLASH are the single-character path components.
+*/
+
 class Tokenizer {
-  // scanString: scan the string to see if it contains BEGIN/END escapes.
-  // return [-1 -1] if no BEGIN or END.
-  // return [B, E] where E = first END and B = last BEGIN before END.
-  // return [-1, E] if END was found before BEGIN
-  // return [B, -1] if BEGIN was found but no END was found.
+  /**
+     scanString - scan the string to find BEGIN/END escapes.
+  
+     This function does not tokenize the input. It can be used to
+     peer inside arbitrary strings to find {{ and }}.
+
+     return [-1 -1] if no BEGIN or END.
+     return [B, E] where E = first END and B = last BEGIN before it.
+     return [-1, E] if END was found before BEGIN
+     return [B, -1] if BEGIN was found but no END was found.
+  */
   scanString(str) {
     const BEGIN=/(?<!\\){{/; const END=/(?<!\\)}}/;
     const EITHER=/(?<!\\){{|(?<!\\)}}/g;
@@ -42,6 +72,31 @@ class Tokenizer {
       return [foundBegin, -1];
     }
     return [ foundBegin, foundEnd ];
+  }
+
+  /**
+     process - process the given string, expanding macros inside-first.
+     Returns [errMsg, newString].
+
+     The function "f" should take an array of tokens and produce
+     another array of tokens. The output of "f" should be [errMsg, tokList],
+     where "errMsg" is null if no errors.
+
+  */
+  process(input, f) {
+    let tResult = [ null, input];
+    let more = true;
+    let loopsDone = 10; // catch infinite recursion
+    while (more) {
+      const str = tResult[1];
+      tResult = this.processOnce(str, f);
+      if (tResult[0]) {
+        return [ tResult[0], str ];
+      }
+      more = tResult[2];
+      if (++loopsDone < 0) { break; }
+    }
+    return [null, tResult[1]];
   }
 
   /**
@@ -109,6 +164,20 @@ class Tokenizer {
     }
   }
 
+  /**
+     tokenize - create an array of tokens from an input string
+
+     As a special rule, if the input string starts with a quote
+     character '"', then the rest of the input string is put into a
+     single STRING token.
+
+     See the scanString function above for how to terminate input
+     strings in the middle.
+
+     See the printTokens function below; it can take an array of
+     tokens and create a string that, when read back by tokenize(),
+     forms the original array.
+   */
   tokenize(str) {
     // RULES - parsing rules for different types of tokens
     const RULES = [
@@ -117,7 +186,6 @@ class Tokenizer {
       { re: /^\s+/,  type: 'SPACES',  makeToken: false, useValue: false },
       { re: /^[A-Z]+/, type: 'COMMAND', makeToken: true, useValue: true },
       { re: /^[a-z]+[a-z0-9-]*/,type: 'WORD',makeToken: true,useValue: true },
-      { re: /^\d+/, type: 'NUMBER', makeToken: true, useValue: true },
       { re: /^\./,    type: 'DOT',     makeToken: true, useValue: false },
       { re: /^\//,    type: 'SLASH',   makeToken: true, useValue: false },
     ];
@@ -125,8 +193,11 @@ class Tokenizer {
     if (str === null || typeof str === 'undefined') {
       return [ "string is null", arr ];
     }
-    // special rule for forcing the whole string to match as a STRING
-    if (str.length === 0 || str.match(/^"/)) {
+    // special rule for forcing the whole string into a STRING token
+    if (str.length === 0) {
+      return [ null, {name: 'STRING', value: ''} ];
+    }
+    if (str.match(/^"/)) {
       return [null, {name: 'STRING', value: str.slice(1)}];
     }
     let ch;
@@ -212,5 +283,7 @@ class Tokenizer {
     return tok1.name === tok2.name && tok1.value === tok2.value;
   }
 }
+
+Tokenizer.SPECIALCHAR = /[./+=()*&%$#@!~:;,\[\]\^{}]/;
 
 module.exports = new Tokenizer;
