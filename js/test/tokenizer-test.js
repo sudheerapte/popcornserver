@@ -56,7 +56,7 @@ function checkProcess(input, output) {
     err(`expected |${output[1]}|, got |${result[1]}|`);
   }
 }
-checkProcess("foo bar", [null, "foobar"]);
+checkProcess("foo bar", [null, " foo bar"]);
 checkProcess("{{foo bar}}", [null, " foo bar"]);
 checkProcess("{{foo {{bar}}", [null, " bar"]);
 checkProcess("foo {{bar}}}}", [null, " bar"]);

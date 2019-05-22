@@ -1,8 +1,11 @@
 "use strict";
 
 /**
-   Tokens are of these six types: BEGIN END COMMAND WORD STRING, plus
-   one type each for the special characters ./+=()*&%$#@!~:;,[]^{}
+   Tokens are either one of these six types:
+
+            BEGIN END COMMAND WORD STRING
+
+   or one-character types for each of the special characters below.
      
    They are represented as objects: {name: 'COMMAND', value: 'CURRENT'}
 
@@ -25,6 +28,29 @@
 */
 
 class Tokenizer {
+  constructor() {
+    this.specials = {
+      DOT: '.', SLASH: '/', PLUS: '+', EQUAL: '=', OPENPAREN: '(',
+      CLOSEPAREN: ')', ASTERISK: '*', AMPERSAND: '&', PERCENT: '%',
+      DOLLAR: '$', HASH: '#', AT: '@', BANG: '!', TILDE: '~',
+      COLON: ':', SEMICOLON: ';', COMMA: ',', OPENBRACKET: '[',
+      CLOSEBRACKET: ']', CIRCUMFLEX: '^', OPENCURLY: '{',
+      CLOSECURLY: '}'
+    };
+    const names = Object.getOwnPropertyNames(this.specials);
+    this.specialsMap = new Map();
+    for (let i=0; i<names.length; i++) {
+      const name = names[i];
+      const value = this.specials[name];
+      this.specialsMap.set(value, name);
+    }
+    let buf = "^[";
+    names.forEach( name => buf += "\\" + this.specials[name] );
+    buf += "]";
+    this.specialsRegex = new RegExp(buf);
+    // console.log(`specialsRegex = ${this.specialsRegex}`);
+  }
+
   /**
      scanString - scan the string to find BEGIN/END escapes.
   
@@ -39,6 +65,8 @@ class Tokenizer {
   scanString(str) {
     // const BEGIN=/(?<!\\){{/; const END=/(?<!\\)}}/;
     // const EITHER=/(?<!\\){{|(?<!\\)}}/g;
+    // TODO lookbehind matches are not supported in Firefox
+    // TODO https://bugzilla.mozilla.org/show_bug.cgi?id=1225665
     const BEGIN=/{{/; const END=/}}/;
     const EITHER=/{{|}}/g;
     const m = str.match(EITHER);
@@ -110,14 +138,14 @@ class Tokenizer {
      Return [errorString, remainderString].
      If there is any error, then remainderString will be null.
 
-     If there is no error, then call the function 'f' with the
-     token array parsed from the BEGIN-END pair. The function 'f' should
-     return [ errString, tokenlist ]. If it works, then the token
-     output will be substituted in the original string to form
-     the remainderString.
+     If there is no error, then call the function 'f' with the token
+     array parsed from the portion between the BEGIN-END pair. The
+     function 'f' should return [ errString, tokenlist ]. If it works,
+     then the token output will be substituted in the original string
+     to form the remainderString.
 
      If no function 'f' is passed in, then the remainderString will
-     be the tokens printed into string form.
+     contain the tokens printed into string form.
 
      If the string might have more expressions to be evaluated, then
      a third element is returned as "true".
@@ -188,8 +216,9 @@ class Tokenizer {
       { re: /^\s+/,  type: 'SPACES',  makeToken: false, useValue: false },
       { re: /^[A-Z]+/, type: 'COMMAND', makeToken: true, useValue: true },
       { re: /^[a-z]+[a-z0-9-]*/,type: 'WORD',makeToken: true,useValue: true },
-      { re: /^\./,    type: 'DOT',     makeToken: true, useValue: false },
-      { re: /^\//,    type: 'SLASH',   makeToken: true, useValue: false },
+      { re: this.specialsRegex, type: 'SPECIAL', makeToken: true, useValue: false },
+      { re: /^\./,   type: 'DOT',     makeToken: true, useValue: false },
+      { re: /^\//,   type: 'SLASH',     makeToken: true, useValue: false },
     ];
     let arr = [];
     if (str === null || typeof str === 'undefined') {
@@ -215,7 +244,11 @@ class Tokenizer {
           found = true;
           i += m[0].length - 1;
           if (rec.makeToken) {
-            arr.push({name: rec.type, value: (rec.useValue ? m[0] : null)});
+            let toktype = rec.type;
+            if (rec.type === 'SPECIAL') {
+              toktype = this.specialsMap.get(m[0]);
+            }
+            arr.push({name: toktype, value: (rec.useValue ? m[0] : null)});
           }
         }
       });
@@ -230,6 +263,7 @@ class Tokenizer {
   printTokens(arr) {
     if (! arr) { return null; }
 
+    const me = this;
     if (arr.hasOwnProperty('length')) {
       let str = '';
       arr.forEach( (tok,i) => {
@@ -249,16 +283,10 @@ class Tokenizer {
       if (tok) {
         if (tok.name === 'STRING') {
           return '"'+tok.value;
-        } else if (tok.name === 'WORD') {
-          return ` ${tok.value}`;
-        } else if (tok.name === 'COMMAND') {
-          return ` ${tok.value}`;
-        } else if (tok.name === 'STRING') {
-          return ` tok.value`;
-        } else if (tok.name === 'DOT') {
-          return '.' ;
-        } else if (tok.name === 'SLASH') {
-          return '/' ;
+        } else if (tok.name.match(/WORD|COMMAND/)) {
+          return " " + tok.value;
+        } else if (me.specials[tok.name]) {
+          return me.specials[tok.name];
         }
       } else {
         return ' (null)';
@@ -285,7 +313,5 @@ class Tokenizer {
     return tok1.name === tok2.name && tok1.value === tok2.value;
   }
 }
-
-Tokenizer.SPECIALCHAR = /[./+=()*&%$#@!~:;,\[\]\^\{\}]/;
 
 module.exports = new Tokenizer;
