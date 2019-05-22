@@ -102,7 +102,7 @@ class Tokenizer {
   }
 
   /**
-     processOnce - process the tokens in the innermost BEGIN-END pair.
+     processOnce - process the tokens in the string, respecting BEGIN/END
 
      Given "blah {{foo bar}} blah", we return "blah xyz blah",
      where "xyz" is the evaluation of "foo bar".

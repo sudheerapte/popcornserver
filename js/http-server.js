@@ -130,16 +130,14 @@ class Server extends EventEmitter {
   }    
 
   /**
-     @function(getBootJs) - concatenate machine.js and boot.js
+     @function(getBootJs) - concatenate JS files and boot.js
 
-     The machine.js file contains "module.exports", so we first
-     neutralize it by providing a dummy var up front.
+     The .js files contain "module.exports = " statements, so we first
+     neutralize these by providing a dummy var up front.  The
+     streamJsModuleFP function internally inserts a "module={};" line
+     prior to streaming the file.
    */
   getBootJs(req, res, cb) {
-    const machineJsPath = path.join(__dirname, "machine.js");
-    const bootJsPath = path.join(__dirname, "boot.js");
-    const queriesJsPath = path.join(__dirname, "queries.js");
-    const tokenizerJsPath = path.join(__dirname, "tokenizer.js");
     res.writeHead(200, {'Content-Type': 'application/javascript'});
     res.write("'use strict';\nvar module = {};\n");
     fileUtils.streamJsModuleFP('machine.js', res)

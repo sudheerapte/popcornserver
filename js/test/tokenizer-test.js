@@ -39,8 +39,8 @@ checkScan("foo {{bar}}", [ 4, 9 ]);
 checkScan("foo {{bar}}}}", [ 4, 9 ]);
 checkScan("foo {{{{bar}}", [ 6, 11 ]);
 checkScan("foo {{{{bar}}}}", [ 6, 11 ]);
-checkScan("foo \\{{bar}}", [ -1, 10 ]);
-checkScan("foo {{bar\\}}", [ 4, -1 ]);
+checkScan("foo \\{{bar}}", [ 5, 10 ]);
+checkScan("foo {{bar\\}}", [ 4, 10 ]);
 checkScan("foo {bar}}", [ -1, 8 ]);
 checkScan("foo \"{bar}}", [ -1, 9 ]);
 checkScan("foo {{bar\"}}", [ 4, 10 ]);
@@ -56,7 +56,7 @@ function checkProcess(input, output) {
     err(`expected |${output[1]}|, got |${result[1]}|`);
   }
 }
-checkProcess("foo bar", ["No BEGIN found", null]);
+checkProcess("foo bar", [null, "foobar"]);
 checkProcess("{{foo bar}}", [null, " foo bar"]);
 checkProcess("{{foo {{bar}}", [null, " bar"]);
 checkProcess("foo {{bar}}}}", [null, " bar"]);
