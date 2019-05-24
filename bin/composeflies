@@ -102,12 +102,12 @@ EOF2
 
 sed  '1,/^[[:space:]]*$/d
 s/^[[:space:]]\+width\=.\+$/   width=\"170\"/
-s/^[[:space:]]\+height\=.\+$/   height=\"131\"\n   x=\"-85\"\n   y=\"-65\"/' a/spider.svg >>  ${htmlfile} &&
+s/^[[:space:]]\+height\=.\+$/   height=\"131\"\n   x=\"-85\"\n   y=\"-65\"/' assets/spider.svg >>  ${htmlfile} &&
     echo '</g>\n<g id="fly">' >>  ${htmlfile} &&
     echo copied spider.svg &&
     sed  '1,/^[[:space:]]*$/d
 s/^[[:space:]]\+width\=.\+$/   width=\"145\"/
-s/^[[:space:]]\+height\=.\+$/   height=\"150\"\n   x=\"-73\"\n   y=\"-75\"/' a/flycute.svg >>  ${htmlfile} &&
+s/^[[:space:]]\+height\=.\+$/   height=\"150\"\n   x=\"-73\"\n   y=\"-75\"/' assets/flycute.svg >>  ${htmlfile} &&
     echo copied flycute.svg &&
     cat >>  ${htmlfile} <<'EOF3' && echo wrote fliesdemo-index.html
         </g>
