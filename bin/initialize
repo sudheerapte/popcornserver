@@ -1,4 +1,5 @@
 #!/bin/sh
+here=$(dirname $(readlink -f $0))
 die() { echo $@ ; exit 1; }
 [ -d ~/.popcorn ] &&
   die "~/.popcorn already exists. Remove it first."
@@ -9,34 +10,9 @@ mkdir ~/.popcorn
   "httpHost": "0.0.0.0",
   "httpPort": "8000",
   "machineDirs": {
-    "demo": "%U/.popcorn/demo"
+    "fliesdemo": "%U/.popcorn/fliesdemo"
   },
   "appPort": "8001"
 }
 EOF
-mkdir ~/.popcorn/demo
-<< 'EOF2' cat > ~/.popcorn/demo/demo-index.html && echo Created demo dir
-<html>
-<meta charset="utf-8" />
-<head>
-<title>Popcorn Demo</title>
-</head>
-<body>
-<p data-alt=".hinge/open">Hinge open
-<input type="button" value="Close"
-  data-chgclick="C .hinge closed"
-  data-cmdclick="closing command"
-></input>
-</p>
-<p data-alt=".hinge/closed">Hinge closed
-<input type="button" value="Open"
-  data-chgclick="C .hinge open"
-  data-cmdclick="opening command"
-></input>
-</p>
-<p data-alt=".bolt/unlocked">Bolt unlocked</p>
-<p data-alt=".bolt/locked">Bolt locked</p>
-</body>
-</html>
-EOF2
-
+${here}/composeflies
