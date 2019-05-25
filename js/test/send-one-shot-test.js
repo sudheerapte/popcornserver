@@ -15,7 +15,10 @@ appServer.on('provide', () => log(`appServer provide emitted`) );
 appServer.on('abandon', () => log(`appServer abandon emitted`) );
 
 appServer.startListening({port: PORT})
-  .then( createSock )
+  .then( () => {
+    log(`started listening.`);
+    return createSock();
+  })
   .then( sock => sendStringTest(sock) )
   .then( () => {
     log(`success`);

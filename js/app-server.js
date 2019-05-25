@@ -151,6 +151,7 @@ class AppServer extends EventEmitter {
       }
       const machine = m[2];
       if (m[1] === "provide") {
+        log(`provide message received for machine ${machine}`);
         return this.doProvide(appName, machine, rec.sse, ev.data,
                               resolve, reject);
       } else if (m[1] === "abandon") {
@@ -210,6 +211,7 @@ class AppServer extends EventEmitter {
     return resolve();
   }
   doUpdate(appName, machine, sse, payload, resolve, reject) {
+    log(`doUpdate ${appName} ${machine}`);
     if (! this._map.has(machine)) {
       log(`update: no such machine: ${machine}`);
       return reject(`update: no such machine: ${machine}`);
@@ -225,6 +227,7 @@ class AppServer extends EventEmitter {
       log(`update: ${res}`);
       return reject(`update: ${res}`);
     } else {
+      log(`update ${machine} succeeded`);
       return resolve();
     }
   }
@@ -285,7 +288,8 @@ ${arr.join("\n")}`);
       this.processProvide(machine, arr.slice(1))
         .then(() => {
           rec.sendSuccess('ok', () => {});
-          this.emit('provide', 'Drive-By', machine, arr.slice(1));
+          log(`emitting provide Drive-By ${machine}`);
+          this.emit('provide', 'Drive-By', machine, this._map.get(machine).mc);
         })
         .catch( errMsg => {
           rec.sendError(errMsg, () => log(errMsg) );
@@ -308,6 +312,7 @@ ${arr.join("\n")}`);
       if (result) {
         return reject(`provide failed: ${result}`);
       } else {
+        log(`machine ${machine} interpret result OK`);
         this._map.set(machine, {mc: mc})
         return resolve();
       }

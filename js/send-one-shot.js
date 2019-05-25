@@ -52,11 +52,13 @@ function sendStringP(sock, cmd) {
     sse.setWriteStream(sock);
     sse.on('SSEvent', ev => {
       if (ev.type === 'replySuccess') {
+        log(`got success: ${ev.data}`);
         return resolve(ev.data);
       } else {
         return reject(ev.data);
       }
     });
+    log(`sending {cmd}`);
     sse.sendEvent({ type: "oneShotCommand", data: cmd });
   });
 }

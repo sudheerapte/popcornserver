@@ -143,21 +143,17 @@ class WebBroker extends EventEmitter {
   }
   provide(machine, m) {
     if (this._machineMap.has(machine)) {
-      const msg = `provide(${machine}) - already exists`;
-      log(msg);
-      return msg;
-    } else {
-      this._machineMap.set(machine, m);
-      log(`machine ${machine} being provided`);
-      m.addBlockListener( opArr => {
-        this.sendUpdates(machine, opArr, () => {})
-      });
+      log(`provide(${machine}) - already exists; replacing`);
     }
+    this._machineMap.set(machine, m);
+    log(`machine ${machine} being provided`);
+    m.addBlockListener( opArr => {
+      this.sendUpdates(machine, opArr, () => {})
+    });
     log(`looking for subscribed clients for ${machine}...`);
     let subscribedClients = 0;
     for (const c of this._clientMap.keys()) {
       const rec = this._clientMap.get(c);
-      log(`   clientId ${c}: machines = ${rec.machines.join(" ")}`);
       if (rec.machines.includes(machine)) {
 	subscribedClients ++;
 	log(`sending ${machine} to ${c}`);
@@ -168,29 +164,37 @@ class WebBroker extends EventEmitter {
     }
     log(subscribedClients
 	? `sent ${machine} to ${subscribedClients} clients`
-	: `no clients are subscribed to ${machine}`);
+	: `no clients currently subscribed to ${machine}`);
     return null;
   }
 
   sendMachine(machine, wse) {
     return new Promise( (resolve, reject) => {
       const m = this._machineMap.get(machine);
-      const ser = m.getSerialization();
-      const serStr = ser.join('\n');
-      log(`sendMachine ${machine} = |${ser.join(' ')}|`);
-      const result = 
-	    wse.sendMessage(`provide ${machine}\n${serStr}\n`, errMsg => {
-	      if (errMsg) {
-		const fullMsg = `error sending machine: ${machine}: ${errMsg}`;
-		log(fullMsg);
-		reject(fullMsg);
-	      } else {
-		log(`machine ${machine} sent`);
-		resolve();
-	      }
-	    });
-      if (result) {
-	log(`wse.sendMessage returned ${result}`);
+      if (m) {
+        const ser = m.getSerialization();
+        const serStr = ser.join('\n');
+        log(`sendMachine ${machine} = |${ser.join(' ')}|`);
+        const result = 
+	      wse.sendMessage(`provide ${machine}\n${serStr}\n`, errMsg => {
+	        if (errMsg) {
+		  const fullMsg = `error sending: ${machine}: ${errMsg}`;
+		  log(fullMsg);
+		  reject(fullMsg);
+	        } else {
+		  log(`machine ${machine} sent`);
+		  return resolve();
+	        }
+	      });
+        if (result) {
+	  const msg = `wse.sendMessage returned ${result}`;
+	  log(msg);
+          return reject(msg);
+        }
+      } else {
+	const msg = `sendMachine ${machine}: no machine`;
+	log(msg);
+	return reject(msg);
       }
     });
   }
@@ -202,7 +206,6 @@ class WebBroker extends EventEmitter {
       const rec = this._clientMap.get(c);
       if (rec.machines.includes(machine)) {
 	outstandingClients++;
-	log(`sending ${machine} update to ${c}`);
 	this.sendUpdate(machine, opArr, rec.wse, (result) => {
 	  if (result) { lastError = result; }
 	  outstandingClients --;
@@ -212,7 +215,6 @@ class WebBroker extends EventEmitter {
     waitForOutstandingClients( () => {
       cb(lastError);
     });
-
     function waitForOutstandingClients(cb) {
       if (outstandingClients > 0) {
         log(`outstandingClients = ${outstandingClients}`);

@@ -31,13 +31,19 @@ setTimeout( () => {
 }, 2000);
 
 function sendToPopcorn(cmd) {
+  let theSock;
   sendOneShot.getPopcornSocketP()
-    .then( sock => sendOneShot.sendStringP(sock, cmd) )
+    .then( sock => {
+      theSock = sock;
+      return sendOneShot.sendStringP(sock, cmd);
+    })
     .then( reply => {
       if (! reply.toString().includes('ok')) {
         console.log(reply.toString());
         process.exit(1);
       } else {
+        theSock.end();
+        process.stdout.write();
         process.exit(0);
       }
     })
