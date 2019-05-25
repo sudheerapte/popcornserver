@@ -43,7 +43,6 @@ function sendToPopcorn(cmd) {
         process.exit(1);
       } else {
         theSock.end();
-        process.stdout.write();
         process.exit(0);
       }
     })
