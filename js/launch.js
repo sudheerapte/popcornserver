@@ -22,6 +22,7 @@ function launch(jsonOpts) {
   const machineObj = jsonOpts.machineDirs || {"demo": "%D/demo"};
   Object.keys(machineObj).forEach( k => {
     if (k.match(/^[a-z0-9]+$/)) {
+      console.log(`adding machine ${k}`);
       registry.addMachine(k, machineObj[k]);
     } else {
       console.log(`machine name: ${k} not lowercase; ignoring`);
@@ -43,13 +44,15 @@ function launch(jsonOpts) {
 	let {origin, key, url} = idObj;
 	broker.addNewClient(origin+"|"+key, url, sock, sock);
       });
+      httpServer.start();
+      console.log(`http server on ${options.host}:${options.port}`);
+      /*
       demoApp.start(APPPORT)
         .then( () => {
           console.log(`demoApp started on port ${APPPORT}`);
-          httpServer.start();
-          console.log(`http server on ${options.host}:${options.port}`);
         })
         .catch(errMsg => console.log(`demoApp: ${errMsg}`) );
+      */
     })
     .catch( errMsg => {
       console.log(errMsg);
