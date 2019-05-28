@@ -208,6 +208,38 @@ function handleMessage(ev) { // handle subsequent messages
 	}
       }
     }
+  } else if (data.match(/^provide\s+[a-z]+/)) {
+    const m = data.match(/^provide\s+([a-z]+)/);
+    if (!m) {
+      console.log(`ignoring bad provide command: |${trunc(data)}|`);
+    } else if (P.machine !== m[1]) {
+      console.log(`|provide ${m[1]}|: ignoring unknown machine`);
+    } else {
+      const arr = data.split('\n');
+      if (! arr) {
+        const msg = `bad machine payload for ${P.machine}`;
+        console.log(`proceeding with assets alone.`);
+        readProvideScript();
+        readInitScript();
+        reflectMachine();
+        return;
+      } else {
+        P.mc = new Machine;
+	const result = P.mc.interpret(arr.slice(1));
+	if (result) {
+          console.log(`failed to interpret provided machine: ${result}`);
+          console.log(`proceeding with assets alone.`);
+          readProvideScript();
+          readInitScript();
+          reflectMachine();
+          return;
+        }
+        console.log(`new machine ${P.machine} provided`);
+        readInitScript();
+        reflectMachine();
+        return;
+      }
+    }
   } else {
     console.log(`unknown command: |${trunc(ev.data)}|`);
   }
