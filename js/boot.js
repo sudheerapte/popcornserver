@@ -130,6 +130,7 @@ function doFirstMessage() {
     let mcname = window.location.pathname;
     if (mcname.startsWith('/')) { mcname = mcname.slice(1); }
     console.log(`subscribing to machine ${mcname}`);
+    P.machine = mcname;
     try {
       if (P.ws) { P.ws.send(`subscribe ${mcname}`); }
       else { console.log(`ERROR: no websocket!`); }
@@ -141,9 +142,14 @@ function doFirstMessage() {
     function handleFirstMessage(ev) {
       // the first message must be "provide machine" or "no such machine"
       const data = ev.data;
-      if (data.match(/^provide\s+([a-z]+)/)) {
-	const m = data.match(/^provide\s+([a-z]+)/);
-	P.machine = m[1];
+      if (data.match(/^provide\s+(\w+)/)) {
+	const m = data.match(/^provide\s+(\w+)/);
+	if (P.machine !== m[1]) {
+          console.log(`ignoring unknown machine ${m[1]}`);
+          console.log(`proceeding with assets alone.`);
+          readProvideScript();
+          return proceedPastFirstMessage(resolve);
+        }
 	console.log(`got provide ${P.machine}`);
 	const arr = data.split('\n');
 	if (! arr) {
@@ -190,7 +196,7 @@ function handleMessage(ev) { // handle subsequent messages
   // console.log(`handleMessage: |${trunc(ev.data)}|`);
   const data = ev.data;
   if (data.match(/^update\s+/)) {
-    const m = data.match(/^update\s+([a-z]+)/);
+    const m = data.match(/^update\s+(\w+)/);
     if (!m) {
       console.log(`ignoring bad update command: |${trunc(data)}|`);
     } else if (P.machine !== m[1]) {
@@ -208,8 +214,8 @@ function handleMessage(ev) { // handle subsequent messages
 	}
       }
     }
-  } else if (data.match(/^provide\s+[a-z]+/)) {
-    const m = data.match(/^provide\s+([a-z]+)/);
+  } else if (data.match(/^provide\s+\w+/)) {
+    const m = data.match(/^provide\s+(\w+)/);
     if (!m) {
       console.log(`ignoring bad provide command: |${trunc(data)}|`);
     } else if (P.machine !== m[1]) {

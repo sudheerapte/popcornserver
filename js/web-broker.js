@@ -131,10 +131,11 @@ class WebBroker extends EventEmitter {
       } else if (rec.machines.includes(machine)) {
 	log(`subscribe(${machine}): already subscribed`);
 	return resolve();
-      } else if (! this._machineMap.has(machine)) {
-	return reject(`subscribe: no such machine: ${machine}`);
       }
       rec.machines.push(machine);
+      if (! this._machineMap.has(machine)) {
+	return reject(`subscribe: no such machine: ${machine}`);
+      }
       log(`sending machine ${machine} to client ${clientId}`);
       this.sendMachine(machine, rec.wse)
 	.then( resolve )
