@@ -27,6 +27,27 @@ function unhideBody() {
   }
 }
 
+// readProvideScript, if successful, results in a new machine.
+function readProvideScript() {
+  const provideScript = document.querySelector('script#provide');
+  if (provideScript) {
+    const str = provideScript.textContent;
+    const lines = str.split(/\n|\r\n/)
+          .filter(line => ! line.match(/^\s*$/))
+          .map(line => line.trim());
+    const newMachine = new Machine;
+    const result = newMachine.interpret(lines);
+    if (result) {
+      console.log(`provide script: ${result}`);
+      console.log(`not changing machine.`);
+    } else {
+      P.mc = newMachine;
+    }
+  } else {
+    console.log(`provide script not found; continuing`);
+  }
+}
+
 function readInitScript() {
   const initScript = document.querySelector('script#init');
   if (initScript) {
@@ -111,60 +132,56 @@ function doFirstMessage() {
     console.log(`subscribing to machine ${mcname}`);
     try {
       if (P.ws) { P.ws.send(`subscribe ${mcname}`); }
+      else { console.log(`ERROR: no websocket!`); }
     } catch (e) {
       console.log(`websocket send failed: ${e.code}`);
     }
     
+    // handleFirstMessage always resolves, with or without an app.
     function handleFirstMessage(ev) {
-      // the first message must be "provide machine"
+      // the first message must be "provide machine" or "no such machine"
       const data = ev.data;
-      if (data.match(/^provide\s+/)) {
+      if (data.match(/^provide\s+([a-z]+)/)) {
 	const m = data.match(/^provide\s+([a-z]+)/);
-	if (!m) {
-	  console.log(`bad provide command: |${trunc(data)}|`);
-	} else {
-	  P.machine = m[1];
-	  // console.log(`got provide ${P.machine}`);
-	  const arr = data.split('\n');
-	  if (! arr) {
-            const msg = `bad machine payload for ${P.machine}`;
-	    return rejectThis(()=> reject(msg));
-	  } else {
-	    // console.log(`provide command payload = |${arr.join(",")}|`);
-	  }
-	  const result = P.mc.interpret(arr.slice(1));
-	  if (result) { return rejectThis(()=>reject(result)); }
-          readInitScript();
-          reflectMachine();
-          addClickChgHandlers();
-          addClickCmdHandlers();
-          // console.log(`added all the handlers`);
-	  return resolveThis(resolve);
+	P.machine = m[1];
+	console.log(`got provide ${P.machine}`);
+	const arr = data.split('\n');
+	if (! arr) {
+          const msg = `bad machine payload for ${P.machine}`;
+          console.log(`proceeding with assets alone.`);
+          readProvideScript();
+          return proceedPastFirstMessage(resolve);
 	}
+        P.mc = new Machine;
+	const result = P.mc.interpret(arr.slice(1));
+	if (result) {
+          console.log(`failed to interpret provided machine: ${result}`);
+          console.log(`proceeding with assets alone.`);
+          readProvideScript();
+          return proceedPastFirstMessage(resolve);
+        } else {
+          return proceedPastFirstMessage(resolve);
+        }            
       } else if (data.match(/no\ssuch\smachine/)) {
         console.log(`No app--- proceeding with assets alone`);
-        readInitScript();
-        reflectMachine();
-        addClickChgHandlers();
-        addClickCmdHandlers();
+        readProvideScript();
+        proceedPastFirstMessage(resolve);
       } else {
         console.log(`first message = ${data}`);
+        console.log(`proceeding with assets alone.`);
+        readProvideScript();
+        proceedPastFirstMessage(resolve);
       }
-      return resolveThis(resolve);
     }
-    // resolveThis() and rejectThis() set up eventListeners first,
-    // and also unhide the body.
-    function resolveThis(resolve) {
+    function proceedPastFirstMessage(resolve) {
+      readInitScript();
+      reflectMachine();
+      addClickChgHandlers();
+      addClickCmdHandlers();
       P.ws.removeEventListener('message', handleFirstMessage);
       P.ws.addEventListener('message', handleMessage);
       unhideBody();
       return resolve();
-    }
-    function rejectThis(rejector) {
-      // when rejecting, we don't want to handle any more events
-      P.ws.removeEventListener('message', handleFirstMessage);
-      unhideBody();
-      return rejector();
     }
   });
 }
