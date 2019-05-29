@@ -39,6 +39,7 @@ P .fly3.pos/g
 P .fly3.pos/h
 ' | node ${jsprog}
 
+
 sleep 2
 echo 'update fliesdemo
 C .fly1.pos b
