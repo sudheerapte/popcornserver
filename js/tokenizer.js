@@ -154,24 +154,10 @@ class Tokenizer {
   processOnce(str, f) {
     let result;
     let [ b, e ] = this.scanString(str);
-    if (b < 0 && e < 0) {  // Simple case -- evaluate entire string
-      result = this.tokenize(str);
-      if (result[0]) {
-        return [ result[0], null ];
-      }
-      const tokens = result[1];
-      if (f) {
-        const pResult = f(tokens);
-        if (pResult[0]) {
-          return [ pResult[0], this.printTokens(tokens) ];
-        } else {
-          return [ null, this.printTokens(pResult[1])];
-        }
-      } else {
-        return [ null, this.printTokens(tokens) ];
-      }
+    //console.log(`        processOnce |${str}| b=${b} e=${e}`);
+    if (b < 0) {  // Simple case -- return original string
+      return [null, str];
     }
-    if (b < 0) { return ["No BEGIN found", null]; }
     if (e < 0) { return ["No END found", null]; }
     result = this.tokenize(str.slice(b+2, e));
     if (result[0]) {
@@ -184,13 +170,18 @@ class Tokenizer {
       } else {
         return [ null, 
                  str.slice(0,b) +
-                 this.printTokens(pResult[1]) +
+                 this.renderTokens(pResult[1]) +
                  str.slice(e+2,str.length),
                  true
                ];
       }
     } else {
-      return [ null, this.printTokens(result[1]) ];
+        return [ null, 
+                 str.slice(0,b) +
+                 this.renderTokens(result[1]) +
+                 str.slice(e+2,str.length),
+                 true
+               ];
     }
   }
 
@@ -260,6 +251,7 @@ class Tokenizer {
     return [ null, arr];
   }
 
+  /*
   printTokens(arr) {
     if (! arr) { return null; }
 
@@ -290,6 +282,34 @@ class Tokenizer {
         }
       } else {
         return ' (null)';
+      }
+    }
+  }
+  */
+
+  renderTokens(arr) {
+    if (! arr) { return ""; }
+
+    const me = this;
+    if (arr.hasOwnProperty('length')) {
+      let str = '';
+      arr.forEach( (tok,i) => {
+        str += renderTok(tok);
+      });
+      return str;
+    } else {
+      return renderTok(arr);
+    }
+
+    function renderTok(tok) {
+      if (tok) {
+        if (tok.name.match(/STRING|WORD|COMMAND/)) {
+          return tok.value;
+        } else if (me.specials[tok.name]) {
+          return me.specials[tok.name];
+        } else {
+          return ` (${tok.name})`;
+        }
       }
     }
   }

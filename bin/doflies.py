@@ -13,7 +13,8 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
         print("Received OK")
         while received:
             received = str(sock.recv(1024), "utf-8")
-            print("Received {}".format(received))
+            lines = re.split(r"\n+", received);
+            print("Received {}".format(lines[1]))
 print("Popcorn dropped connection.")
 
 adj = {

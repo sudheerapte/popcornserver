@@ -70,7 +70,7 @@ function generateXY() {
 
   let numFormulas = 0;
   nodeList.forEach( useNode => {
-    [ 'x', 'y' ].forEach( coord => {
+    [ 'x', 'y', 'href' ].forEach( coord => {
       const formula = useNode.getAttribute(`data-${coord}`);
       if (formula) {
         numFormulas++;
@@ -79,15 +79,14 @@ function generateXY() {
           console.log(`use formula ${numFormulas}:
      ${formula}:
      ${result[0]}`);
+        } else if (! result[1]) {
+          console.log(`falsy result from use formula ${numFormulas}:
+     ${formula}`);
         } else {
           const output = result[1];
-          if (! output || ! output.match(/^"/) || ! output.match(/[0-9]+/)) {
-            console.log(`use formula ${numFormulas}:
-     ${formula}:
-     Non-numeric result |${output}|! Expecting ${coord} value. Ignoring.`);
-          } else {
-            useNode.setAttribute(coord, output.trim().slice(1));
-          }
+          if (! output) { output = ""; }
+          // console.log(`${formula}=|${output}|`);
+          useNode.setAttribute(coord, output);
         }
       }
     });

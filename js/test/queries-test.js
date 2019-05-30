@@ -26,25 +26,33 @@ err(result);
 const evalFunc =  queries.getEvalFunc(machine);
 
 function checkProcess(input, output) {
-  log(`   process |${input}|`);
   let tResult;
   tResult = t.process(input, evalFunc);
   err(tResult[0]);
+  log(' '.repeat(40 - input.length)+`${input}| ==> |${tResult[1]}|`);
   if (tResult[1] !== output) {
     err(`expected |${output}|, but got |${tResult[1]}|`);
   }
 }
 
-checkProcess("DATA .loc.{{CURRENT .fly1.pos}}.x", "\"500");
-checkProcess("CURRENT .fly1.pos", " a");
-
-result = machine.interpret(["D .loc.a.x \"CURRENT .fly1.pos"]);
-err(result);
-
-checkProcess("DATA .loc.a.x", "\"\"CURRENT .fly1.pos");
+checkProcess("{{DATA .loc.{{CURRENT .fly1.pos}}.x}}", "500");
+checkProcess("{{CURRENT .fly1.pos}}", "a");
 
 result = machine.interpret(["D .loc.a.x CURRENT .fly1.pos"]);
 err(result);
-checkProcess("DATA .loc.a.x", "\"CURRENT .fly1.pos");
+log(`           .fly.pos/ = |a|`);
+log(`           .loc.a.x = |CURRENT .fly1.pos|`);
+checkProcess("{{DATA .loc.a.x}}", "CURRENT .fly1.pos");
+checkProcess("{{{{DATA .loc.a.x}}}}", "a");
+checkProcess("{{{{{{DATA.loc.a.x}}}}}}", "a");
+checkProcess("{{{{{{{{DATA.loc.a.x}}}}}}}}", "a");
+
+result = machine.interpret(["D .loc.a.x DATA .loc.a.x"]);
+err(result);
+log(`           .loc.a.x = |DATA .loc.a.x|`);
+checkProcess("{{DATA .loc.a.x}}", "DATA .loc.a.x");
+checkProcess("{{{{DATA .loc.a.x}}}}", "DATA .loc.a.x");
+checkProcess("{{{{{{DATA.loc.a.x}}}}}}", "DATA .loc.a.x");
+checkProcess("{{{{{{{{DATA.loc.a.x}}}}}}}}", "DATA .loc.a.x");
 
 

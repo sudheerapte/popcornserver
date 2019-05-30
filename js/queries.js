@@ -11,6 +11,9 @@ class Queries {
   getEvalFunc(machine) {
     return (tokens => {
       const eResult = this.evaluate(machine, tokens);
+      if (! eResult) {
+        console.log(JSON.stringify(tokens));
+      }
       if (eResult[0]) { return eResult; }
       return [ null, eResult[1] ];
     });

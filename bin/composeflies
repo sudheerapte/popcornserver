@@ -1,4 +1,5 @@
 #!/bin/sh
+# Called from initialize to produce fliesdemo-index.html from assets
 die() { echo $@ ; exit 1; }
 [ -d ~/.popcorn ] || die No popcorn dir ~/.popcorn
 grep -q fliesdemo ~/.popcorn/options.json ||
@@ -16,41 +17,58 @@ mkdir -p ~/.popcorn/fliesdemo &&
 </head>
   <body>
     <script id="provide" type="text/plain">
-      P .spider.pos/h
-      P .spider.pos/a
-      P .spider.pos/b
-      P .spider.pos/c
-      P .spider.pos/d
-      P .spider.pos/e
-      P .spider.pos/f
-      P .spider.pos/g
+      P .board.a/fly1
+      P .board.a/fly2
+      P .board.a/fly3
+      P .board.a/spider
+      P .board.a/empty
 
-      P .fly1.pos/a
-      P .fly1.pos/b
-      P .fly1.pos/c
-      P .fly1.pos/d
-      P .fly1.pos/e
-      P .fly1.pos/f
-      P .fly1.pos/g
-      P .fly1.pos/h
+      P .board.b/fly2
+      P .board.b/fly1
+      P .board.b/fly3
+      P .board.b/spider
+      P .board.b/empty
 
-      P .fly2.pos/b
-      P .fly2.pos/a
-      P .fly2.pos/c
-      P .fly2.pos/d
-      P .fly2.pos/e
-      P .fly2.pos/f
-      P .fly2.pos/g
-      P .fly2.pos/h
+      P .board.c/fly3
+      P .board.c/fly1
+      P .board.c/fly2
+      P .board.c/spider
+      P .board.c/empty
 
-      P .fly3.pos/c
-      P .fly3.pos/a
-      P .fly3.pos/b
-      P .fly3.pos/d
-      P .fly3.pos/e
-      P .fly3.pos/f
-      P .fly3.pos/g
-      P .fly3.pos/h
+      P .board.d/empty
+      P .board.d/fly1
+      P .board.d/fly2
+      P .board.d/fly3
+      P .board.d/spider
+
+      P .board.e/empty
+      P .board.e/fly1
+      P .board.e/fly2
+      P .board.e/fly3
+      P .board.e/spider
+
+      P .board.f/empty
+      P .board.f/fly1
+      P .board.f/fly2
+      P .board.f/fly3
+      P .board.f/spider
+
+      P .board.g/empty
+      P .board.g/fly1
+      P .board.g/fly2
+      P .board.g/fly3
+      P .board.g/spider
+
+      P .board.h/spider
+      P .board.h/fly1
+      P .board.h/fly2
+      P .board.h/fly3
+      P .board.h/empty
+
+      P .selected/fly1
+      P .selected/fly2
+      P .selected/fly3
+      P .selected/spider
     </script>
     <script id="init" type="text/plain">
       P .loc.a.x
@@ -86,6 +104,18 @@ mkdir -p ~/.popcorn/fliesdemo &&
       D .loc.g.y 700
       D .loc.h.x 500
       D .loc.h.y 900
+
+      P .img.fly1
+      P .img.fly2
+      P .img.fly3
+      P .img.spider
+      P .img.empty
+
+      D .img.fly1 fly
+      D .img.fly2 fly
+      D .img.fly3 fly
+      D .img.spider spider
+      D .img.empty spot
     </script>
     <div>
     <svg viewBox="0 0 1000 1000" xmlns="http://www.w3.org/2000/svg">
@@ -94,22 +124,28 @@ mkdir -p ~/.popcorn/fliesdemo &&
         <circle cx="0" cy="0" r="48" fill="darkblue"/>
         <circle cx="0" cy="0" r="40" fill="lightgray"/>
         </g>
-        <g id="spiderold">
-        <circle cx="0" cy="0" r="55" fill="darkred"/>
-        <circle cx="0" cy="0" r="25" fill="lightgray"/>
-        </g>
         <g id="spider">
 EOF2
 
 sed  '1,/^[[:space:]]*$/d
 s/^[[:space:]]\+width\=.\+$/   width=\"170\"/
 s/^[[:space:]]\+height\=.\+$/   height=\"131\"\n   x=\"-85\"\n   y=\"-65\"/' assets/spider.svg >>  ${htmlfile} &&
-    echo '</g>\n<g id="fly">' >>  ${htmlfile} &&
+    echo '</g>\n<g id="spider-selected">' >>  ${htmlfile} &&
     echo copied spider.svg &&
+    sed  '1,/^[[:space:]]*$/d
+s/^[[:space:]]\+width\=.\+$/   width=\"170\"/
+s/^[[:space:]]\+height\=.\+$/   height=\"131\"\n   x=\"-85\"\n   y=\"-65\"/' assets/spider-excited.svg >>  ${htmlfile} &&
+    echo copied spider-excited.svg as spider-selected&&
+    echo '</g>\n<g id="fly">' >>  ${htmlfile} &&
     sed  '1,/^[[:space:]]*$/d
 s/^[[:space:]]\+width\=.\+$/   width=\"145\"/
 s/^[[:space:]]\+height\=.\+$/   height=\"150\"\n   x=\"-73\"\n   y=\"-75\"/' assets/flycute.svg >>  ${htmlfile} &&
-    echo copied flycute.svg &&
+    echo copied flycute.svg as fly &&
+    echo '</g>\n<g id="fly-selected">' >>  ${htmlfile} &&
+    sed  '1,/^[[:space:]]*$/d
+s/^[[:space:]]\+width\=.\+$/   width=\"210\"/
+s/^[[:space:]]\+height\=.\+$/   height=\"150\"\n   x=\"-105\"\n   y=\"-75\"/' assets/flycute-wings-out.svg >>  ${htmlfile} &&
+    echo copied flycute-wings-out.svg as fly-selected &&
     cat >>  ${htmlfile} <<'EOF3' && echo wrote fliesdemo-index.html
         </g>
       </defs>
@@ -121,48 +157,40 @@ s/^[[:space:]]\+height\=.\+$/   height=\"150\"\n   x=\"-73\"\n   y=\"-75\"/' ass
         <path d="M 200 300 V 700 H 800 V 300" />
       </g>
       <g id="drawspots">
-        <g id="uppermiddlespot" >
-          <use href="#spot" x="500" y="100"
-               data-chgclick="C .fly1.pos a"
-               />
-        </g>
-        <g id="upperleftspot">
-          <use href="#spot" x="200" y="300"
-               data-chgclick="C .fly1.pos b"
-               />
-        </g>
-        <use href="#spot" x="800" y="300" id="upperrightspot"
-             data-chgclick="C .fly1.pos c"
-             />
-        <use href="#spot" x="500" y="500" id="centerspot"
-             data-chgclick="C .fly1.pos d"
-             />
-        <use href="#spot" x="200" y="700" id="lowerleftspot"
-             data-chgclick="C .fly1.pos e"
-             />
-        <use href="#spot" x="500" y="700" id="lowermiddlespot"
-             data-chgclick="C .fly1.pos f"
-             />
-        <use href="#spot" x="800" y="700" id="lowerrightspot"
-             data-chgclick="C .fly1.pos g"
-             />
-        <use href="#spot" x="500" y="900" id="lowestmiddlespot"
-             data-chgclick="C .fly1.pos h"
-             />
+        <use href="#spot"
+             data-x="{{DATA .loc.a.x}}" data-y="{{DATA .loc.a.y}}"/>
+        <use href="#spot"
+             data-x="{{DATA .loc.b.x}}" data-y="{{DATA .loc.b.y}}"/>
+        <use href="#spot"
+             data-x="{{DATA .loc.c.x}}" data-y="{{DATA .loc.c.y}}"/>
+        <use href="#spot"
+             data-x="{{DATA .loc.d.x}}" data-y="{{DATA .loc.d.y}}"/>
+        <use href="#spot"
+             data-x="{{DATA .loc.e.x}}" data-y="{{DATA .loc.e.y}}"/>
+        <use href="#spot"
+             data-x="{{DATA .loc.f.x}}" data-y="{{DATA .loc.f.y}}"/>
+        <use href="#spot"
+             data-x="{{DATA .loc.g.x}}" data-y="{{DATA .loc.g.y}}"/>
+        <use href="#spot"
+             data-x="{{DATA .loc.h.x}}" data-y="{{DATA .loc.h.y}}"/>
       </g>
-      <g id="drawflies">
-        <use href="#fly"
-             data-x="DATA .loc.{{CURRENT .fly1.pos}}.x"
-             data-y="DATA .loc.{{CURRENT .fly1.pos}}.y" />
-        <use href="#fly"
-             data-x="DATA .loc.{{CURRENT .fly2.pos}}.x"
-             data-y="DATA .loc.{{CURRENT .fly2.pos}}.y" />
-        <use href="#fly"
-             data-x="DATA .loc.{{CURRENT .fly3.pos}}.x"
-             data-y="DATA .loc.{{CURRENT .fly3.pos}}.y" />
-        <use href="#spider"
-             data-x="DATA .loc.{{CURRENT .spider.pos}}.x"
-             data-y="DATA .loc.{{CURRENT .spider.pos}}.y"  />
+      <g id="drawbugs">
+        <use data-href="#{{DATA .img.{{CURRENT .board.a}}}}"
+             data-x="{{DATA .loc.a.x}}" data-y="{{DATA .loc.a.y}}"/>
+        <use data-href="#{{DATA .img.{{CURRENT .board.b}}}}"
+             data-x="{{DATA .loc.b.x}}" data-y="{{DATA .loc.b.y}}"/>
+        <use data-href="#{{DATA .img.{{CURRENT .board.c}}}}"
+             data-x="{{DATA .loc.c.x}}" data-y="{{DATA .loc.c.y}}"/>
+        <use data-href="#{{DATA .img.{{CURRENT .board.d}}}}"
+             data-x="{{DATA .loc.d.x}}" data-y="{{DATA .loc.d.y}}"/>
+        <use data-href="#{{DATA .img.{{CURRENT .board.e}}}}"
+             data-x="{{DATA .loc.e.x}}" data-y="{{DATA .loc.e.y}}"/>
+        <use data-href="#{{DATA .img.{{CURRENT .board.f}}}}"
+             data-x="{{DATA .loc.f.x}}" data-y="{{DATA .loc.f.y}}"/>
+        <use data-href="#{{DATA .img.{{CURRENT .board.g}}}}"
+             data-x="{{DATA .loc.g.x}}" data-y="{{DATA .loc.g.y}}"/>
+        <use data-href="#{{DATA .img.{{CURRENT .board.h}}}}"
+             data-x="{{DATA .loc.h.x}}" data-y="{{DATA .loc.h.y}}"/>
       </g>
     </svg>
     </div>
