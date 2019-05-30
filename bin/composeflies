@@ -131,11 +131,11 @@ sed  '1,/^[[:space:]]*$/d
 s/^[[:space:]]\+width\=.\+$/   width=\"170\"/
 s/^[[:space:]]\+height\=.\+$/   height=\"131\"\n   x=\"-85\"\n   y=\"-65\"/' assets/spider.svg >>  ${htmlfile} &&
     echo '</g>\n<g id="spider-selected">' >>  ${htmlfile} &&
-    echo copied spider.svg &&
+    echo copied spider.svg as spider &&
     sed  '1,/^[[:space:]]*$/d
 s/^[[:space:]]\+width\=.\+$/   width=\"170\"/
 s/^[[:space:]]\+height\=.\+$/   height=\"131\"\n   x=\"-85\"\n   y=\"-65\"/' assets/spider-excited.svg >>  ${htmlfile} &&
-    echo copied spider-excited.svg as spider-selected&&
+    echo copied spider-excited.svg as spider-selected &&
     echo '</g>\n<g id="fly">' >>  ${htmlfile} &&
     sed  '1,/^[[:space:]]*$/d
 s/^[[:space:]]\+width\=.\+$/   width=\"145\"/
