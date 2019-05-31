@@ -31,16 +31,20 @@ class Propagator {
           onCondition = "ALWAYS";
         } else {
           const m = line.match(/^ON\s+(\S+)\s+(\w+)\s+BEGIN$/);
-          if (m &&
-              this.mc.isVariableParent(m[1]) &&
-              this.mc.getCurrentChildName(m[1]) === m[2]) {
-            doLines = true;
-            startLine = i+1;
-            onCondition = `${m[1]} = ${m[2]}`;
-            this.log(`true: ${line}`);
-          } else {
-            this.log(`not true: ${line}`);
+          if (!m) {
             this.log(`ON line did not match PATH VAR`);
+          } else if (this.mc.isVariableParent(m[1])) {
+            onCondition = `${m[1]} = ${m[2]}`;
+            if (this.mc.getCurrentChildName(m[1]) !== m[2]) {
+              this.log(`${m[1]} alt != ${m[2]}. skipping.`);
+              doLines = false;
+            } else {
+              doLines = true;
+              startLine = i+1;
+              this.log(`${line}`);
+            }
+          } else {
+            this.log(`${m[1]} - not a variable parent. skipping.`);
             doLines = false;
           }
         }
@@ -54,7 +58,7 @@ class Propagator {
             this.log(`ON ${onCondition}: evaluated lines ${startLine}-${i}`);
           }
         } else {
-          this.log(`ON ${onCondition}: skipped lines ${startLine}-${i}`);
+          this.log(`ON ${onCondition}: false. skipped lines ${startLine}-${i}`);
         }
         doLines = false;
         startLine = i+1; // to get better error messages

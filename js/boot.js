@@ -60,7 +60,6 @@ function readInitScript() {
     if (result) {
       console.log(`init script: ${result}`);
     }
-    console.log(`readInitScript: mc = ${P.mc.getSerialization().length} lines`);
   } else {
     console.log(`init script not found; continuing`);
   }
@@ -82,7 +81,6 @@ function runRenderScript() {
 function generateXY() {
   const nodeList = document.querySelectorAll(`svg use`);
   let numFormulas = 0;
-  console.log(`generateXY: .board.a = ${P.mc.exists('.board.a')}`);
   nodeList.forEach( useNode => {
     [ 'x', 'y', 'href' ].forEach( coord => {
       const formula = useNode.getAttribute(`data-${coord}`);
