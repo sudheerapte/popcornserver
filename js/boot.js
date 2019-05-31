@@ -88,6 +88,20 @@ function runRenderScript() {
   }
 }
 
+function runDebugScript() {
+  const debugScript = document.querySelector('script#debug');
+  if (debugScript) {
+    const str = debugScript.textContent;
+    str.split(/\n|\r\n/)
+      .filter(line => ! line.match(/^\s*$/))
+      .map(line => line.trim())
+      .forEach( (line, i) => {
+        const result = P.propagator.process(line);
+        console.log(result[0] ? result[0] : result[1]);
+      });
+  }
+}
+
 function generateXY() {
   const nodeList = document.querySelectorAll(`svg use`);
   let numFormulas = 0;
@@ -154,26 +168,22 @@ function doFirstMessage() {
     P.machine = mcname;
     try {
       if (P.ws) { P.ws.send(`subscribe ${mcname}`); }
-      else { console.log(`ERROR: no websocket!`); }
+      else { return reject(`ERROR: no websocket!`); }
     } catch (e) {
-      console.log(`websocket send failed: ${e.code}`);
+      return reject(`websocket send failed: ${e.code}`);
     }
     
-    // handleFirstMessage always resolves, with or without an app.
     function handleFirstMessage(ev) {
       // the first message must be "provide machine" or "no such machine"
       const data = ev.data;
       if (data.match(/^provide\s+(\w+)/)) {
 	const m = data.match(/^provide\s+(\w+)/);
-	if (P.machine !== m[1]) {
-          console.log(`ignoring unknown machine ${m[1]}`);
-          return proceedPastFirstMessage(resolve);
-        }
+	if (P.machine === m[1]) {
 	console.log(`got provide ${P.machine}`);
 	const arr = data.split('\n');
 	if (! arr) {
           const msg = `bad machine payload for ${P.machine}`;
-          return proceedPastFirstMessage(resolve);
+          return reject(msg);
 	}
         P.mc = new Machine;
         P.propagator = new Propagator(P.mc, P.tokenizer, console.log)
@@ -182,14 +192,17 @@ function doFirstMessage() {
           console.log(`failed to interpret provided machine: ${result}`);
         }
         return proceedPastFirstMessage(resolve);
+        } else {
+          console.log(`ignoring unknown machine ${m[1]}`);
+          // we cannot resolve until we get provide cmd
+        }
       } else if (data.match(/no\ssuch\smachine/)) {
         console.log(`No app--- providing our own machine using assets`);
         sendProvide();
-        // proceedPastFirstMessage(resolve);
+        // we cannot resolve until we get provide cmd
       } else {
         console.log(`first message = ${data}`);
-        console.log(`proceeding with assets alone.`);
-        proceedPastFirstMessage(resolve);
+        // we cannot resolve until we get provide cmd
       }
     }
     function proceedPastFirstMessage(resolve) {
@@ -286,6 +299,7 @@ function reflectMachine() {
       }
     }
   });
+  runDebugScript();
 }
 
 /**
