@@ -30,6 +30,7 @@ function launch(jsonOpts) {
   });
   // Whenever httpServer gets a new websocket, add the new client
   // to the broker.
+  // Hook the broker and appServer up together using event handlers.
   const httpServer = new hsmodule(options);
   const APPPORT = jsonOpts.appPort || "8001";
   appServer.on('provide', (appName, machine, mc) => {
@@ -38,6 +39,9 @@ function launch(jsonOpts) {
   broker.on('command', (machine, clientId, arr) => {
     appServer.doCommand(machine, clientId, arr);
   });
+  broker.on('provide', (machine, clientId, arr) => {
+    appServer.processClientProvide(machine, clientId, arr);
+  })
   appServer.startListening({port: APPPORT})
     .then( () => {
       httpServer.on('wssocket', (sock, idObj) => {

@@ -27,25 +27,35 @@ function unhideBody() {
   }
 }
 
-// readProvideScript, if successful, results in a new machine.
-function readProvideScript() {
+// sendProvide -- there is no app. Send our own machine using provide script.
+function sendProvide() {
+  const temp = new Machine;
   const provideScript = document.querySelector('script#provide');
   if (provideScript) {
     const str = provideScript.textContent;
     const lines = str.split(/\n|\r\n/)
           .filter(line => ! line.match(/^\s*$/))
           .map(line => line.trim());
-    const temp = new Machine;
     const result = temp.interpret(lines);
     if (result) {
       console.log(`provide script: ${result}`);
-      console.log(`not changing machine.`);
-    } else {
-      P.mc = temp;
-      P.propagator = new Propagator(P.mc, P.tokenizer, console.log)
-    }
+      console.log(`sending an empty machine.`);
+    } 
   } else {
-    console.log(`provide script not found; continuing`);
+    console.log(`provide script not found; sending an empty machine.`);
+  }
+  // Send a client provide for our URL machine
+  let mcname = window.location.pathname;
+  if (mcname.startsWith('/')) { mcname = mcname.slice(1); }
+  console.log(`sending client provide ${mcname}`);
+  try {
+    if (P.ws) {
+      P.ws.send(`provide ${mcname}\n${temp.getSerialization().join('\n')}\n`);
+    } else {
+      console.log(`ERROR: no websocket!`);
+    }
+  } catch (e) {
+    console.log(`websocket send failed: ${e.code}`);
   }
 }
 
@@ -157,16 +167,12 @@ function doFirstMessage() {
 	const m = data.match(/^provide\s+(\w+)/);
 	if (P.machine !== m[1]) {
           console.log(`ignoring unknown machine ${m[1]}`);
-          console.log(`proceeding with assets alone.`);
-          readProvideScript();
           return proceedPastFirstMessage(resolve);
         }
 	console.log(`got provide ${P.machine}`);
 	const arr = data.split('\n');
 	if (! arr) {
           const msg = `bad machine payload for ${P.machine}`;
-          console.log(`proceeding with assets alone.`);
-          readProvideScript();
           return proceedPastFirstMessage(resolve);
 	}
         P.mc = new Machine;
@@ -174,20 +180,15 @@ function doFirstMessage() {
 	const result = P.mc.interpret(arr.slice(1));
 	if (result) {
           console.log(`failed to interpret provided machine: ${result}`);
-          console.log(`proceeding with assets alone.`);
-          readProvideScript();
-          return proceedPastFirstMessage(resolve);
-        } else {
-          return proceedPastFirstMessage(resolve);
-        }            
+        }
+        return proceedPastFirstMessage(resolve);
       } else if (data.match(/no\ssuch\smachine/)) {
-        console.log(`No app--- proceeding with assets alone`);
-        readProvideScript();
-        proceedPastFirstMessage(resolve);
+        console.log(`No app--- providing our own machine using assets`);
+        sendProvide();
+        // proceedPastFirstMessage(resolve);
       } else {
         console.log(`first message = ${data}`);
         console.log(`proceeding with assets alone.`);
-        readProvideScript();
         proceedPastFirstMessage(resolve);
       }
     }
@@ -236,10 +237,6 @@ function handleMessage(ev) { // handle subsequent messages
       const arr = data.split('\n');
       if (! arr) {
         const msg = `bad machine payload for ${P.machine}`;
-        console.log(`proceeding with assets alone.`);
-        readProvideScript();
-        readInitScript();
-        reflectMachine();
         return;
       } else {
         P.mc = new Machine;
@@ -247,10 +244,6 @@ function handleMessage(ev) { // handle subsequent messages
 	const result = P.mc.interpret(arr.slice(1));
 	if (result) {
           console.log(`failed to interpret provided machine: ${result}`);
-          console.log(`proceeding with assets alone.`);
-          readProvideScript();
-          readInitScript();
-          reflectMachine();
           return;
         }
         console.log(`new machine ${P.machine} provided`);

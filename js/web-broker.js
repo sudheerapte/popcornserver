@@ -105,6 +105,16 @@ class WebBroker extends EventEmitter {
         log(`emitting command ${m[1]} ${clientId}: |${arr.slice(1)}|`);
         this.emit('command', m[1], clientId, arr.slice(1));
         return resolve();
+      } else if (data.match(/^\s*provide\s+/)) {
+        const m = data.match(/^\s*provide\s+(\w+)/);
+        const arr = data.split('\n').filter( e => e.length > 0);
+        if (!m) {
+          log(`did not match provide pattern`);
+          return reject(`bad command line: ${arr[0]}`);
+        }
+        log(`client ${clientId} provide ${m[1]}: ${arr.length-1} lines`);
+        this.emit('provide', m[1], clientId, arr.slice(1));
+        return resolve();
       } else {
 	const msg = `bad command: |${trunc(data)}|`;
 	console.log(`sending ${msg} to client ${clientId}`);
@@ -142,6 +152,7 @@ class WebBroker extends EventEmitter {
 	.catch( errMsg => reject(`failed sending ${machine}: ${errMsg}`) );
     });
   }
+
   provide(machine, m) {
     if (this._machineMap.has(machine)) {
       log(`provide(${machine}) - already exists; replacing`);
@@ -225,6 +236,7 @@ class WebBroker extends EventEmitter {
       }
     }
   }
+
   sendUpdate(machine, opArr, wse, cb) {
     const m = this._machineMap.get(machine);
     const ser = opArr.join('\n');

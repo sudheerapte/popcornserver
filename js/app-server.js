@@ -128,6 +128,7 @@ class AppServer extends EventEmitter {
         log(`appConnect: already has ${appName}`);
       } else {
         this._appMap.set(appName, []);
+        log(`appConnect: registered ${appName}`);
       }
       rec.sse.on('SSEvent', ev => {
         this.handleAppMessage(appName, rec, ev)
@@ -305,7 +306,9 @@ ${arr.join("\n")}`);
         return reject(`provide ${machine}: no payload!`);
       }
       if (this._map.has(machine)) {
-        return resolve(`already have ${machine}`);
+        log(`already have ${machine}. Replacing.`);
+        this._map.set(machine, {mc: mc})
+        return resolve();
       }
       const mc = new Machine;
       const result = mc.interpret(arr);
@@ -317,6 +320,17 @@ ${arr.join("\n")}`);
         return resolve();
       }
     });
+  }
+  processClientProvide(machine, clientId, arr) {
+    log(`processing clientProvide ${clientId} ${machine}`);
+    this.processProvide(machine, arr)
+      .then( () => {
+        log(`emitting provide Drive-By ${machine}`);
+        this.emit('provide', 'Drive-By', machine, this._map.get(machine).mc);
+      })
+      .catch( errMsg => {
+        log(`client provided ${machine}: ${errMsg}. Not registered.`);
+      });
   }
   processUpdate(machine, arr) {
     return new Promise((resolve,reject) => {
