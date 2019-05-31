@@ -4,7 +4,7 @@ let P = {          // minimize pollution of global namespace
   machine: "",     // name of machine
   mc: new Machine, // filled in by message handlers
   ws: null,        // websocket assigned by upgradeToWebsocket
-  queries: new Queries,
+  propagator: null,
   tokenizer: new Tokenizer,
 };
 
@@ -35,13 +35,14 @@ function readProvideScript() {
     const lines = str.split(/\n|\r\n/)
           .filter(line => ! line.match(/^\s*$/))
           .map(line => line.trim());
-    const newMachine = new Machine;
-    const result = newMachine.interpret(lines);
+    const temp = new Machine;
+    const result = temp.interpret(lines);
     if (result) {
       console.log(`provide script: ${result}`);
       console.log(`not changing machine.`);
     } else {
-      P.mc = newMachine;
+      P.mc = temp;
+      P.propagator = new Propagator(P.mc, P.tokenizer, console.log)
     }
   } else {
     console.log(`provide script not found; continuing`);
@@ -59,22 +60,35 @@ function readInitScript() {
     if (result) {
       console.log(`init script: ${result}`);
     }
+    console.log(`readInitScript: mc = ${P.mc.getSerialization().length} lines`);
   } else {
     console.log(`init script not found; continuing`);
   }
 }
 
+function runRenderScript() {
+  const renderScript = document.querySelector('script#render');
+  if (renderScript) {
+    const str = renderScript.textContent;
+    const lines = str.split(/\n|\r\n/)
+          .filter(line => ! line.match(/^\s*$/))
+          .map(line => line.trim());
+    P.propagator.runRenderScript(lines);
+  } else {
+    console.log(`render script not found; continuing`);
+  }
+}
+
 function generateXY() {
   const nodeList = document.querySelectorAll(`svg use`);
-  const evalFunc =  P.queries.getEvalFunc(P.mc);
-
   let numFormulas = 0;
+  console.log(`generateXY: .board.a = ${P.mc.exists('.board.a')}`);
   nodeList.forEach( useNode => {
     [ 'x', 'y', 'href' ].forEach( coord => {
       const formula = useNode.getAttribute(`data-${coord}`);
       if (formula) {
         numFormulas++;
-        let result = P.tokenizer.process(formula, evalFunc);
+        let result = P.propagator.process(formula);
         if (result[0]) {
           console.log(`use formula ${numFormulas}:
      ${formula}:
@@ -158,6 +172,7 @@ function doFirstMessage() {
           return proceedPastFirstMessage(resolve);
 	}
         P.mc = new Machine;
+        P.propagator = new Propagator(P.mc, P.tokenizer, console.log)
 	const result = P.mc.interpret(arr.slice(1));
 	if (result) {
           console.log(`failed to interpret provided machine: ${result}`);
@@ -230,6 +245,7 @@ function handleMessage(ev) { // handle subsequent messages
         return;
       } else {
         P.mc = new Machine;
+        P.propagator = new Propagator(P.mc, P.tokenizer, console.log)
 	const result = P.mc.interpret(arr.slice(1));
 	if (result) {
           console.log(`failed to interpret provided machine: ${result}`);
@@ -257,6 +273,7 @@ let unknownPaths = new Map(); // suppress repeated "no such path" errors
 
 function reflectMachine() {
   if (! P.mc) { return; }
+  runRenderScript();
   generateXY();
   const DM = "data-alt";
   const machineElems = document.querySelectorAll(`[${DM}]`);

@@ -195,7 +195,7 @@ class Tokenizer {
      See the scanString function above for how to terminate input
      strings in the middle.
 
-     See the printTokens function below; it can take an array of
+     See the renderTokens function below; it can take an array of
      tokens and create a string that, when read back by tokenize(),
      forms the original array.
    */
@@ -250,42 +250,6 @@ class Tokenizer {
     }
     return [ null, arr];
   }
-
-  /*
-  printTokens(arr) {
-    if (! arr) { return null; }
-
-    const me = this;
-    if (arr.hasOwnProperty('length')) {
-      let str = '';
-      arr.forEach( (tok,i) => {
-        if (tok.name === 'STRING' && i < arr.length-1) {
-          str += printTok(tok);
-          str += "\n";
-        } else {
-          str += printTok(tok);
-        }
-      });
-      return str;
-    } else {
-      return printTok(arr);
-    }
-
-    function printTok(tok) {
-      if (tok) {
-        if (tok.name === 'STRING') {
-          return '"'+tok.value;
-        } else if (tok.name.match(/WORD|COMMAND/)) {
-          return " " + tok.value;
-        } else if (me.specials[tok.name]) {
-          return me.specials[tok.name];
-        }
-      } else {
-        return ' (null)';
-      }
-    }
-  }
-  */
 
   renderTokens(arr) {
     if (! arr) { return ""; }
