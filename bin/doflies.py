@@ -1,21 +1,32 @@
 #!/usr/bin/python3
+import time
 import socket
 import sys
 import re
 
 HOST, PORT = "localhost", 8001
 
+turn = 'spider'
+
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
     sock.connect((HOST, PORT))
     sock.sendall(bytes("event: appConnect\ndata: doflies\n\n", "utf-8"))
     received = str(sock.recv(1024), "utf-8")
-    if re.search("ok", received):
-        print("Received OK")
-        while received:
-            received = str(sock.recv(1024), "utf-8")
-            lines = re.split(r"\n+", received);
-            print("Received {}".format(lines[1]))
-print("Popcorn dropped connection.")
+    while re.search("ok", received):
+        print("appConnect: received OK. Sending turn change...")
+        time.sleep(2)
+        sock.sendall(bytes('''event: message
+data: update fliesdemo
+data: C .turn {}
+
+'''.format(turn), "utf-8"))
+        print("sent update fliesdemo, turn = {}".format(turn));
+        if turn == 'spider':
+            turn = 'flies'
+        else:
+            turn = 'spider'
+        received = str(sock.recv(1024), "utf-8")
+
 
 adj = {
     'a': ('b', 'c', 'd' ),
