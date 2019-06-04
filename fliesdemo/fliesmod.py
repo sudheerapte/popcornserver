@@ -19,31 +19,46 @@ def getItemAt(position):
             return i
     return None
 
+def getTurn():
+    global turn
+    return turn
+
+def setTurn(t):
+    global turn
+    if turn == t:
+        print("setTurn({}): cannot set to same value again".format(t))
+        sys.exit(1)
+    else:
+        turn = t
+
 def move(item, position):
+    global turn
     if not item in posdict:
         return("item ${item}: no such item".format(item))
     if getPosition(item) == position:
         return("item {} already at {}".format(item, position))
-    if turn == "spider" and not item == "spider":
-        return("move spider: not spider's turn");
-    if turn == "flies" and not item.match(r"fly"):
-        return("move {}: not flies's turn".format(item));
+    if getTurn() == "spider" and not item == "spider":
+        return("move {}: spider's turn".format(item));
+    if getTurn() == "flies" and not re.match(r"fly", item):
+        return("move {} {}: it is flies's turn".format(item, position));
     if not getItemAt(position) is None:
         return("move to {}: position already occupied".format(position))
-    if turn == "spider":
+    if getTurn() == "spider":
         currpos = getPosition("spider")
         if isadj(currpos, position):
             posdict['spider'] = position
+            setTurn('flies')
             return None
         else:
             return("move {}: not adjacent".format(position))
-    if turn == "flies":
-        currpos = getposition(item)
+    if getTurn() == "flies":
+        currpos = getPosition(item)
         if isfwd(currpos, position):
             posdict[item] = position
+            setTurn('spider')
             return None
         else:
-            return("move {}: cannot go backward from {}",format(position, currpos))
+            return("move {}: cannot go backward from {}".format(position, currpos))
     return("impossible!")
 
 adj = {
@@ -57,13 +72,13 @@ adj = {
     'h': ('e', 'f', 'g' )}
 
 fwd = {
-    'a': ('b', 'c', 'd' ),
-    'b': ('c', 'd', 'e' ),
-    'c': ('b', 'd', 'g' ),
+    'a': ('c', 'd', 'e' ),
+    'b': ('a', 'd', 'c' ),
+    'c': ('a', 'd', 'f' ),
     'd': ('e', 'f', 'g'),
-    'e': ('f', 'h' ),
-    'f': ('e', 'g', 'h' ),
-    'g': ('f', 'h' ),
+    'e': ('g', 'h' ),
+    'f': ('g', 'h' ),
+    'g': ('e', 'f', 'h' ),
     'h': ( )}
 
 def sendInitialMachine(sock):
