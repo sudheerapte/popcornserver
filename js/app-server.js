@@ -146,6 +146,7 @@ class AppServer extends EventEmitter {
       if (typeof ev.data !== 'string') {
         return reject(`provide: bad payload type: ${typeof ev.data}`);
       }
+      if (ev.data.match(/^\s*$/)) { return resolve(); }
       const m = ev.data.match(/^\s*(\w+)\s+(\w+)/);
       if (!m) {
         return reject(`app ${appName}: bad command: |${ev.data}|`);
