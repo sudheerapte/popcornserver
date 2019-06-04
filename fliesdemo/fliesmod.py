@@ -131,22 +131,6 @@ data: P .turn/flies
 '''
     sock.sendall(bytes(temp, 'utf-8'))
 
-def printReceived():
-    m = re.search(okmatch, received);
-    if m:
-        pass
-    else:
-        print('received=|{}|'.format(received))
-
-def sendTurn(sock, turn):
-    print("appConnect: Sending turn {}...".format(turn))
-    time.sleep(2)
-    sock.sendall(bytes('''event: message\ndata: update fliesdemo\ndata: C .turn {}\n\n'''.format(turn), "utf-8"))
-    received = str(sock.recv(1024), "utf-8")
-    printReceived()
-
-
-
 def isadj(x, y):
     return y in adj[x]
 

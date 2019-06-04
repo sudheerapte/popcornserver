@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 import socket
+import os
 import sys
 import re
 import fliesmod
@@ -15,6 +16,10 @@ def checkNone(actual):
         sys.exit(1)
 
 def show():
+    if os.getenv('DEBUG') is None:
+        return
+    if not re.search(os.getenv('DEBUG'), 'fliesmod'):
+        return
     print('fly1 = {}, spider = {}, turn = {}'
           .format(fliesmod.getPosition('fly1'),
                   fliesmod.getPosition('spider'),
