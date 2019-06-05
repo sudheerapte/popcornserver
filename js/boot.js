@@ -6,6 +6,9 @@ let P = {          // minimize pollution of global namespace
   ws: null,        // websocket assigned by upgradeToWebsocket
   propagator: null,
   tokenizer: new Tokenizer,
+// Turn this on if you want detailed logging for render scripts
+//  logger: console.log,
+  logger: s => {},
 };
 
 function boot() {
@@ -186,7 +189,7 @@ function doFirstMessage() {
           return reject(msg);
 	}
         P.mc = new Machine;
-        P.propagator = new Propagator(P.mc, P.tokenizer, console.log)
+        P.propagator = new Propagator(P.mc, P.tokenizer, P.logger)
 	const result = P.mc.interpret(arr.slice(1));
 	if (result) {
           console.log(`failed to interpret provided machine: ${result}`);
