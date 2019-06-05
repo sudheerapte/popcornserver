@@ -112,6 +112,11 @@ mkdir -p ~/.popcorn/fliesdemo &&
       P .img.spider
       P .img.empty
 
+      P .tomove/spider
+      P .tomove/fly1
+      P .tomove/fly2
+      P .tomove/fly3
+
       D .img.fly1 fly
       D .img.fly2 fly
       D .img.fly3 fly
@@ -124,6 +129,7 @@ mkdir -p ~/.popcorn/fliesdemo &&
       D .img.fly2 fly
       D .img.fly3 fly
       D .img.spider spider-selected
+      C .tomove spider
     END
     ON .turn flies BEGIN
       D .img.fly1 fly
@@ -131,6 +137,7 @@ mkdir -p ~/.popcorn/fliesdemo &&
       D .img.fly3 fly
       D .img.{{CURRENT .selectedfly}} fly-selected
       D .img.spider spider
+      C .tomove {{CURRENT .selectedfly}}
     END
     </script>
     <div>
@@ -174,20 +181,28 @@ s/^[[:space:]]\+height\=.\+$/   height=\"150\"\n   x=\"-105\"\n   y=\"-75\"/' as
       </g>
       <g id="drawspots">
         <use data-href="#{{DATA .img.{{CURRENT .board.a}}}}"
+             data-cmdclick="move {{CURRENT .tomove}} a"
              data-x="{{DATA .loc.a.x}}" data-y="{{DATA .loc.a.y}}"/>
         <use data-href="#{{DATA .img.{{CURRENT .board.b}}}}"
+             data-cmdclick="move {{CURRENT .tomove}} b"
              data-x="{{DATA .loc.b.x}}" data-y="{{DATA .loc.b.y}}"/>
         <use data-href="#{{DATA .img.{{CURRENT .board.c}}}}"
+             data-cmdclick="move {{CURRENT .tomove}} c"
              data-x="{{DATA .loc.c.x}}" data-y="{{DATA .loc.c.y}}"/>
         <use data-href="#{{DATA .img.{{CURRENT .board.d}}}}"
+             data-cmdclick="move {{CURRENT .tomove}} d"
              data-x="{{DATA .loc.d.x}}" data-y="{{DATA .loc.d.y}}"/>
         <use data-href="#{{DATA .img.{{CURRENT .board.e}}}}"
+             data-cmdclick="move {{CURRENT .tomove}} e"
              data-x="{{DATA .loc.e.x}}" data-y="{{DATA .loc.e.y}}"/>
         <use data-href="#{{DATA .img.{{CURRENT .board.f}}}}"
+             data-cmdclick="move {{CURRENT .tomove}} e"
              data-x="{{DATA .loc.f.x}}" data-y="{{DATA .loc.f.y}}"/>
         <use data-href="#{{DATA .img.{{CURRENT .board.g}}}}"
+             data-cmdclick="move {{CURRENT .tomove}} g"
              data-x="{{DATA .loc.g.x}}" data-y="{{DATA .loc.g.y}}"/>
         <use data-href="#{{DATA .img.{{CURRENT .board.h}}}}"
+             data-cmdclick="move {{CURRENT .tomove}} h"
              data-x="{{DATA .loc.h.x}}" data-y="{{DATA .loc.h.y}}"/>
       </g>
     </svg>

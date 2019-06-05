@@ -10,6 +10,17 @@ posdict = {
 
 okmatch = re.compile(r"data\:\s+ok");
 
+def parseMove(buf):
+    print("parsing move:")
+    print(buf)
+    m = re.search(r'move\s+(\w+)\s+(\w+)', buf)
+    print(m)
+    if m is not None:
+        print("parseMove = {} {}".format(m.group(1), m.group(2)))
+        return m.group(1), m.group(2)
+    else:
+        return None, None
+
 def getPosition(item):
     return posdict[item]
 

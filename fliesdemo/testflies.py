@@ -52,5 +52,8 @@ checkBegin(fliesmod.getPosition('fly1'), 'e')
 show()
 checkBegin(fliesmod.move('spider', 'h'), 'item')
 
+# do a parseMove
+print(fliesmod.parseMove("data: move spider f"))
+
 print('done')
 
