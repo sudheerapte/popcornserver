@@ -163,7 +163,7 @@ class Propagator {
       }
       const mPath = this.composePath(args);
       if (! mPath) {
-        return [ `CURRENT: bad syntax for path: ${this.printTokens(args)}`, null ];
+        return [ `CURRENT: bad syntax for path: ${this.t.renderTokens(args)}`, null ];
       }
       if (this.mc.exists(mPath)) {
         if (this.mc.isVariableParent(mPath)) {

@@ -30,4 +30,4 @@ function errDiff(actual, expected) {
   }
 }
 
-module.exports = [ log, err ];
+module.exports = [ log, err, errDiff ];

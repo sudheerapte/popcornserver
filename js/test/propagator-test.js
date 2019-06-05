@@ -1,6 +1,6 @@
 "use strict";
 
-const [log, err] = require('./logerr.js');
+const [log, err, errDiff] = require('./logerr.js');
 const Propagator = require('../propagator.js');
 const t = require('../tokenizer.js');
 const Machine = require('../machine.js');
@@ -26,6 +26,10 @@ initScript = [
   'P .img.fly2',
   'P .img.fly3',
   'P .img.spider',
+  'P .tomove/spider',
+  'P .tomove/fly1',
+  'P .tomove/fly2',
+  'P .tomove/fly3',
 ];
 
 machine = new Machine();
@@ -38,11 +42,13 @@ renderScript = [
   "D .img.fly2 fly",
   "D .img.fly3 fly",
   "D .img.spider spider-selected",
+  "C .tomove spider",
   "END",
 
   "ON .turn flies BEGIN",
   "D .img.{{CURRENT .selectedfly}} fly-selected",
   "D .img.spider spider",
+  "C .tomove {{CURRENT .selectedfly}}",
   "END",
 ];
 
@@ -52,6 +58,12 @@ propagator.runRenderScript(renderScript);
 checkProcess("{{DATA .img.fly1}}", "fly");
 checkProcess("{{DATA .img.fly2}}", "fly");
 checkProcess("{{DATA .img.spider}}", "spider-selected");
+checkProcess("{{CURRENT .tomove}}", "spider");
+
+log(`---- check for bad path syntax`);
+result = propagator.process("{{CURRENT tomove}}");
+errDiff(result[0], "CURRENT: bad syntax for path: tomove");
+log(`   OK`);
 
 log(`---- runRenderScript: .turn = flies`);
 machine.interpret([ 'C .turn flies' ]);
@@ -62,7 +74,7 @@ propagator.runRenderScript(renderScript);
 checkProcess("{{DATA .img.fly1}}", "fly-selected");
 checkProcess("{{DATA .img.fly2}}", "fly");
 checkProcess("{{DATA .img.spider}}", "spider");
-
+checkProcess("{{CURRENT .tomove}}", "fly1");
 
 function checkProcess(input, output) {
   let tResult;
