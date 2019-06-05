@@ -73,39 +73,39 @@ def move(item, position):
     return("impossible!")
 
 adj = {
-    'a': ('b', 'c', 'd' ),
-    'b': ('a', 'c', 'd', 'e' ),
+    'a': ('b', 'c', 'd', 'e'),
+    'b': ('a', 'c', 'd' ),
     'c': ('a', 'b', 'd', 'g' ),
     'd': ('a', 'b', 'c', 'e', 'f', 'g'),
-    'e': ('b', 'd', 'f', 'h' ),
+    'e': ('a', 'd', 'f', 'h' ),
     'f': ('d', 'e', 'g', 'h' ),
     'g': ('c', 'd', 'f', 'h' ),
     'h': ('e', 'f', 'g' )}
 
 fwd = {
     'a': ('c', 'd', 'e' ),
-    'b': ('a', 'd', 'c' ),
-    'c': ('a', 'd', 'f' ),
+    'b': ('a', 'c', 'd' ),
+    'c': ('a', 'd', 'g' ),
     'd': ('e', 'f', 'g'),
-    'e': ('g', 'h' ),
-    'f': ('g', 'h' ),
-    'g': ('e', 'f', 'h' ),
+    'e': ('f', 'h' ),
+    'f': ('g', 'g', 'h' ),
+    'g': ('f', 'h' ),
     'h': ( )}
 
 def sendInitialMachine(sock):
     temp = '''
 event: message
 data: provide fliesdemo
-data: P .board.a/fly1
-data: P .board.a/fly2
-data: P .board.a/fly3
-data: P .board.a/spider
-data: P .board.a/empty
-data: P .board.b/fly2
 data: P .board.b/fly1
+data: P .board.b/fly2
 data: P .board.b/fly3
 data: P .board.b/spider
 data: P .board.b/empty
+data: P .board.a/fly2
+data: P .board.a/fly1
+data: P .board.a/fly3
+data: P .board.a/spider
+data: P .board.a/empty
 data: P .board.c/fly3
 data: P .board.c/fly1
 data: P .board.c/fly2
