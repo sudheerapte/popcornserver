@@ -378,9 +378,14 @@ function addClickCmdHandlers() {
     const chStr = e.getAttribute(DC);
     if (chStr) {
       e.addEventListener('click', ev => {
-        console.log(`clicked: sending ${chStr}`);
+        const result = P.propagator.process(chStr.trim());
+        if (result[0]) {
+          console.log(`cmdclick failed for ${chStr}: ${result[0]}`);
+          return;
+        }
+        console.log(`clicked: sending ${result[1]}`);
         try {
-          if (P.ws) { P.ws.send(`command ${P.machine}\n${chStr}`); }
+          if (P.ws) { P.ws.send(`command ${P.machine}\n${result[1]}`); }
         } catch (e) {
           console.log(`websocket send failed: ${e.code}`);
         }
