@@ -89,8 +89,8 @@ fwd = {
     'g': ('f', 'h' ),
     'h': ( )}
 
-def sendInitialMachine(sock):
-    temp = '''
+def getInitialMachineMessage():
+    return '''
 event: message
 data: provide fliesdemo
 data: P .board.b/fly1
@@ -137,7 +137,6 @@ data: P .turn/spider
 data: P .turn/flies
 
 '''
-    sock.sendall(bytes(temp, 'utf-8'))
 
 def isadj(x, y):
     return y in adj[x]

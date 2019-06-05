@@ -44,29 +44,39 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
     sck = sock
     sock.sendall(bytes("event: appConnect\ndata: doflies\n\n", "utf-8"))
     received = str(sock.recv(1024), "utf-8")
-    print("appConnect: Sending initial machine...")
-    fliesmod.sendInitialMachine(sock)
+    # print("appConnect: Sending initial machine...")
+    sock.sendall(bytes(fliesmod.getInitialMachineMessage(), 'utf-8'))
     received = str(sock.recv(1024), "utf-8")
+    if not re.search(okmatch, received):
+        print("bad reply received:")
+        print(received)
+        sys.exit(1)
     while re.search(okmatch, received):
         print('waiting for command...')
         received = str(sock.recv(1024), "utf-8")
-        printCommand(received)
-        print(fliesmod.parseMove(received))
+        if (re.search(okmatch, received)):
+            # print('got OK. Continuing...')
+            continue
         item, position = fliesmod.parseMove(received)
+        # print("after parseMove: item = {}, position = {}".format(item, position))
         if item is None:
             print('no move command parsed')
+            received = "data: ok"
+            continue
         else:
-            print("making move transaction");
+            # print("making move transaction");
             trans = getMoveTransaction(item, position)
             if trans is not None:
                 print('sending move {} {}'.format(item, position))
                 sock.sendall(bytes(trans, "utf-8"))
             else:
-                print('bad transaction; no command sent')
+                print('no command sent')
+                received = "data: ok"
+                continue
             reply = str(sock.recv(1024), "utf-8")
             if re.search(okmatch, reply):
-                print('transaction was OK')
+                pass
+                # print('transaction was OK')
             else:
                 print('transaction failed: {}'.format(reply))
         received = "data: ok"
-            
