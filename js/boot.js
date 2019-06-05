@@ -339,23 +339,20 @@ function addClickChgHandlers() {
   machineElems.forEach( e => {
     const chStr = e.getAttribute(DO);
     if (chStr) {
-      const arr = chStr.split(',').map( elem => elem.trim() );
-      // console.log(`arr = ${arr.join(",")}`);
-      const result = mcCopy.interpret(arr);
-      if (result) {
-        console.log(`${e.tagName} ${DO}=${chStr}: ${result}`);
-      } else {
-        e.addEventListener('click', ev => {
-          if (! P.mc) { return; }
-          const result = P.mc.interpret(arr);
-          if (result) {
-            console.log(`click failed: ${result}`);
+      e.addEventListener('click', ev => {
+        const result = P.propagator.process(chStr.trim());
+        if (result[0]) {
+          console.log(`chgclick failed for ${chStr}: ${result[0]}`);
+        } else {
+          console.log(`click result: ${result[1]}`);
+          const iresult = P.mc.interpret(result[1].split(','));
+          if (iresult) {
+            console.log(`interpret result: ${iresult}`);
           } else {
-            //console.log(`clicked`);
             reflectMachine();
           }
-        });
-      }
+        }
+      });
     } else {
       console.log(`attribute ${DO} value not found`);
     }
