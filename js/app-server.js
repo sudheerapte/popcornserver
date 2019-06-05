@@ -125,11 +125,10 @@ class AppServer extends EventEmitter {
       }
       const appName = m[1];
       if (this._appMap.has(appName)) {
-        log(`appConnect: already has ${appName}`);
-      } else {
-        this._appMap.set(appName, []);
-        log(`appConnect: registered ${appName}`);
+        log(`appConnect: already has ${appName}; releasing the old one`);
       }
+      this._appMap.set(appName, []);
+      log(`appConnect: registered ${appName}`);
       rec.sse.on('SSEvent', ev => {
         this.handleAppMessage(appName, rec, ev)
           .then( () => rec.sse.sendMessage("ok") )
