@@ -192,6 +192,15 @@ err(r5);
       err(`${path} getData() should have returned foo!`);
     }
   }
+  if (machine.isParent(path)) {
+    err("${path} should not be a parent!");
+  }
+  if (! machine.isParent(".boot/booting")) {
+    err(".boot/booting should be a parent!");
+  }
+  if (! machine.isConcurrentParent(".boot/booting")) {
+    err(".boot/booting should be a concurrent parent!");
+  }
 });
 
 r5 = machine.removeBlockListener(event5Listener);

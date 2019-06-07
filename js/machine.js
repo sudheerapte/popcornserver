@@ -266,6 +266,12 @@ class Machine {
     return ! state.hasOwnProperty("cc");
   }
 
+  isParent(path) {
+    if (! this.exists(path)) { return false; }
+    const state = this.getState(path);
+    return state.hasOwnProperty("cc");
+  }
+
   isVariableLeaf(path) {
     if (! this.exists(path)) { return false; }
     if (! path || path.length <= 0) { return false; }
@@ -283,6 +289,12 @@ class Machine {
     if (! this.exists(path)) { return false; }
     const state = this.getState(path);
     return state.hasOwnProperty("cc") && state.hasOwnProperty("curr");
+  }
+
+  isConcurrentParent(path) {
+    if (! this.exists(path)) { return false; }
+    const state = this.getState(path);
+    return state.hasOwnProperty("cc") && ! state.hasOwnProperty("curr");
   }
 
   getCurrentChildName(path) {
