@@ -188,13 +188,6 @@ class Tokenizer {
   /**
      tokenize - create an array of tokens from an input string
 
-     As a special rule, if the input string starts with a quote
-     character '"', then the rest of the input string is put into a
-     single STRING token.
-
-     See the scanString function above for how to terminate input
-     strings in the middle.
-
      See the renderTokens function below; it can take an array of
      tokens and create a string that, when read back by tokenize(),
      forms the original array.
@@ -215,7 +208,6 @@ class Tokenizer {
     if (str === null || typeof str === 'undefined') {
       return [ "string is null", arr ];
     }
-    // special rule for forcing the whole string into a STRING token
     if (str.length === 0) {
       return [ null, {name: 'STRING', value: ''} ];
     }
@@ -227,8 +219,8 @@ class Tokenizer {
       const s = str.slice(i);
       let m;
       let found = false;
-      RULES.forEach( rec => {
-        if (found) { return; }
+      for (let j=0; j<RULES.length; j++) {
+        const rec = RULES[j];
         m = s.match(rec.re);
         if (m) {
           // console.log(`i = ${i}: matched ${rec.re}`);
@@ -241,8 +233,9 @@ class Tokenizer {
             }
             arr.push({name: toktype, value: (rec.useValue ? m[0] : null)});
           }
+          break;
         }
-      });
+      }
       if (! found) {
         arr.push({name: 'STRING', value: s});
         i += s.length;
