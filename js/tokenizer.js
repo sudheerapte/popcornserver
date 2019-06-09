@@ -260,7 +260,7 @@ class Tokenizer {
 
     function renderTok(tok) {
       if (tok) {
-        if (tok.name.match(/STRING|WORD|COMMAND/)) {
+        if (tok.name.match(/STRING|WORD|COMMAND|NUMBER/)) {
           return tok.value;
         } else if (me.specials[tok.name]) {
           return me.specials[tok.name];

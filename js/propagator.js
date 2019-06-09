@@ -67,6 +67,75 @@ class Propagator {
     }
   }
 
+  // unify(pathString)
+  unify(pathString, allOrCurrent) {
+    if (!allOrCurrent || !allOrCurrent.match(/^ALL|CURRENT$/)) {
+      this.log(`expecting ALL or CURRENT: got ${allOrCurrent}`);
+      return;
+    }
+    const testPaths = allOrCurrent === 'ALL' ?
+          this.mc.getAllPaths() :
+          this.mc.getCurrentPaths();
+
+    let arr = [];
+    let s = pathString;
+    do {
+      s = splitExpression(s, arr);
+    } while(s && s.length > 0);
+
+    let outArr = [];
+    testPaths.forEach( p => {
+      const obj = unifyExpression(arr, p);
+      if (obj) {
+        outArr.push(obj);
+      }
+    });
+    this.log(outArr);
+    return outArr;
+
+    function unifyExpression(arr, aPath) {
+      let subst = {};
+      let p = aPath;
+      for (let i=0; i<arr.length; i++) {
+        if (arr[i].hasOwnProperty("LIT")) {
+          if (! p.startsWith(arr[i].LIT)) {
+            return null;
+          } else {
+            p = p.slice(arr[i].LIT.length);
+          }
+        } else if (arr[i].hasOwnProperty("VAR")) {
+          const m = p.match(/^[a-z0-9-]+/);
+          if (m) {
+            subst[arr[i].VAR] = m[0];
+            p = p.slice(m[0].length);
+          } else {
+            return null;
+          }
+        } else {
+          return null;
+        }
+      }
+      return subst;
+    }
+
+    function splitExpression(pathExpr, arr) {
+      if (! pathExpr || pathExpr.length <= 0) { return ; }
+      const ma = pathExpr.match(/^[A-Z]+/);
+      if (ma) {
+        arr.push({VAR: pathExpr.slice(0,ma[0].length)});
+        return pathExpr.slice(ma[0].length);
+      }
+      const m = pathExpr.match(/^([a-z0-9-.\/]+)(.*)/);
+      if (m) {
+        arr.push({LIT: m[1]});
+        return m[2];
+      } else {
+        this.log(`unify: bad prefix: |${pathExpr}|`);
+        return "";
+      }
+    }
+  }
+
   // evalBlock - take a list of strings and evaluate them,
   // returning a corresponding list of strings.
   evalBlock(todo) {
@@ -89,6 +158,32 @@ class Propagator {
     });
   }
 
+
+  // evalBlockVars - take a list of strings and evaluate them
+  // in a context of vars, returning a corresponding list of strings.
+  // This function substitutes that token wherever a COMMAND with that
+  // capitalized name is found, and then evaluates the entire input string.
+  evalBlockVars(todo, varContext) {
+    const varFunc = this.getEvalFuncVarContext(varContext);
+    return todo.map( formula => {
+      if (!formula) {
+        this.log(`evalBlock: formula is empty`);
+        return "";
+      }
+      let result = this.t.process(formula, varFunc);
+      if (result[0]) {
+        this.log(`evalBlock: ${formula}: ${result[0]}`);
+        return "";
+      } else if (! result[1]) {
+        this.log(`evalBlock: ${formula}: falsy result`);
+        return "";
+      } else {
+        this.log(`evalBlock: |${formula}| ==> |${result[1]}|`);
+        return result[1];
+      }
+    });
+  }
+
   // getEvalFunc - return a function suitable to pass in to
   // this.t.process().
 
@@ -100,6 +195,28 @@ class Propagator {
       }
       if (eResult[0]) { return eResult; }
       return [ null, eResult[1] ];
+    });
+  }
+
+  // getEvalFuncVarContext - return a function suitable to pass in to
+  // this.t.process(). This version takes a "varContext" that can
+  // resolve a set of capitalized names (COMMAND token values) to
+  // a different token.
+  // The "varContext" provides one token per capitalized name.
+  getEvalFuncVarContext(varContext) {
+    const me = this;
+    return (tokens => {
+      let newTokList = tokens.map( e => {
+        if (e.name === 'COMMAND' &&
+            varContext.hasOwnProperty(e.value) &&
+            varContext[e.value].match(/^[a-z]+$/)
+           ) {
+          return {name: 'WORD', value: varContext[e.value]};
+        } else {
+          return e;
+        }
+      });
+      return me.evalFunc(newTokList);
     });
   }
 
@@ -203,6 +320,42 @@ class Propagator {
       } else {
         return [ `DATA: no such path: ${mPath}`, null ];
       }
+    } else if (cmd === 'ALL') {
+      const result = this.expandAllConcurrentChildren(args);
+      if (result[0]) {
+        return result;
+      } else { // Build array of tokens from the child names
+        if (result[1].length === 0) { return result; }
+        const arr = [];
+        for (let i=0; i< result[1].length-1; i++) {
+          arr.push(result[1][i]);
+          arr.push({name: ',', value: null});
+        }
+        arr.push(result[1][i]);
+        return [null, arr];
+      }
+    }
+  }
+
+  expandAllConcurrentChildren(args) {
+    if (args.length < 1) {
+      return [`ALL needs at least 1 arg`, null];
+    }
+    const mPath = this.composePath(args);
+    if (! mPath) {
+      return [ `ALL: bad syntax for path: ${this.t.renderTokens(args)}`, null ];
+    }
+    if (this.mc.exists(mPath)) {
+      if (this.mc.isConcurrentParent(mPath)) {
+        const state = this.mc.getState(mPath);
+        return [null, state.c.map( child => {
+          return {name: 'WORD', value: child};
+        }) ];
+      } else {
+        return [`ALL: not a concurrent parent: ${mPath}`, null];
+      }
+    } else {
+      return [ `ALL: no such path: ${mPath}`, null ];
     }
   }
 
