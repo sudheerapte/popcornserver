@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/sh -e
 usage() {
     echo "Usage: unitfile [ TESTNAME ]"
     echo "  Runs the unit test in the file js/test/TESTNAME-test.js"

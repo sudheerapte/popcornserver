@@ -305,13 +305,13 @@ ${arr.join("\n")}`);
       if (! arr.length > 0) {
         return reject(`provide ${machine}: no payload!`);
       }
+      const mc = new Machine;
+      const result = mc.interpret(arr);
       if (this._map.has(machine)) {
         log(`already have ${machine}. Replacing.`);
         this._map.set(machine, {mc: mc})
         return resolve();
       }
-      const mc = new Machine;
-      const result = mc.interpret(arr);
       if (result) {
         return reject(`provide failed: ${result}`);
       } else {
