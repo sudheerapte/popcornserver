@@ -34,13 +34,37 @@ initScript = [
   'P .y.b.c/foo',
   'P .y.b.c/bar',
   'P .y.b.c/baz',
+  'P .board.a',
+  'P .board.b',
+  'P .board.c',
 ];
 
 machine = new Machine();
 machine.interpret(initScript);
 log(machine.getSerialization().filter( s => s.match(/\.turn/)) );
 
-log(`--- unify ALL and unify CURRENT`);
+log(`---- evalBlockVars using unify`);
+machine = new Machine();
+machine.interpret(initScript);
+propagator = new Propagator(machine, t, (s) => log(s));
+let unifications = propagator.unify(".board.POS", "ALL");
+log(unifications);
+err(unifications);
+unifications.forEach( uni => {
+  log(`uni = ${JSON.stringify(uni)}`);
+  const lines = propagator.evalBlockVars([
+    "P .fly1.position/{{POS}}",
+    "P .fly2.position/{{POS}}"], uni);
+  const result = machine.interpret(lines);
+  err(result);
+});
+checkProcess("{{EXISTS .board.b}}", "1");
+checkProcess("{{CURRENT .fly1.position}}", "a");
+checkProcess("{{CURRENT .fly2.position}}", "a");
+
+process.exit(0);
+
+log(`--- unify ALL, CURRENT, NONCURRENT`);
 propagator = new Propagator(machine, t, (s) => log(s));
 result = propagator.unify('.XORY.b.c/P', 'ALL');
 errDiff(result.length, 6);
@@ -51,6 +75,11 @@ result = propagator.unify('.XORY.b.c/P', 'CURRENT');
 errDiff(result.length, 2);
 if (result.filter(e => e.P === 'foo').length !== 2) {
   err("unify result must contain two substitutions with X = foo");
+}
+result = propagator.unify('.XORY.b.c/P', 'NONCURRENT');
+errDiff(result.length, 4);
+if (result.filter(e => e.P === 'bar').length !== 2) {
+  err("unify result must contain two substitutions with X = bar");
 }
 result = propagator.unify('.selectedfly/F', 'ALL');
 errDiff(result.length, 3);
@@ -99,7 +128,6 @@ checkProcess("{{DATA .img.fly1}}", "fly-selected");
 checkProcess("{{DATA .img.fly2}}", "fly");
 checkProcess("{{DATA .img.spider}}", "spider");
 checkProcess("{{CURRENT .tomove}}", "fly1");
-
 
 log(`---- evalBlockVars`);
 machine = new Machine();

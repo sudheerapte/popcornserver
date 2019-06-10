@@ -69,13 +69,20 @@ class Propagator {
 
   // unify(pathString)
   unify(pathString, allOrCurrent) {
-    if (!allOrCurrent || !allOrCurrent.match(/^ALL|CURRENT$/)) {
-      this.log(`expecting ALL or CURRENT: got ${allOrCurrent}`);
+    if (!allOrCurrent || !allOrCurrent.match(/^ALL|CURRENT|NONCURRENT$/)) {
+      this.log(`expecting ALL or (NON)CURRENT: got ${allOrCurrent}`);
       return;
     }
-    const testPaths = allOrCurrent === 'ALL' ?
-          this.mc.getAllPaths() :
-          this.mc.getCurrentPaths();
+    let testPaths;
+    if (allOrCurrent === "ALL") {
+      testPaths = this.mc.getAllPaths();
+    } else if (allOrCurrent === "CURRENT") {
+      testPaths = this.mc.getCurrentPaths();
+    } else { // NONCURRENT
+      const temp = this.mc.getCurrentPaths();
+      testPaths = this.mc.getAllPaths()
+        .filter(p => ! temp.includes(p) );
+    }
 
     let arr = [];
     let s = pathString;
@@ -90,7 +97,7 @@ class Propagator {
         outArr.push(obj);
       }
     });
-    this.log(outArr);
+    // this.log(outArr);
     return outArr;
 
     function unifyExpression(arr, aPath) {
@@ -209,6 +216,7 @@ class Propagator {
       let newTokList = tokens.map( e => {
         if (e.name === 'COMMAND' &&
             varContext.hasOwnProperty(e.value) &&
+            varContext[e.value] &&
             varContext[e.value].match(/^[a-z]+$/)
            ) {
           return {name: 'WORD', value: varContext[e.value]};
