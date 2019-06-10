@@ -12,6 +12,9 @@ pwd ; echo "DEBUG=|$DEBUG|"
 if [ -n "$1" ] ; then
     testfile="${1}-test.js"
     if [ -e "$testfile" ]; then
+        if [ -z "${DEBUG}" ] ; then
+            export DEBUG="$1"
+        fi
 	echo "running $1"
 	node "./$testfile"
     else
