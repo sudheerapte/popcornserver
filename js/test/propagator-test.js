@@ -62,7 +62,7 @@ checkProcess("{{EXISTS .board.b}}", "1");
 checkProcess("{{CURRENT .fly1.position}}", "a");
 checkProcess("{{CURRENT .fly2.position}}", "a");
 
-process.exit(0);
+process.env["DEBUG"] = "";
 
 log(`--- unify ALL, CURRENT, NONCURRENT`);
 propagator = new Propagator(machine, t, (s) => log(s));
@@ -74,12 +74,12 @@ if (result.filter(e => e.P === 'bar').length !== 2) {
 result = propagator.unify('.XORY.b.c/P', 'CURRENT');
 errDiff(result.length, 2);
 if (result.filter(e => e.P === 'foo').length !== 2) {
-  err("unify result must contain two substitutions with X = foo");
+  err("unify result must contain two substitutions with P = foo");
 }
 result = propagator.unify('.XORY.b.c/P', 'NONCURRENT');
 errDiff(result.length, 4);
 if (result.filter(e => e.P === 'bar').length !== 2) {
-  err("unify result must contain two substitutions with X = bar");
+  err("unify result must contain two substitutions with P = bar");
 }
 result = propagator.unify('.selectedfly/F', 'ALL');
 errDiff(result.length, 3);

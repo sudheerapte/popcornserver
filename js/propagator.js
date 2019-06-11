@@ -67,7 +67,19 @@ class Propagator {
     }
   }
 
-  // unify(pathString)
+  runForScript(pathString, allOrCurrent, lines) {
+    const exprArr = this.getUnifyExpression(pathString, allOrCurrent);
+    const arr = this.unify(pathString, allOrCurrent);
+    for (let i=0; i< arr.length; i++) {
+      const subst = arr[i];
+      const result = this.evalBlock(lines, subst);
+    }
+
+    const formulas = lines.map( line => this.unify(line, allOrCurrent))
+          .filter( line => line && line.trim().length > 0 );
+  }
+
+  // unify(pathString) -- return substitution list
   unify(pathString, allOrCurrent) {
     if (!allOrCurrent || !allOrCurrent.match(/^ALL|CURRENT|NONCURRENT$/)) {
       this.log(`expecting ALL or (NON)CURRENT: got ${allOrCurrent}`);
@@ -84,11 +96,7 @@ class Propagator {
         .filter(p => ! temp.includes(p) );
     }
 
-    let arr = [];
-    let s = pathString;
-    do {
-      s = splitExpression(s, arr);
-    } while(s && s.length > 0);
+    let arr = this.getUnifyExpression(pathString);
 
     let outArr = [];
     testPaths.forEach( p => {
@@ -124,9 +132,18 @@ class Propagator {
       }
       return subst;
     }
+  }
+
+  getUnifyExpression(pathExpr) {
+    const me = this;
+    let arr = [];
+    let s = pathExpr;
+    do {
+      s = splitExpression(s, arr);
+    } while(s && s.length > 0);
+    return arr;
 
     function splitExpression(pathExpr, arr) {
-      if (! pathExpr || pathExpr.length <= 0) { return ; }
       const ma = pathExpr.match(/^[A-Z]+/);
       if (ma) {
         arr.push({VAR: pathExpr.slice(0,ma[0].length)});
@@ -145,13 +162,16 @@ class Propagator {
 
   // evalBlock - take a list of strings and evaluate them,
   // returning a corresponding list of strings.
-  evalBlock(todo) {
+  // Optionally takes an evalFunc (see tokenizer.process()).
+  // If none is passed in, then use my machine's evalFunc.
+  evalBlock(todo, anEvalFunc) {
+    if (! anEvalFunc) { anEvalFunc = this.evalFunc; }
     return todo.map( formula => {
       if (!formula) {
         this.log(`evalBlock: formula is empty`);
         return "";
       }
-      let result = this.t.process(formula, this.evalFunc);
+      let result = this.t.process(formula, anEvalFunc);
       if (result[0]) {
         this.log(`evalBlock: ${formula}: ${result[0]}`);
         return "";
