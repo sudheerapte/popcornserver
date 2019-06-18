@@ -124,31 +124,37 @@ class Tokenizer {
         return [ tResult[0], str ];
       }
       more = tResult[2];
-      if (++loopsDone < 0) { break; }
+      if (--loopsDone < 0) { break; }
     }
-    return [null, tResult[1]];
+    if (more) {
+      return ["too many recursive expansions", tResult[1]];
+    } else {
+      return [null, tResult[1]];
+    }
   }
 
   /**
      processOnce - process the tokens in the string, respecting BEGIN/END
 
-     Given "blah {{foo bar}} blah", we return "blah xyz blah",
+     Given "blah {{foo bar}} blah", we compute "blah xyz blah",
      where "xyz" is the evaluation of "foo bar".
 
-     Return [errorString, remainderString].
-     If there is any error, then remainderString will be null.
+     Return an array [errorString, outString].
+     If there is any error, then outString will be null.
 
      If there is no error, then call the function 'f' with the token
      array parsed from the portion between the BEGIN-END pair. The
      function 'f' should return [ errString, tokenlist ]. If it works,
      then the token output will be substituted in the original string
-     to form the remainderString.
+     to form the outString.
 
-     If no function 'f' is passed in, then the remainderString will
+     If no function 'f' is passed in, then the outString will
      contain the tokens printed into string form.
 
-     If the string might have more expressions to be evaluated, then
-     a third element is returned as "true".
+     We do not evaluate outString for more nested pairs of BEGIN-END.
+
+     If the outString might have more expressions to be evaluated, then
+     we return a third array element as "true".
 
   */
   processOnce(str, f) {

@@ -43,6 +43,46 @@ machine = new Machine();
 machine.interpret(initScript);
 log(machine.getSerialization().filter( s => s.match(/\.turn/)) );
 
+log(`---- WITH ALL example`);
+
+const provideScript = [
+  'P .board.a',
+  'P .board.b',
+  'P .board.c',
+  'P .board.d',
+  'P .board.e',
+  'P .board.f',
+  'P .board.g',
+  'P .board.h',
+  'WITH ALL .board.POS BEGIN',
+  'P .board.{{POS}}/empty',
+  'P .board.{{POS}}/fly1',
+  'P .board.{{POS}}/fly2',
+  'P .board.{{POS}}/fly3',
+  'P .board.{{POS}}/spider',
+  'END',
+];
+machine = new Machine();
+propagator = new Propagator(machine, t, (s) => log(s));
+let arr = provideScript;
+result = propagator.getScriptBlock(arr);
+log(result);
+errDiff(result[0], 'PLAIN');
+result = propagator.getScriptBlock(arr.slice(result[1]));
+log(result);
+errDiff(result[0], 'WITH');
+
+process.exit(0);
+
+
+result = propagator.expandLines(provideScript);
+err(result[0]);
+log(`provideScript.length = ${provideScript.length} => expanded = ${result[1].lnegth}`);
+
+result = machine.interpret(result[1]);
+err(result);
+
+
 log(`---- evalBlockVars using unify`);
 machine = new Machine();
 machine.interpret(initScript);

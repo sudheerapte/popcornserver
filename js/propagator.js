@@ -67,6 +67,100 @@ class Propagator {
     }
   }
 
+  expandLines(lines) {
+    // expand lines and return an array
+    // recognizes ON, ALL, and WITH lines and expands them
+    let outArray = [];
+    let doLines= false; // if condition path has matched
+    let startLine = -1; // first line to be evaluated
+    let onCondition = "";
+
+    for (let i=0; i<lines.length; i++) {
+      const line = lines[i];
+      if (line.match(/^ON.+BEGIN$/)) {
+        if (line.match(/^ON\sBEGIN$/)) {
+          doLines = true;
+          startLine = i+1;
+          onCondition = "ALWAYS";
+        } else {
+          const m = line.match(/^ON\s+(\S+)\s+(\w+)\s+BEGIN$/);
+          if (!m) {
+            this.log(`ON line did not match PATH VAR`);
+          } else if (this.mc.isVariableParent(m[1])) {
+            onCondition = `${m[1]} = ${m[2]}`;
+            if (this.mc.getCurrentChildName(m[1]) !== m[2]) {
+              this.log(`${m[1]} alt != ${m[2]}. skipping.`);
+              doLines = false;
+            } else {
+              doLines = true;
+              startLine = i+1;
+              this.log(`${line}`);
+            }
+          } else {
+            this.log(`${m[1]} - not a variable parent. skipping.`);
+            doLines = false;
+          }
+        }
+      } else if (line.match(/^END/)) {
+        if (doLines) {
+          let evalLines = this.evalBlock(lines.slice(startLine, i));
+          if (result) {
+            this.log(`ON ${onCondition}: ${result}\n`);
+          } else {
+            this.log(`ON ${onCondition}: evaluated lines ${startLine}-${i}`);
+            outArray = outArray.concat(evalLines);
+          }
+        } else {
+          this.log(`ON ${onCondition}: false. skipped lines ${startLine}-${i}`);
+        }
+        doLines = false;
+        startLine = i+1; // to get better error messages
+        onCondition = "";
+      } else {
+        outArray.push(line);
+      }
+    }
+  }
+
+  // getScriptBlock - return an array of lines forming a block.
+  // Recognizes ON, WITH, and ALL blocks and expands them.
+  // The expanded lines are pushed on to the passed-in array arr.
+  // Returns [ typeString, linesConsumed ].
+  getScriptBlock(lines, arr) { // return block type and number of lines
+    if (! lines || lines.length <= 0) { return null; }
+    let mode = 'START'; // PLAIN, ON, WITH, ALL are other options
+    const specialPat = /^(ON|WITH|ALL|END)/;
+    for (let i=0; i< lines.length; i++) {
+      const s = lines[i] ? lines[i].trim() : "";
+      if (s.length <= 0) { continue; }
+      const m = s.match(specialPat);
+      if (m) {
+        const type = m[1];
+        if (type === 'END') {
+          if (mode === 'PLAIN') {
+            return ["found END after plain block", i];
+          } else {
+            return [mode, i];
+          }
+        } else { // special line
+          if (mode === 'START') {
+            mode = type;
+            this.log(`setting mode = ${type}`);
+            continue;
+          } else {
+            if (mode === 'PLAIN') {
+              return ['PLAIN', i];
+            } else {
+              return [`found ${type} while parsing ${mode}`, i];
+            }
+          }
+        }
+      } else { // plain line
+        mode = 'PLAIN';
+      }
+    }
+  }
+
   runForScript(pathString, allOrCurrent, lines) {
     const exprArr = this.getUnifyExpression(pathString, allOrCurrent);
     const arr = this.unify(pathString, allOrCurrent);
