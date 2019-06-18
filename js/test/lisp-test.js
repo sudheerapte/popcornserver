@@ -11,6 +11,7 @@ let tokArr = [];
 let tokenTests = [
   { input: "one ", err: null, count: 1 },
   { input: "7928fjknfkjnsakjoiou8^%^*&^ ", err: null, count: 1 },
+  { input: "\"on\\e\"", err: null, count: 1, value0: "one" },
   { input: "one)", err: null, count: 2 },
   { input: "\"one)\"", err: null, count: 1 },
   { input: "\"one)", err: "bad string token", count: 0 },
@@ -23,6 +24,7 @@ let tokenTests = [
   { input: "\"one \\\"string\"", err: null, count: 1 },
 ];  
 
+log(`---- verify token tests`);
 verifyTokenTests();
 
 function verifyTokenTests() {
@@ -31,11 +33,15 @@ function verifyTokenTests() {
     const result = lisp.tokenize(t.input, tokArr);
     verifyMatchingErr(result, t.err);
     if (tokArr.length!=t.count) {
-      log(`bad tokArr length for |${t.input}|:`);
-      log(tokArr);
+      log(`bad tokArr length for |${t.input}|: ${tokArr.length}`);
       process.exit(0);
     }
-    log(`${" ".repeat(40-t.input.length)}${t.input} => ${tokArr.length}`);
+    if (t.value0) { errDiff(tokArr[0].value, t.value0); }
+    if (t.value0) {
+      log(`${" ".repeat(40-t.input.length)}${t.input} => ${tokArr.length} |${tokArr[0].value}|`);
+    } else {
+      log(`${" ".repeat(40-t.input.length)}${t.input} => ${tokArr.length}`);
+    }
   });
 }
 
@@ -47,12 +53,37 @@ function verifyMatchingErr(actual, expected) {
   }
 }
 
+log(`---- verify tokenize and renderToken cycle`);
+
+let cycleTests = [
+  "a b c ",
+  'a()b\"foo" c ',
+  'a()b"f\oo" c ',
+  'a()b"f\\\\oo" c ',
+];
+
+cycleTests.forEach( input => {
+  const tokArr = [];
+  const result = lisp.tokenize(input, tokArr);
+  err(result);
+  const rendered = lisp.renderToken(tokArr);
+  const tokArr2 = [];
+  const cycleResult = lisp.tokenize(rendered, tokArr2);
+  err(result);
+  const secondRendered = lisp.renderToken(tokArr2);
+  errDiff(rendered, secondRendered);
+  log(`${" ".repeat(40-rendered.length)}${rendered} => |${secondRendered}|`);
+});
+
+
 log(`sexp ------------`);
 
 let sexpTests = [
   { input: "one ", err: null, count: 1 },
   { input: "( one two three)", err: null, count: 5 },
   { input: "( one two (three))", err: null, count: 7 },
+  { input: "( one(two(three four)))", err: null, count: 10 },
+  { input: "(one ", err: null, count: 0 },
 ];  
 
 sexpTests.forEach(t => {
@@ -60,30 +91,22 @@ sexpTests.forEach(t => {
   const tokArr = [];
   const result = lisp.tokenize(t.input, tokArr);
   if (result === t.err) {
-    const sexp = [];
-    const res = readSexp(tokArr, sexp);
-    if (res.hasOwnProperty('length')) {
-      log(`            buildSexp: list: |${JSON.stringify(sexp)}|`);
-      return;
-    }
-    if (res < 0) {
-      log(`            buildSexp returned ${res}`);
-      return;
+    const sexpArr = [];
+    const res = lisp.growSexp(tokArr, sexpArr);
+    if (res === t.count) {
+      const sexp = sexpArr[0];
+      const stArr = [];
+      const r = lisp.tokenizeSexp(sexp, stArr);
+      if (r === null) {
+        log(`            |${lisp.renderToken(stArr)}|`);
+      } else {
+        log(`            tokenizeSexp returned: ${r}`);
+      }
     } else {
-      log(`            buildSexp: single item: |${JSON.stringify(sexp)}|`);
+      log(`growSexp returned ${res}`);
     }
+  } else {
+    errDiff(result, t.err);
   }
 });
 
-function readSexp(tokArr, outArr) { // return length of sexp or single token
-  if (! tokArr || tokArr.length <= 0) {
-    return -1;
-  }
-  if (tokArr[0].name === '(') {
-    const result = lisp.buildSexp(tokArr.slice(1), outArr);
-    return result;
-  } else {
-    outArr.push(lisp.renderToken(tokArr[0]));
-    return lisp.renderToken(tokArr[0]);
-  }
-}
