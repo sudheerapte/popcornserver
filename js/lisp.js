@@ -4,6 +4,10 @@ class Lisp {
   constructor() {
     this.initialize();
   }
+  hasSym(sym) { return this._symbols.has(sym); }
+  getSym(sym) { return this._symbols.get(sym); }
+  setSym(sym, value) { this._symbols.set(sym, value); }
+
   read(string) {  // returns [errMsg, array of tokens]
     if (! string || string.trim().length === 0) {
       return [ null, null]; // no error, but no result
@@ -55,18 +59,20 @@ class Lisp {
   }
 
   renderToken(tok) {
-    if (tok.hasOwnProperty('length')) {
-      let s = "";
+    if (! tok.hasOwnProperty('name')) {
+      let s = "(";
       tok.forEach( t => s += this.renderToken(t) );
-      return s;
-    }
-
-    if (tok.name.match(/^\(|\)/)) {
-      return tok.name;
-    } else if (tok.name === 'SYMBOL') {
-      return " " + tok.value;
+      return s + ")";
     } else {
-      console.log(`renderToken: bad token: ${JSON.stringify(tok)}`);
+      if (tok.name.match(this._specialCharRe)) {
+        return tok.name;
+      } else if (tok.name === 'WORD') {
+        return " " + tok.value;
+      } else if (tok.name === 'STRING') {
+        return ' "' + this.stringEscape(tok.value) + '"';
+      } else {
+        console.log(`renderToken: bad token: ${JSON.stringify(tok)}`);
+      }
     }
   }
 
@@ -144,7 +150,7 @@ class Lisp {
       if (! result) {
         break;
       }
-      if (result.hasOwnProperty("length")) {
+      if (result.hasOwnProperty("length")) { // error message
         return result;
       } else {
         s = s.slice(result);
@@ -181,13 +187,107 @@ class Lisp {
   }
 
   initialize() {
-    this._atoms = new Map();
-    this._specialCharRe = /^[`'(),"\\]/;
-    this._symbols = []; // { name, value }
+    this._symbols = new Map();
+    this._specialCharRe = /^[`'(),"\\@$]/;
   }
 
+
+  // appendSexp - add elements till ')'; return number of tokens consumed
+  appendSexp(tokArr, outArr) {
+    if (! tokArr || tokArr.length < 1) { return 0; }
+    let i = 0;
+    while (tokArr.length > 0 && tokArr[0].name !== ')') {
+      i++;
+      const num = this.makeAtomicSexp(tokArr, outArr);
+      if (num === 0) {
+        return `appendSexp: tokens ended`;
+      }
+      tokArr = tokArr.slice(num);
+    }
+    
+
+    if (tokArr[0].name === '(') {
+      let subArr = [];
+      const num = this.makeAtomicSexp(tokArr.slice(1), subArr);
+      
+    } else {
+      
+      for (let i=1; i<tokArr.length; i++) {
+        const name = tokArr[i].name;
+        if (name === ')') {
+          outArr.push(this.makeListSexp(tokArr.slice(1,i)));
+          return i+1;
+        } else {
+          outArr.push(this.makeAtomicSexp(tokArr[i]));
+          return 1;
+        }
+      }
+    }
+  }
+
+  // growSexp - grow by 1 element.
+  // return number of tokens consumed, or -1 if we encountered ')'
+  // if we encountered a non-terminating sub-sexp, then return 0.
+  growSexp(tokArr, outArr) {
+    if (! tokArr || tokArr.length <= 0) {
+      return 0;
+    }
+    const tok = tokArr[0];
+    if (tok.name === 'WORD') {
+      outArr.push(tok.value);
+      return 1;
+    }
+    if (tok.name === 'STRING') {
+      tokArr.push( ' "' + this.stringEscape(tok.value) + '"' );
+      return 1;
+    }
+    if (tok.name === '(') {
+      const subArr = [];
+      const num = this.buildSexp(tokArr.slice(1), subArr);
+      if (num < 0) {
+        return 0;
+      } else {
+        outArr.push(subArr);
+        return 1+num;
+      }
+    }
+    if (tok.name === ')') {
+      return -1;
+    }
+    return `makeAtomicSexp: bad token: ${tok.name}`;
+  }
+
+  // buildSexp - consume contents of new sexp.
+  // return number of consumed tokens including closing ')'
+  // If we never get a closing paren, return negative number.
+  buildSexp(tokArr, outArr) {
+    let consumed = 0; // how many tokens consumed
+    for (let i=0; i<tokArr.length; i++) {
+      const num = this.growSexp(tokArr.slice(i), outArr);
+      if (num > 0) {
+        consumed += num;
+        i+= (num-1);
+      } else if (num < 0) { // encountered close paren
+        return consumed+1;
+      } else {    // non-terminating sub-expr
+        return -1;
+      }
+    }
+    return -1;
+  }
+
+  stringEscape(str) {
+    let out = "";
+    for (let i=0; i<str.length; i++) {
+      const ch = str[i];
+      if (ch !== '"' && ch !== '\\') {
+        out += ch;
+      } else {
+        out += '\\' + ch;
+      }
+    }
+    return out;
+  }
 }
-
-
 
 module.exports = new Lisp();
