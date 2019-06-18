@@ -10,6 +10,10 @@ let tokArr = [];
 
 let tokenTests = [
   { input: "one ", err: null, count: 1 },
+  { input: "7928fjknfkjnsakjoiou8^%^*&^ ", err: null, count: 1 },
+  { input: "one)", err: null, count: 2 },
+  { input: "\"one)\"", err: null, count: 1 },
+  { input: "\"one)", err: "bad string token", count: 0 },
   { input: "( one two three)", err: null, count: 5 },
   { input: "( \"one\" two three)", err: null, count: 5 },
   { input: "(\"one\" \"t\"wo three)", err: null, count: 6 },
@@ -25,7 +29,7 @@ function verifyTokenTests() {
   tokenTests.forEach( t => {
     const tokArr = [];
     const result = lisp.tokenize(t.input, tokArr);
-    errDiff(result, t.err);
+    verifyMatchingErr(result, t.err);
     if (tokArr.length!=t.count) {
       log(`bad tokArr length for |${t.input}|:`);
       log(tokArr);
@@ -33,6 +37,14 @@ function verifyTokenTests() {
     }
     log(`${" ".repeat(40-t.input.length)}${t.input} => ${tokArr.length}`);
   });
+}
+
+function verifyMatchingErr(actual, expected) {
+  if (actual === null && expected === null) { return; }
+  if (actual === null || expected === null) { errDiff(actual, expected); }
+  if (! actual.startsWith(expected)) {
+    die(`error = ${actual}; expected ${expected}`);
+  }
 }
 
 log(`sexp ------------`);
