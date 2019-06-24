@@ -79,6 +79,11 @@ cycleTests.forEach( input => {
 log(`sexp ------------`);
 
 let sexpTests = [
+  { input: "'(one) ", err: null, count: 4 },
+  { input: "'one ", err: null, count: -1 },
+  { input: "'(one ", err: null, count: -1 },
+  { input: "''(one) ", err: null, count: -1 },
+  { input: "one'two ", err: null, count: 1 },
   { input: "one ", err: null, count: 1 },
   { input: "( one two three)", err: null, count: 5 },
   { input: "( one two (three))", err: null, count: 7 },
@@ -87,7 +92,6 @@ let sexpTests = [
 ];  
 
 sexpTests.forEach(t => {
-  log(`${" ".repeat(40-t.input.length)}${t.input} => `);
   const tokArr = [];
   const result = lisp.tokenize(t.input, tokArr);
   if (result === t.err) {
@@ -98,12 +102,12 @@ sexpTests.forEach(t => {
       const stArr = [];
       const r = lisp.tokenizeSexp(sexp, stArr);
       if (r === null) {
-        log(`            |${lisp.renderToken(stArr)}|`);
+        log(`${" ".repeat(35-t.input.length)}${t.input} => |${lisp.renderToken(stArr)}|`);
       } else {
-        log(`            tokenizeSexp returned: ${r}`);
+        log(`${" ".repeat(35-t.input.length)}${t.input} => tokenizeSexp returned: ${r}`);
       }
     } else {
-      log(`growSexp returned ${res}`);
+      log(`${" ".repeat(35-t.input.length)}${t.input} => growSexp returned ${res}`);
     }
   } else {
     errDiff(result, t.err);

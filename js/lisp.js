@@ -137,11 +137,15 @@ class Lisp {
   // growSexp - grow by 1 element.
   // return number of tokens consumed, or -1 if we encountered ')'
   // if we encountered a non-terminating sub-sexp, then return 0.
-  growSexp(tokArr, outArr) {
+  // Also do the special quote syntactic sugar.
+  // If the third arg quoted is passed in as true, then look for the
+  // comma-unquote.
+  growSexp(tokArr, outArr, quoted) {
     if (! tokArr || tokArr.length <= 0) {
       return 0;
     }
     const tok = tokArr[0];
+    const me = this;
     if (tok.name === 'WORD') {
       outArr.push(tok.value);
       return 1;
@@ -151,13 +155,24 @@ class Lisp {
       return 1;
     }
     if (tok.name === '(') {
-      const subArr = [];
-      const num = this.buildSexp(tokArr.slice(1), subArr);
-      if (num < 0) {
-        return 0;
-      } else {
-        outArr.push(subArr);
+      return callBuildSexp(tokArr, outArr);
+    }
+    if (tok.name === ',' && quoted) {
+      if (tokArr.length <= 2) { return -1; }
+      if (tokArr[1] === '(') {
+        const unquotingArr = ['unquote'];
+      }
+    }
+    if (tok.name === "'" && !quoted) { // must be followed by a full list
+      if (tokArr.length <= 3) { return -1; }
+      if (tokArr[1].name !== '(') { return -1; }
+      const quotingArr = ['quote'];
+      const num = callQuotedBuildSexp(tokArr.slice(1), quotingArr);
+      if (num) {
+        outArr.push(quotingArr);
         return 1+num;
+      } else {
+        return 0;
       }
     }
     if (tok.name === ')') {
@@ -165,18 +180,41 @@ class Lisp {
     }
     // can never happen
     return `growSexp: bad token: ${tok.name}`;
+
+    function callBuildSexp(tokArr, outArr) {
+      const subArr = [];
+      const num = me.buildSexp(tokArr.slice(1), subArr);
+      if (num < 0) {
+        return 0;
+      } else {
+        outArr.push(subArr);
+        return 1+num;
+      }
+    }
+    function callQuotedBuildSexp(tokArr, outArr) {
+      const subArr = [];
+      const num = me.buildSexp(tokArr.slice(1), subArr, true);
+      if (num < 0) {
+        return 0;
+      } else {
+        outArr.push(subArr);
+        return 1+num;
+      }
+    }
   }
 
   // buildSexp - we have seen '('. Consume contents of new sexp.
   // return number of consumed tokens including closing ')'
   // If we never get a closing paren, return negative number.
-  buildSexp(tokArr, outArr) {
+  // The third argument, if supplied as true, causes us to
+  // interpret the comma-unquote specially.
+  buildSexp(tokArr, outArr, quoted) {
     if (! tokArr || tokArr.length <= 0) {
       return 0;
     }
     let consumed = 0;
     for (let i=0; i<tokArr.length; i++) {
-      const num = this.growSexp(tokArr.slice(i), outArr);
+      const num = this.growSexp(tokArr.slice(i), outArr, quoted);
       if (num > 0) {
         consumed += num;
         i+= (num-1);
