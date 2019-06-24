@@ -67,9 +67,13 @@ class Propagator {
     }
   }
 
-  expandLines(lines) {
-    // expand lines and return an array
-    // recognizes ON, ALL, and WITH lines and expands them
+  /**
+     expandSections - expand ON, ALL, and WITH sections.
+     Returns a new array with all these sections
+   */
+  expandSections(lines) {
+    // expand sections and return a new array
+    // recognizes ON, ALL, and WITH sections and expands them
     let outArray = [];
     let doLines= false; // if condition path has matched
     let startLine = -1; // first line to be evaluated
@@ -125,39 +129,99 @@ class Propagator {
   // getScriptBlock - return an array of lines forming a block.
   // Recognizes ON, WITH, and ALL blocks and expands them.
   // The expanded lines are pushed on to the passed-in array arr.
-  // Returns [ typeString, linesConsumed ].
-  getScriptBlock(lines, arr) { // return block type and number of lines
+  // Returns { error, numLines, header, lines array }.
+  // numLines is the number of lines consumed from the input array.
+  // header is the portion before the BEGIN, and linesConsumed is
+  // the block of lines before the corresponding END.
+  // If "error" is set, it is an error string corresponding to line numLines.
+  getScriptBlock(lines) {
     if (! lines || lines.length <= 0) { return null; }
-    let mode = 'START'; // PLAIN, ON, WITH, ALL are other options
-    const specialPat = /^(ON|WITH|ALL|END)/;
-    for (let i=0; i< lines.length; i++) {
-      const s = lines[i] ? lines[i].trim() : "";
-      if (s.length <= 0) { continue; }
-      const m = s.match(specialPat);
-      if (m) {
-        const type = m[1];
-        if (type === 'END') {
-          if (mode === 'PLAIN') {
-            return ["found END after plain block", i];
-          } else {
-            return [mode, i];
-          }
-        } else { // special line
-          if (mode === 'START') {
-            mode = type;
-            this.log(`setting mode = ${type}`);
-            continue;
-          } else {
-            if (mode === 'PLAIN') {
-              return ['PLAIN', i];
-            } else {
-              return [`found ${type} while parsing ${mode}`, i];
-            }
-          }
-        }
-      } else { // plain line
-        mode = 'PLAIN';
+    let block = {numLines: 0, header: null, lines: []};
+    const specialPat = /^(ON|WITH|ALL)(.+)BEGIN$/;
+    const endPat = /^END$/;
+    const me = this;
+    consumeBlankLines(block);
+    if (block.numLines >= lines.length) {
+      return block;
+    }
+    consumePlainLines(block);
+    if (block.error) {
+      return block;
+    }
+    if (! block.error && block.lines.length > 0) {
+      return block;
+    }
+    consumeBlockLines(block);
+    return block;
+    
+
+    function consumeBlankLines(block) {
+      for (let i=0; i< lines.length; i++) {
+        const s = lines[i] ? lines[i].trim() : "";
+        if (s.length <= 0) { continue; }
+        else {
+          block.numLines = i;
+          return;
+        };
       }
+      block.numLines = lines.length;
+      return;
+    }
+
+    function consumePlainLines(block) {
+      const firstLine = block.numLines;
+      for (let i=block.numLines; i< lines.length; i++) {
+        const s = lines[i] ? lines[i].trim() : "";
+        if (s.length ===0) {
+          block.numLines++;
+          continue;
+        }
+        let m;
+        m = s.match(specialPat);
+        if (m) { return i-firstLine; }
+        m = s.match(endPat);
+        if (m) {
+          block.error = "found END in plain block";
+          return i-firstLine;
+        }
+        block.numLines++;
+        block.lines.push(s);
+      }
+      return lines.length - firstLine;
+    }
+
+    function consumeBlockLines(block) {
+      const firstLine = block.numLines;
+      let readingBlock = false;
+      for (let i=block.numLines; i< lines.length; i++) {
+        const s = lines[i] ? lines[i].trim() : "";
+        if (s.length ===0) {
+          block.numLines++;
+          continue;
+        }
+        let m;
+        m = s.match(specialPat);
+        if (m) {
+          block.numLines ++;
+          readingBlock = true;
+          block.header = m[1]+m[2];
+          continue;
+        }
+        m = s.match(endPat);
+        if (m && readingBlock) {
+          block.numLines ++;
+          return lines.length;
+        } else if (m) {
+          block.error = "found END in block";
+          return i-firstLine;
+        }
+        if (! readingBlock) {
+          return 0;
+        }
+        block.numLines++;
+        block.lines.push(s);
+      }
+      return lines.length - firstLine;
     }
   }
 

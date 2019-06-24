@@ -12,7 +12,7 @@ let evalFunc;
 
 let result;
 let input;
-let initScript, renderScript;
+let initScript, renderScript, arr;
 
 initScript = [
   'P .turn/spider',
@@ -64,23 +64,43 @@ const provideScript = [
 ];
 machine = new Machine();
 propagator = new Propagator(machine, t, (s) => log(s));
-let arr = provideScript;
+arr = provideScript.slice(0);
+result = propagator.getScriptBlock(arr);
+errDiff(result.numLines, 8);
+errDiff(result.lines.length, 8);
+result = propagator.getScriptBlock(arr.slice(result.numLines));
+errDiff(result.numLines, 7);
+errDiff(result.lines.length, 5);
+
+log(`---- WITH ALL with inserted blanks`);
+arr = provideScript.slice(0);
+arr.splice(15, 0, " ");
+arr.splice(14, 0, " ");
+arr.splice(9, 0, " ");
+arr.splice(3, 0, " ");
+result = propagator.getScriptBlock(arr);
+errDiff(result.numLines, 9);
+errDiff(result.lines.length, 8);
+result = propagator.getScriptBlock(arr.slice(result.numLines));
+errDiff(result.numLines, 9);
+errDiff(result.lines.length, 5);
+
+log(`---- WITH ALL with error END`);
+arr = provideScript.slice(0);
+arr.splice(3, 0, "END");
+result = propagator.getScriptBlock(arr);
+errDiff(result.error, "found END in plain block");
+
+log(`---- WITH ALL with immediate END`);
+arr = provideScript.slice(0);
+arr.splice(9, 0, "END");
 result = propagator.getScriptBlock(arr);
 log(result);
-errDiff(result[0], 'PLAIN');
-result = propagator.getScriptBlock(arr.slice(result[1]));
+result = propagator.getScriptBlock(arr.slice(result.numLines));
 log(result);
-errDiff(result[0], 'WITH');
+errDiff(result.error, "found END in plain block");
 
 process.exit(0);
-
-
-result = propagator.expandLines(provideScript);
-err(result[0]);
-log(`provideScript.length = ${provideScript.length} => expanded = ${result[1].lnegth}`);
-
-result = machine.interpret(result[1]);
-err(result);
 
 
 log(`---- evalBlockVars using unify`);
