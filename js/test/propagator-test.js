@@ -39,6 +39,8 @@ initScript = [
   'P .board.c',
 ];
 
+process.env["DEBUG"] = "";
+
 machine = new Machine();
 machine.interpret(initScript);
 log(machine.getSerialization().filter( s => s.match(/\.turn/)) );
@@ -60,6 +62,13 @@ const provideScript = [
   'P .board.{{POS}}/fly2',
   'P .board.{{POS}}/fly3',
   'P .board.{{POS}}/spider',
+  'END',
+  'ON .turn spider BEGIN',
+  'D .img.fly1 fly',
+  'D .img.fly2 fly',
+  'D .img.fly3 fly',
+  'D .img.spider spider-selected',
+  'C .tomove spider',
   'END',
 ];
 machine = new Machine();
@@ -95,13 +104,19 @@ log(`---- WITH ALL with immediate END`);
 arr = provideScript.slice(0);
 arr.splice(9, 0, "END");
 result = propagator.getScriptBlock(arr);
-log(result);
 result = propagator.getScriptBlock(arr.slice(result.numLines));
-log(result);
-errDiff(result.error, "found END in plain block");
+err(result.error);
 
-process.exit(0);
-
+log(`---- buildBlocks`);
+arr = provideScript.slice(0);
+let blocks = propagator.buildBlocks(arr);
+errDiff(blocks.length, 3);
+errDiff(blocks[0].numLines, 8);
+errDiff(blocks[0].lines.length, 8);
+errDiff(blocks[1].numLines, 7);
+errDiff(blocks[1].lines.length, 5);
+errDiff(blocks[2].numLines, 7);
+errDiff(blocks[2].lines.length, 5);
 
 log(`---- evalBlockVars using unify`);
 machine = new Machine();
@@ -121,8 +136,6 @@ unifications.forEach( uni => {
 checkProcess("{{EXISTS .board.b}}", "1");
 checkProcess("{{CURRENT .fly1.position}}", "a");
 checkProcess("{{CURRENT .fly2.position}}", "a");
-
-process.env["DEBUG"] = "";
 
 log(`--- unify ALL, CURRENT, NONCURRENT`);
 propagator = new Propagator(machine, t, (s) => log(s));
@@ -147,7 +160,11 @@ result = propagator.unify('.tomove/F', 'CURRENT');
 errDiff(result.length, 1);
 log(result);
 
+process.env["DEBUG"] = "propagator";
+
 log(`---- runRenderScript: .turn = spider`);
+
+log(`CURRENT .selectedfly = ${machine.getCurrentChildName(".selectedfly")}`);
 
 renderScript = [
   "ON .turn spider BEGIN",
@@ -167,6 +184,8 @@ renderScript = [
 
 propagator = new Propagator(machine, t, (s) => log(s));
 propagator.runRenderScript(renderScript);
+
+log(`DATA .img.fly1 = ${machine.getData(".img.fly1")}`);
 
 checkProcess("{{DATA .img.fly1}}", "fly");
 checkProcess("{{DATA .img.fly2}}", "fly");

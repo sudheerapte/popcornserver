@@ -16,7 +16,7 @@ class Propagator {
     return this.t.process(line, this.evalFunc);
   }
 
-  runRenderScript(lines) {
+  oldRunRenderScript(lines) {
     // eval and interpret lines unless ON condition path failed
     let doLines= false; // if condition path has matched
     let startLine = -1; // first line to be evaluated
@@ -67,76 +67,82 @@ class Propagator {
     }
   }
 
-  /**
-     expandSections - expand ON, ALL, and WITH sections.
-     Returns a new array with all these sections
-   */
-  expandSections(lines) {
-    // expand sections and return a new array
-    // recognizes ON, ALL, and WITH sections and expands them
-    let outArray = [];
-    let doLines= false; // if condition path has matched
-    let startLine = -1; // first line to be evaluated
-    let onCondition = "";
-
-    for (let i=0; i<lines.length; i++) {
-      const line = lines[i];
-      if (line.match(/^ON.+BEGIN$/)) {
-        if (line.match(/^ON\sBEGIN$/)) {
-          doLines = true;
-          startLine = i+1;
-          onCondition = "ALWAYS";
-        } else {
-          const m = line.match(/^ON\s+(\S+)\s+(\w+)\s+BEGIN$/);
-          if (!m) {
-            this.log(`ON line did not match PATH VAR`);
-          } else if (this.mc.isVariableParent(m[1])) {
-            onCondition = `${m[1]} = ${m[2]}`;
-            if (this.mc.getCurrentChildName(m[1]) !== m[2]) {
-              this.log(`${m[1]} alt != ${m[2]}. skipping.`);
-              doLines = false;
-            } else {
-              doLines = true;
-              startLine = i+1;
-              this.log(`${line}`);
-            }
+  runRenderScript(lines) {
+    let runLines = []; // The unrolled blocks to be run
+    let blocks = this.buildBlocks(lines);
+    const me = this;
+    for (let i=0; i< blocks.length; i++) {
+      const block = blocks[i];
+      if (block && ! block.header) {
+        this.log(`plain block of ${block.lines.length} lines`);
+        block.lines.forEach( line => runLines.push(line) );
+        continue;
+      } 
+      let m;
+      block.header = block.header.trim();
+      m = block.header.match(/^ON\s+(\S+)\s+(\w+)$/);
+      if (m) {
+        this.log(`${block.header}, ${block.lines.length} lines`);
+        if (me.mc.isVariableParent(m[1])) {
+          if (me.mc.getCurrentChildName(m[1]) !== m[2]) {
+            this.log(`ON: ${m[1]} is not ${m[2]}. Skipping.`);
           } else {
-            this.log(`${m[1]} - not a variable parent. skipping.`);
-            doLines = false;
-          }
-        }
-      } else if (line.match(/^END/)) {
-        if (doLines) {
-          let evalLines = this.evalBlock(lines.slice(startLine, i));
-          if (result) {
-            this.log(`ON ${onCondition}: ${result}\n`);
-          } else {
-            this.log(`ON ${onCondition}: evaluated lines ${startLine}-${i}`);
-            outArray = outArray.concat(evalLines);
+            block.lines.forEach( line => runLines.push(line) );
           }
         } else {
-          this.log(`ON ${onCondition}: false. skipped lines ${startLine}-${i}`);
+          this.log(`ON: ${m[1]} is not a variable parent. Skipping.`);
         }
-        doLines = false;
-        startLine = i+1; // to get better error messages
-        onCondition = "";
-      } else {
-        outArray.push(line);
+        continue;
       }
+      m = block.header.match(/^WITH\s+(\S+)$/);
+      if (m) {
+        this.log(`${block.header}, ${block.lines.length} lines`);
+        const output = this.expandWithScript(m[1], "ALL", block.lines);
+        this.log(`WITH ${m[1]}: generated ${output.length} lines`);
+        output.forEach( line => runLines.push(line) );
+        continue;
+      }
+      this.log(`bad block: ${JSON.stringify(block)}`);
     }
+    const processedLines = this.evalBlock(runLines);
+    const result = this.mc.interpret(processedLines);
+    if (result) {
+      this.log(`interpret failed: ${result}`);
+    }
+  }
+
+  /**
+     buildBlocks - take an array of lines, and return an array of blocks.
+     Each block has a "header", which is null if the lines are plain,
+     but otherwise an ON/WITH/ALL clause.
+   */
+  buildBlocks(lines) {
+    let blocks = [];
+    let block;
+    let numLines = 0;
+    do {
+      block = this.getScriptBlock(lines.slice(numLines));
+      if (block && block.numLines > 0) {
+        blocks.push(block);
+        numLines += block.numLines;
+      }
+    } while (block && block.numLines > 0);
+    return blocks;
   }
 
   // getScriptBlock - return an array of lines forming a block.
   // Recognizes ON, WITH, and ALL blocks and expands them.
   // The expanded lines are pushed on to the passed-in array arr.
-  // Returns { error, numLines, header, lines array }.
+  //     Returns { error, numLines, header, lines array }.
   // numLines is the number of lines consumed from the input array.
   // header is the portion before the BEGIN, and linesConsumed is
   // the block of lines before the corresponding END.
   // If "error" is set, it is an error string corresponding to line numLines.
+  // Otherwise numLines is the number of lines consumed total and
+  // "header" and "lines" contain the content of the block.
   getScriptBlock(lines) {
-    if (! lines || lines.length <= 0) { return null; }
     let block = {numLines: 0, header: null, lines: []};
+    if (! lines || lines.length <= 0) { return block; }
     const specialPat = /^(ON|WITH|ALL)(.+)BEGIN$/;
     const endPat = /^END$/;
     const me = this;
@@ -154,7 +160,6 @@ class Propagator {
     consumeBlockLines(block);
     return block;
     
-
     function consumeBlankLines(block) {
       for (let i=0; i< lines.length; i++) {
         const s = lines[i] ? lines[i].trim() : "";
@@ -225,7 +230,7 @@ class Propagator {
     }
   }
 
-  runForScript(pathString, allOrCurrent, lines) {
+  expandWithScript(pathString, allOrCurrent, lines) {
     const exprArr = this.getUnifyExpression(pathString, allOrCurrent);
     const arr = this.unify(pathString, allOrCurrent);
     for (let i=0; i< arr.length; i++) {
@@ -235,6 +240,7 @@ class Propagator {
 
     const formulas = lines.map( line => this.unify(line, allOrCurrent))
           .filter( line => line && line.trim().length > 0 );
+    return formulas;
   }
 
   // unify(pathString) -- return substitution list
