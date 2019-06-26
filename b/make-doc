@@ -1,0 +1,10 @@
+#!/bin/sh
+#!/bin/sh
+this=$(readlink -f ${0})
+here=$(readlink -f $(dirname ${this}))
+
+die() { echo $@; exit 1; }
+
+cd ${here}/.. &&
+   sphinx-build -b html -a doc doc/_build &&
+   readlink -f doc/_build
