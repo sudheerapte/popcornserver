@@ -1,6 +1,8 @@
 import re
 
 turn = 'spider'
+fCount = 0
+
 posdict = {
     'spider': 'h',
     'fly1': 'b',
@@ -26,6 +28,12 @@ def getItemAt(position):
         if p == position:
             return i
     return None
+
+def fliesInWinningPosition():
+    for aFly in [ 'fly1', 'fly2', 'fly3' ]:
+        if not re.match(r'e|f|g', getPosition(aFly)):
+            return False
+    return True
 
 def getTurn():
     global turn
@@ -68,6 +76,27 @@ def move(item, position):
         else:
             return("move {}: cannot go backward from {}".format(position, currpos))
     return("impossible!")
+
+def checkWin():
+    '''return spider, flies, or None.
+    If the spider keeps returning again and again to 'f', it wins.
+    If the flies occupy 'e', 'f' and 'g', they win.
+    If the spider occupies 'a', 'b', 'c', or 'd', it wins.
+    '''
+    global fCount
+    if getPosition('spider') == 'f':
+        fCount = fCount+1
+        if fCount > 3:
+            fCount = 0;
+            return 'spider'
+    if re.match(r'a|b|c|d', getPosition('spider')):
+        fCount = 0
+        return 'spider'
+    if fliesInWinningPosition():
+        fCount = 0
+        return 'flies'
+    return None
+
 
 adj = {
     'a': ('b', 'c', 'd' ),

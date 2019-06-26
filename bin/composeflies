@@ -67,6 +67,8 @@ mkdir -p ~/.popcorn/fliesdemo &&
 
       P .turn/spider
       P .turn/flies
+      P .turn/win-spider
+      P .turn/win-flies
 
     </script>
     <script id="init" type="text/plain">
@@ -141,7 +143,18 @@ mkdir -p ~/.popcorn/fliesdemo &&
       D .img.spider spider
       C .tomove {{CURRENT .selectedfly}}
     END
-
+    ON .turn win-spider BEGIN
+      D .img.fly1 emptyspot
+      D .img.fly2 emptyspot
+      D .img.fly3 emptyspot
+      D .img.spider spider
+    END
+    ON .turn win-flies BEGIN
+      D .img.fly1 fly
+      D .img.fly2 fly
+      D .img.fly3 fly
+      D .img.spider emptyspot
+    END
     </script>
     <div>
     <svg viewBox="0 0 1000 1000" xmlns="http://www.w3.org/2000/svg">

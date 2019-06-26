@@ -75,7 +75,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
                 continue
             reply = str(sock.recv(1024), "utf-8")
             if re.search(okmatch, reply):
-                pass
+                print('     checkWin = {}', fliesmod.checkWin())
                 # print('transaction was OK')
             else:
                 print('transaction failed: {}'.format(reply))
