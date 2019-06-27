@@ -2,4 +2,5 @@
 *.aux
 *.log
 __pycache__
+doc/_build
 
