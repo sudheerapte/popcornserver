@@ -69,6 +69,7 @@ class Tokenizer {
     // TODO https://bugzilla.mozilla.org/show_bug.cgi?id=1225665
     const BEGIN=/{{/; const END=/}}/;
     const EITHER=/{{|}}/g;
+    if (!str) { return [-1, -1]; }
     const m = str.match(EITHER);
     if (!m) { return [-1, -1]; }
     // console.log(`|${str}| ${JSON.stringify(m)}`);
@@ -159,6 +160,7 @@ class Tokenizer {
   */
   processOnce(str, f) {
     let result;
+    if (! str || str.length <= 0) { return [null, str]; }
     let [ b, e ] = this.scanString(str);
     //console.log(`        processOnce |${str}| b=${b} e=${e}`);
     if (b < 0) {  // Simple case -- return original string

@@ -75,7 +75,18 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
                 continue
             reply = str(sock.recv(1024), "utf-8")
             if re.search(okmatch, reply):
-                print('     checkWin = {}', fliesmod.checkWin())
+                w = fliesmod.checkWin()
+                if not w is None:
+                    print('sending .turn win-{}...'.format(w))
+                    time.sleep(1)
+                    transaction = '''event: message
+data: update fliesdemo
+data: C .turn win-{}
+
+'''.format(w)
+                    sock.sendall(bytes(transaction, "utf-8"))
+                    reply = str(sock.recv(1024), "utf-8")
+                    print('.turn win-{} got reply: {}'.format(w,reply))
                 # print('transaction was OK')
             else:
                 print('transaction failed: {}'.format(reply))

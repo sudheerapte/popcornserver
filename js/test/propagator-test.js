@@ -14,6 +14,8 @@ let result;
 let input;
 let initScript, renderScript, arr;
 
+let blocks;
+
 initScript = [
   'P .turn/spider',
   'P .turn/flies',
@@ -39,9 +41,51 @@ initScript = [
   'P .board.c',
 ];
 
-process.env["DEBUG"] = "";
+process.env["DEBUG"] = null;
 
 machine = new Machine();
+
+
+log(`---- drag-and-drop: create drag-and-drop pairs`);
+
+// fly1 is at a, fly2 is at b, set up fly1.loc/a and fly2/loc/b.
+
+const boardScript = [
+  "P .piece.none",
+  "P .piece.fly1",
+  "P .piece.fly2",
+
+  "P .board.a",
+  "P .board.b",
+  "P .board.c",
+];
+
+const revScript = [
+  "WITH .piece.PIECE BEGIN",
+  "P .board.a/{{PIECE}}",
+  "P .board.b/{{PIECE}}",
+  "P .board.c/{{PIECE}}",
+  "P .{{PIECE}}.loc/a",
+  "P .{{PIECE}}.loc/b",
+  "P .{{PIECE}}.loc/c",
+  "END",
+
+  "C .board.a fly1",
+  "C .board.b fly2",
+  "C .board.c none",
+
+  "WITH .board.POS/PIECE BEGIN",
+  "C .{{PIECE}}.loc {{POS}}",
+  "END"
+];
+
+machine.interpret(boardScript);
+propagator = new Propagator(machine, t, (s) => log(s));
+const errMsg = propagator.runRenderScript(revScript);
+err(errMsg);
+
+machine = new Machine;
+propagator = new Propagator(machine, t, (s) => log(s));
 machine.interpret(initScript);
 log(machine.getSerialization().filter( s => s.match(/\.turn/)) );
 
@@ -109,7 +153,7 @@ err(result.error);
 
 log(`---- buildBlocks`);
 arr = provideScript.slice(0);
-let blocks = propagator.buildBlocks(arr);
+blocks = propagator.buildBlocks(arr);
 errDiff(blocks.length, 3);
 errDiff(blocks[0].numLines, 8);
 errDiff(blocks[0].lines.length, 8);
@@ -117,48 +161,6 @@ errDiff(blocks[1].numLines, 7);
 errDiff(blocks[1].lines.length, 5);
 errDiff(blocks[2].numLines, 7);
 errDiff(blocks[2].lines.length, 5);
-
-log(`---- evalBlockVars using unify`);
-machine = new Machine();
-machine.interpret(initScript);
-propagator = new Propagator(machine, t, (s) => log(s));
-let unifications = propagator.unify(".board.POS", "ALL");
-log(unifications);
-err(unifications);
-unifications.forEach( uni => {
-  log(`uni = ${JSON.stringify(uni)}`);
-  const lines = propagator.evalBlockVars([
-    "P .fly1.position/{{POS}}",
-    "P .fly2.position/{{POS}}"], uni);
-  const result = machine.interpret(lines);
-  err(result);
-});
-checkProcess("{{EXISTS .board.b}}", "1");
-checkProcess("{{CURRENT .fly1.position}}", "a");
-checkProcess("{{CURRENT .fly2.position}}", "a");
-
-log(`--- unify ALL, CURRENT, NONCURRENT`);
-propagator = new Propagator(machine, t, (s) => log(s));
-result = propagator.unify('.XORY.b.c/P', 'ALL');
-errDiff(result.length, 6);
-if (result.filter(e => e.P === 'bar').length !== 2) {
-  err("unify result must contain two substitutions with X = bar");
-}
-result = propagator.unify('.XORY.b.c/P', 'CURRENT');
-errDiff(result.length, 2);
-if (result.filter(e => e.P === 'foo').length !== 2) {
-  err("unify result must contain two substitutions with P = foo");
-}
-result = propagator.unify('.XORY.b.c/P', 'NONCURRENT');
-errDiff(result.length, 4);
-if (result.filter(e => e.P === 'bar').length !== 2) {
-  err("unify result must contain two substitutions with P = bar");
-}
-result = propagator.unify('.selectedfly/F', 'ALL');
-errDiff(result.length, 3);
-result = propagator.unify('.tomove/F', 'CURRENT');
-errDiff(result.length, 1);
-log(result);
 
 process.env["DEBUG"] = "propagator";
 
@@ -182,6 +184,8 @@ renderScript = [
   "END",
 ];
 
+machine = new Machine;
+err(machine.interpret(initScript));
 propagator = new Propagator(machine, t, (s) => log(s));
 propagator.runRenderScript(renderScript);
 
