@@ -10,6 +10,8 @@ Popcorn - make beautiful web-based applications
    :maxdepth: 2
    :caption: Contents:
 
+   grammar.rst
+
 Popcorn is an unusual HTTP server designed from the ground up for
 beautifully designed, highly responsive browser-based applications. It
 is suitable for smart embedded devices or for applications that have a
@@ -244,12 +246,23 @@ possible sub-state of the state machine.
 The tree defines two things:
 
 1. The entire state space of the UX Model, i.e., all possible states
-that the application UX can be in.
+   that the application UX can be in.
 
 2. The current state within this state space.
 
 Each state of the application UX can be a hierarchical composition of
-sub-states. In general, any state, represented by a node, can be of
+sub-states.
+
+.. sidebar:: Hierarchical State Machines
+
+  Such hierarchical state machines were first defined by David Harel
+  in 1986. He called them "Statecharts", and they were incorporated
+  into the Unified Modeling Language (UML) 2.0 in a simplified
+  form. The big difference is that in the Popcorn UX Model, we do not
+  worry about the **transitions** between states; we just represent
+  the hierarchy as a tree of nodes.
+
+In general, any state, represented by a node, can be of
 one of three types:
 
 - A list of **alternative** sub-states, one of which is marked current
@@ -270,13 +283,6 @@ In turn, the child states of an alternative-parent or of a
 concurrent-parent state can themselves be of any of these three types.
 This is how one defines the state of the application as a hierarchical
 state machine.
-
-* Such hierarchical state machines were first defined by David Harel
-  in 1986. He called them "Statecharts", and they were incorporated
-  into the Unified Modeling Language (UML) 2.0 in a simplified
-  form. The big difference is that in the Popcorn UX Model, we do not
-  worry about the **transitions** between states; we just represent
-  the hierarchy as a tree of nodes.
 
 This tree of nodes in a Popcorn UX Model follows certain rules.
 
@@ -328,7 +334,7 @@ The rules are:
    leaf nodes are alternative child nodes.
 
 Changing the application state
-------------------------------
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 In order to change the application state, you can change the tree in
 these ways:
@@ -342,7 +348,7 @@ Popcorn modifies the UX Model.  Once the tree has been modified in this
 way, it shows a new current state.
 
 Paths to identify nodes
------------------------
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Every node in the tree has a short name composed of lowercase letters,
 numbers, and hyphens. This short name is unique among children of the
@@ -397,7 +403,7 @@ the following four paths are sufficient to define the tree::
   .bolt/locked
 
 State space defined by the tree
--------------------------------
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 This UX Model is capturing four states of the door: each
 combination of the hinge being open or closed, and the bolt being
@@ -411,12 +417,12 @@ Let us look at the state space::
   State 4:      .hinge/closed, .bolt/locked
 
 In the picture of the tree we drew at the beginning, we used the
-````(*)`` annotation to show State 1, ``open`` and ``unlocked``.
+``(*)`` annotation to show State 1, ``open`` and ``unlocked``.
 
-(With this state space, we are modeling a door that can be locked even
-when it is open: of no security benefit, and in fact inconvenient
-because often such doors cannot be closed until you first unlock
-them.)
+(With this state space, we are modeling a door whose bolt can be moved
+to the locked position even when the door is open: of no security
+benefit, and in fact inconvenient because often such doors cannot be
+closed until you first unlock the bolt.)
 
 Specifying a UX Model to Popcorn
 ================================
@@ -462,7 +468,7 @@ simultaneously close and lock our door::
 Popcorn will put the UX Model in State 4, ``closed`` and ``locked``.
 
 Data nodes
--------------------------------------------
+-----------
 
 All leaf nodes that are concurrent children are assumed to be "data
 nodes" and have associated with them a UTF-8 string value. By default
@@ -504,9 +510,10 @@ key needed to unlock our door, only the visible key value that anyone
 can change. We could, of course, add the secret key to our model if we
 wanted, by adding another data-node.
 
-See full [grammar rules](./grammar.md).
+See full grammar here: :ref:`grammar`
 
-# How to Design the UX of a Popcorn Application
+How to Design the UX of a Popcorn Application
+==============================================
 
 Overview
 -------------------------------------------
@@ -522,7 +529,7 @@ to find the directory.
 1. Launch Popcorn and view the URL for your UX Model.
 
 Create assets directory and HTML files
--------------------------------------------
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 When you have defined your UX Model as described in the previous
 sections, you are ready to create your web assets as a hierarchy of
@@ -549,7 +556,7 @@ machine index file as a separate URL of the form ``http://xyz/one``,
 ``http://xyz/two``, and so on.
 
 Contents of mymachine-index.html
--------------------------------------------
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Make it a valid HTML document. Please use simple, lowercase ``<head>``
 and ``<body>`` tags. Insert ``<link>`` tags in the head section for any
@@ -558,7 +565,8 @@ and ``<body>`` tags. Insert ``<link>`` tags in the head section for any
 In the body, you will use popcorn-specific attributes of the form
 ``data-XXX`` to point to a machine path.
 
-### data-alt to show a current alternative child
+data-alt to show a current alternative child
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 To display an element only when a particular alternative child is
 current, assign to it this alternative child's path::
@@ -569,7 +577,9 @@ The above example uses the ``data-alt`` attribute to mark a
 paragraph. Whenever the UX Model has any other child of ``.hinge``
 current, then this paragraph will not be displayed.
 
-### data-cmdclick to send commands to the app
+data-cmdclick to send commands to the app
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 
 To send a command to the app when the user clicks a button or any
 other element, assign to that element the command string as the value
@@ -591,7 +601,8 @@ designer will want some feedback to be given to the user
 immediately. For those cases, you can also use a ``data-chgclick``
 attribute to directly change the UX Model state in the UI; see below.
 
-### data-chgclick to change the state
+data-chgclick to change the state
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 To directly change the state of the UX Model when the user clicks a
 button or any other element, assign to that element a change
@@ -632,7 +643,7 @@ decide up front which of the paths belong to the UI and which ones
 belong to the back end.
 
 Configure Popcorn with assets directory location
---------------------------------------------------
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 You tell Popcorn where to find the assets directory for a UX Model
 through Popcorn's config file, ``~/.popcorn/options.json``::
@@ -653,7 +664,7 @@ to be found in the directory ``~/myapp/assets`` for the user who runs
 Popcorn.
 
 Launch Popcorn and Browse UX Model URL and HTML
------------------------------------------------
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The command to launch Popcorn is ``bin/launch``, under the Popcorn
 directory (wherever you installed Popcorn). This command launches
@@ -722,7 +733,8 @@ persistently connected).
 Transaction formats
 -------------------------------------------
 
-### Background on Server-Sent Events (SSE)
+Background on Server-Sent Events (SSE)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Server-Sent Events (SSE) is a W3C standard format for events sent
 from an HTTP server to the browser.
@@ -751,7 +763,8 @@ language to make that part easier.
 Here are the formats for the different transactions that apps need to
 send and receive.
 
-### Provide transaction
+Provide transaction
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 When an app sends Popcorn a ``provide`` transaction, it sends Popcorn a
 series of ``P`` and ``D`` commands that can build the entire UX Model.  As
@@ -773,7 +786,7 @@ UX Model is delivered to it, and the web client is subscribed to any
 subsequent updates to the UX Model.
 
 Update transaction
--------------------
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 This is the format of the multi-line ``update`` transaction::
 
@@ -795,7 +808,7 @@ UX Model ``NAME`` in the URL, will automatically receive the new UX Model
 state and will also be subscribed for any further updates.
 
 Abandon transaction
--------------------
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 This is the format of the single-line ``abandon`` transaction::
 
@@ -814,7 +827,7 @@ notified that the UX Model no longer exists and will also stop getting
 updates.
 
 Command transaction
--------------------
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Command transactions come in the reverse direction, from a web client
 to the app, whenever the user triggers a button press or similar
@@ -840,14 +853,15 @@ commands; all communication initiated by the app is in the form of
 
 
 App connections and SSE protocol
--------------------------------------------
+---------------------------------
 
 The above-mentioned transactions are exchanged between Popcorn and
 apps over network connections. These connections use the SSE protocol
 to carry these transactions as payloads. Here we describe how the SSE
 protocol is used to wrap these transactions.
 
-### Apps: Persistently-connected vs. One-shot
+Apps: Persistently-connected vs. One-shot
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Apps can decide to connect to Popcorn in one of two ways: either they
 can keep the TCP or UNIX-domain socket open and continue to send and
@@ -858,7 +872,8 @@ transaction, and close the socket. We call the former type of apps
 The SSE event type to be used depends on how the app connects to
 Popcorn: persistently connected, or one-shot.
 
-### Persistently-connected app
+Persistently-connected app
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The app should send an SSE event type ``appConnect``, with a one-word
 payload string.::
@@ -913,7 +928,7 @@ providing a UX Model named ``mymachine``::
                              data: ...
 
 One-shot command
-------------------
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The above persistently-connected apps need to open a network
 connection to Popcorn and keep it open as they modify the UX Model and
@@ -935,7 +950,8 @@ On UNIX-like operating systems, you can use utilities like ``netcat`` or
 ``nc`` in scripts to open a network connection to Popcorn and perform
 these string-based SSE format exchanges.
 
-### One-shot command app
+One-shot command app
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 If an app connects as a one-shot command app (SSE event type
 ``oneShotCommand``), then it will get one response back from Popcorn,
