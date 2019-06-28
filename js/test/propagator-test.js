@@ -99,7 +99,8 @@ err(errMsg);
 log(machine.getSerialization().filter( s => s.match(/player/) ));
 
 let clauses = [];
-propagator.parseWithClauses(withClause, clauses);
+result = propagator.parseWithClauses(withClause, clauses);
+err(result);
 log(clauses);
 log(`---- trying clause ${clauses[0]}`);
 let sArr = [];

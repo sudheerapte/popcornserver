@@ -102,13 +102,12 @@ class Propagator {
 
   }
 
-  parseWithClauses(clauseStr, arr) { // return only when fully parsed
+  parseWithClauses(clauseStr, arr) { // return null only when fully parsed
     clauseStr = clauseStr.trim();
-    if (clauseStr.length <= 0) { return false; }
+    if (clauseStr.length <= 0) { return null; }
     const m = clauseStr.match(/^(ALL|CURRENT|NONCURRENT)\s+([^,]+)/);
     if (!m) {
-      this.log(`parseWithClauses: failed to parse: ${clauseStr}`);
-      return false;
+      return `parseWithClauses: failed to parse: ${clauseStr}`;
     }
     arr.push(m[0]);
     clauseStr = clauseStr.slice(m[0].length);
