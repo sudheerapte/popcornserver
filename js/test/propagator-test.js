@@ -47,7 +47,6 @@ machine = new Machine();
 
 let boardScript, errMsg;
 
-/*
 log(`---- drag-and-drop: create drag-and-drop pairs`);
 
 // fly1 is at a, fly2 is at b, set up fly1.loc/a and fly2/loc/b.
@@ -56,10 +55,16 @@ boardScript = [
   "P .piece.none",
   "P .piece.fly1",
   "P .piece.fly2",
+  "P .player.fly1",
+  "P .player.fly2",
 
   "P .board.a",
   "P .board.b",
   "P .board.c",
+
+  "P .fwd.a.b",
+  "P .fwd.a.c",
+  "P .fwd.a.d",
 ];
 
 const ddScript = [
@@ -76,22 +81,56 @@ const ddScript = [
   "C .board.b fly2",
   "C .board.c none",
 
-  "WITH .board.POS/PIECE BEGIN",
+  "WITH CURRENT .board.POS/PIECE BEGIN",
   "C .{{PIECE}}.loc {{POS}}",
-  "END"
+  "END",
+
+  "WITH CURRENT .board.EMPTYPOS/none, ALL .player.PLAYER, CURRENT .board.PLPOS/{{PLAYER}}, ALL .fwd.{{PLPOS}}.{{EMPTYPOS}} BEGIN",
+  "P .dragndrop.{{PLPOS}}.{{EMPTYPOS}}",
+  "END",
 ];
 
 machine.interpret(boardScript);
 propagator = new Propagator(machine, t, (s) => log(s));
-errMsg = propagator.runRenderScript(ddScript);
+errMsg = propagator.runRenderScript(ddScript.slice(0, ddScript.length-3));
+const withClause = "CURRENT .board.EMPTYPOS/none, ALL .player.PLAYER, CURRENT .board.PLPOS/{{PLAYER}}, ALL .fwd.{{PLPOS}}.{{EMPTYPOS}}";
 err(errMsg);
 
-machine = new Machine;
-propagator = new Propagator(machine, t, (s) => log(s));
-machine.interpret(initScript);
-//log(machine.getSerialization().filter( s => s.match(/\.turn/)) );
+log(machine.getSerialization().filter( s => s.match(/player/) ));
 
-*/
+let clauses = [];
+propagator.parseWithClauses(withClause, clauses);
+log(clauses);
+log(`---- trying clause ${clauses[0]}`);
+let sArr = [];
+result = propagator.expandUnification({}, clauses[0]);
+result.forEach( r => sArr.push(r) );
+log(sArr);
+log(`---- trying clause ${clauses[1]}`);
+let sArr1 = [];
+for (let i=0; i<sArr.length; i++) {
+  const subst = sArr[i];
+  result = propagator.expandUnification(subst, clauses[1]);
+  log(`${JSON.stringify(subst)}: ${JSON.stringify(result)}`);
+  if (! Array.isArray(result)) { err('stopping on error'); }
+  result.forEach( r => sArr1.push(r) );
+}
+log(sArr1);
+log(`---- trying clause ${clauses[2]}`);
+let sArr2 = [];
+for (let i=0; i<sArr1.length; i++) {
+  const subst = sArr1[i];
+  result = propagator.expandUnification(subst, clauses[2]);
+  log(`${JSON.stringify(subst)}: ${JSON.stringify(result)}`);
+  if (! Array.isArray(result)) { err('stopping on error'); }
+  result.forEach( r => sArr2.push(r) );
+}
+log(sArr2);
+
+
+//log(machine.getSerialization().filter( s => s.match(/dragandrop/) ));
+
+process.exit(0);
 
 log(`---- invert locations .board.a/fly1 => .fly1.loc/a`);
 

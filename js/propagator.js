@@ -17,7 +17,7 @@ class Propagator {
   }
 
   /**
-     runRenderScript - return null or error messages in a string
+     runRenderScript - return null or errMsg string
    */
   runRenderScript(scriptLines) {
     const blocks = this.buildBlocks(scriptLines);
@@ -72,6 +72,15 @@ class Propagator {
     if (m) {
       block.header = `WITH ALL ${m[1]}`;
     }
+    /*
+    m = block.header.match(/^WITH\s+(.+)$/);
+    if (m) {
+      let clauses = [];
+      this.parseWithClauses(m[1], clauses);
+      this.log(clauses);
+      return "got clauses";
+    }
+    */
     m = block.header.match(/^WITH\s+(ALL|CURRENT|NONCURRENT)\s+(\S+)$/);
     if (m) {
       // this.log(`${block.header}, ${block.lines.length} lines`);
@@ -90,6 +99,23 @@ class Propagator {
         return `line ${errPos}: ${pairs[errPos][0]}`;
       }
     }
+
+  }
+
+  parseWithClauses(clauseStr, arr) { // return only when fully parsed
+    clauseStr = clauseStr.trim();
+    if (clauseStr.length <= 0) { return false; }
+    const m = clauseStr.match(/^(ALL|CURRENT|NONCURRENT)\s+([^,]+)/);
+    if (!m) {
+      this.log(`parseWithClauses: failed to parse: ${clauseStr}`);
+      return false;
+    }
+    arr.push(m[0]);
+    clauseStr = clauseStr.slice(m[0].length);
+    if (clauseStr.startsWith(',')) {
+      clauseStr = clauseStr.slice(1);
+    }
+    return this.parseWithClauses(clauseStr, arr);
   }
 
   /**
@@ -225,6 +251,61 @@ class Propagator {
     }
     return allLines;
   }
+
+  
+
+  /**
+     expandUnification - take clause and existing substitution.
+     return array of new combined substitutions or error
+   */
+  expandUnification(subst, clause) {
+    const m = clause.match(/^(ALL|CURRENT|NONCURRENT)\s+(.+)$/);
+    if (!m) { return `bad WITH clause: ${clause}`; }
+    const partials = this.computeUnification(subst, m[1], m[2]);
+    if (! Array.isArray(partials)) { // error message
+      return partials;
+    }
+    for (let i=0; i<partials.length; i++) {
+      let p = partials[i];
+      for (let k of Object.keys(subst)) {
+        p[k] = subst[k];
+      }
+    }
+    return partials;
+  }
+
+  /**
+     computeUnification - take existing substitution, allOrCurrent,
+     and a path string as typed by the user.  Return array of new
+     substitution fragments or error
+   */
+  computeUnification(subst, allOrCurrent, pathString) {
+    let evalFunc;
+    let pathStr;
+    evalFunc = this.getEvalFuncVarContext(subst);
+    const result = this.t.process(pathString, evalFunc);
+    if (result[0]) {
+      return `bad clause |${pathString}|: ${result[0]}`;
+    } else if (! result[1]) {
+      return `bad clause |${pathString}|: falsy result`;
+    }
+    // OK, we have a legit clause expanded. Tokenize it and
+    // check to make sure old vars are not being reused.
+    const eString = result[1];
+    const varLits = this.getVarLitTokens(eString);
+    for (let i=0; i<varLits.length; i++) {
+      const tok = varLits[i];
+      if (tok.hasOwnProperty('VAR')) {
+        const vname = tok.VAR;
+        if (subst.hasOwnProperty(vname)) {
+          return `clause |${eString}|: variable ${vname} already used`;
+        }
+      }
+    }
+    // any vars in this clause are new. Good.
+    return this.unify(varLits, allOrCurrent);
+  }
+
 
   // unify(varLitTokens, allOrCurrent) -- return substitution list
   unify(varLitTokens, allOrCurrent) {
