@@ -213,7 +213,6 @@ class Propagator {
 
   expandWithScript(pathString, allOrCurrent, lines) {
     const varLits = this.getVarLitTokens(pathString, allOrCurrent);
-    // this.log(`    varLits=${JSON.stringify(varLits)}`);
     const arr = this.unify(varLits, allOrCurrent);
     this.log(arr);
     let allLines = [];
@@ -251,7 +250,6 @@ class Propagator {
         outArr.push(obj);
       }
     });
-    // this.log(outArr);
     return outArr;
 
     function unifyExpression(arr, aPath) {
@@ -272,6 +270,13 @@ class Propagator {
           } else {
             return null;
           }
+        } else if (arr[i].hasOwnProperty("WILDCARD")) {
+          const m = p.match(/^[a-z0-9-]+/);
+          if (m) {
+            p = p.slice(m[0].length);
+          } else {
+            return null;
+          }
         } else {
           return null;
         }
@@ -282,6 +287,10 @@ class Propagator {
 
   /**
      getVarLitTokens() - split a path expression into VAR and LIT tokens
+
+     VAR token = a variable name that will be used to match a word
+     WILDCARD token = will be used to match a word to be ignored
+     LIT token = a series of words-and-separators that must match exactly.
    */
   getVarLitTokens(pathExpr) {
     const me = this;
@@ -298,12 +307,18 @@ class Propagator {
 
     function splitExpression(pathExpr, arr) {
       pathExpr = pathExpr.trim();
-      const ma = pathExpr.match(/^[A-Z]+/);
-      if (ma) {
-        arr.push({VAR: pathExpr.slice(0,ma[0].length)});
-        return pathExpr.slice(ma[0].length);
+      let m;
+      m = pathExpr.match(/^\*/);
+      if (m) {
+        arr.push({WILDCARD: pathExpr.slice(0,m[0].length)});
+        return pathExpr.slice(m[0].length);
       }
-      const m = pathExpr.match(/^([a-z0-9-.\/]+)(.*)/);
+      m = pathExpr.match(/^[A-Z]+/);
+      if (m) {
+        arr.push({VAR: pathExpr.slice(0,m[0].length)});
+        return pathExpr.slice(m[0].length);
+      }
+      m = pathExpr.match(/^([a-z0-9-.\/]+)(.*)/);
       if (m) {
         arr.push({LIT: m[1]});
         return m[2];
@@ -345,7 +360,6 @@ class Propagator {
   // This function substitutes that token wherever a COMMAND with that
   // capitalized name is found, and then evaluates the entire input string.
   evalBlockVars(todo, varContext) {
-    this.log(varContext);
     const varFunc = this.getEvalFuncVarContext(varContext);
     return todo.map( formula => {
       if (!formula) {

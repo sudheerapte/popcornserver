@@ -45,12 +45,59 @@ process.env["DEBUG"] = null;
 
 machine = new Machine();
 
+let boardScript, errMsg;
 
+/*
 log(`---- drag-and-drop: create drag-and-drop pairs`);
 
 // fly1 is at a, fly2 is at b, set up fly1.loc/a and fly2/loc/b.
 
-const boardScript = [
+boardScript = [
+  "P .piece.none",
+  "P .piece.fly1",
+  "P .piece.fly2",
+
+  "P .board.a",
+  "P .board.b",
+  "P .board.c",
+];
+
+const ddScript = [
+  "WITH .piece.PIECE BEGIN",
+  "P .board.a/{{PIECE}}",
+  "P .board.b/{{PIECE}}",
+  "P .board.c/{{PIECE}}",
+  "P .{{PIECE}}.loc/a",
+  "P .{{PIECE}}.loc/b",
+  "P .{{PIECE}}.loc/c",
+  "END",
+
+  "C .board.a fly1",
+  "C .board.b fly2",
+  "C .board.c none",
+
+  "WITH .board.POS/PIECE BEGIN",
+  "C .{{PIECE}}.loc {{POS}}",
+  "END"
+];
+
+machine.interpret(boardScript);
+propagator = new Propagator(machine, t, (s) => log(s));
+errMsg = propagator.runRenderScript(ddScript);
+err(errMsg);
+
+machine = new Machine;
+propagator = new Propagator(machine, t, (s) => log(s));
+machine.interpret(initScript);
+//log(machine.getSerialization().filter( s => s.match(/\.turn/)) );
+
+*/
+
+log(`---- invert locations .board.a/fly1 => .fly1.loc/a`);
+
+// fly1 is at a, fly2 is at b, set up fly1.loc/a and fly2/loc/b.
+
+boardScript = [
   "P .piece.none",
   "P .piece.fly1",
   "P .piece.fly2",
@@ -74,20 +121,25 @@ const revScript = [
   "C .board.b fly2",
   "C .board.c none",
 
-  "WITH .board.POS/PIECE BEGIN",
+  "WITH CURRENT .board.POS/PIECE BEGIN",
   "C .{{PIECE}}.loc {{POS}}",
   "END"
 ];
 
+machine = new Machine();
 machine.interpret(boardScript);
 propagator = new Propagator(machine, t, (s) => log(s));
-const errMsg = propagator.runRenderScript(revScript);
+errMsg = propagator.runRenderScript(revScript);
 err(errMsg);
 
-machine = new Machine;
-propagator = new Propagator(machine, t, (s) => log(s));
-machine.interpret(initScript);
-log(machine.getSerialization().filter( s => s.match(/\.turn/)) );
+checkProcess("{{CURRENT .board.a}}", "fly1");
+checkProcess("{{CURRENT .board.b}}", "fly2");
+checkProcess("{{CURRENT .board.c}}", "none");
+checkProcess("{{CURRENT .fly1.loc}}", "a");
+checkProcess("{{CURRENT .fly2.loc}}", "b");
+
+log("OK");
+
 
 log(`---- WITH ALL example`);
 
@@ -162,8 +214,6 @@ errDiff(blocks[1].lines.length, 5);
 errDiff(blocks[2].numLines, 7);
 errDiff(blocks[2].lines.length, 5);
 
-process.env["DEBUG"] = "propagator";
-
 log(`---- runRenderScript: .turn = spider`);
 
 log(`CURRENT .selectedfly = ${machine.getCurrentChildName(".selectedfly")}`);
@@ -203,7 +253,7 @@ log(`   OK`);
 
 log(`---- runRenderScript: .turn = flies`);
 machine.interpret([ 'C .turn flies' ]);
-log(machine.getSerialization().filter( s => s.match(/\.turn/)) );
+//log(machine.getSerialization().filter( s => s.match(/\.turn/)) );
 
 propagator.runRenderScript(renderScript);
 
