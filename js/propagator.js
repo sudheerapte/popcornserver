@@ -268,43 +268,11 @@ class Propagator {
   }
 
   /**
-     growUnifications - take clause and a list of existing and
-     grown susbtitutions. Grow the first of the existing
-     substitutions on to the end.
-     Return null on success, or error message.
+     expandUnification - take existing substitution and a clause.
+     Add all unique expanded unifications to the given array.
+     return null on success, or error message
    */
-  growUnifications(subst, list, clause) {
-    const me = this;
-    this.log(`growUnifications: expanding for: ${JSON.stringify(subst)}`);
-    const result = this.expandUnification(subst, clause);
-    if (Array.isArray(result)) {
-      result.forEach( r => addIfUnique(list, r) );
-      return null;
-    } else {
-      return result;
-    }
-
-    function addIfUnique(list, item) {
-      const pos = list.findIndex( e => isEqual(e, item) );
-      if (pos < 0) {
-        list.push(item);
-      }
-    }
-
-    function isEqual(a, b) {
-      return false;
-      Object.keys(a).forEach( k => {
-        if (! b.hasOwnProperty(k)) { return false; }
-        return a[k] === b[k];
-      });
-    }
-  }
-
-  /**
-     expandUnification - take clause and existing substitution.
-     return array of new combined substitutions or error
-   */
-  expandUnification(subst, clause) {
+  expandUnification(subst, arr, clause) {
     const m = clause.match(/^(ALL|CURRENT|NONCURRENT)\s+(.+)$/);
     if (!m) { return `bad WITH clause: ${clause}`; }
     const partials = this.computeUnification(subst, m[1], m[2]);
@@ -316,8 +284,23 @@ class Propagator {
       for (let k of Object.keys(subst)) {
         p[k] = subst[k];
       }
+      addIfUnique(arr, p);
     }
-    return partials;
+    return null;
+
+    function addIfUnique(list, item) {
+      const pos = list.findIndex( e => isEqual(e, item) );
+      if (pos < 0) {
+        list.push(item);
+      }
+    }
+
+    function isEqual(a, b) {
+      Object.keys(a).forEach( k => {
+        if (! b.hasOwnProperty(k)) { return false; }
+        return a[k] === b[k];
+      });
+    }
   }
 
   /**

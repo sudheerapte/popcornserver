@@ -111,65 +111,22 @@ for (let i=0; i<clauses.length; i++) {
   let tempArr = [];
   log(`Growing for clause: ${clauses[i]}.`);
   for (let j=0; j<sArr.length; j++) {
-    result = propagator.growUnifications(sArr[j], tempArr, clauses[i]);
+    result = propagator.expandUnification(sArr[j], tempArr, clauses[i]);
     if (result) {
       log(`ERROR: ${result}`);
     }
   }
-  log(`added ${tempArr.length}`);
   sArr = tempArr;
   log(sArr);
 }
 
+errDiff(sArr.length, 2);
+errDiff(sArr[0].PLAYER, "fly1");
+errDiff(sArr[0].PLPOS, "a");
+errDiff(sArr[1].PLAYER, "fly2");
+errDiff(sArr[1].PLPOS, "b");
+
 process.exit(0);
-
-log(`---- expanding clauses`);
-
-machine.interpret(boardScript);
-propagator = new Propagator(machine, t, (s) => log(s));
-errMsg = propagator.runRenderScript(ddScript.slice(0, ddScript.length-3));
-withClause = "CURRENT .board.EMPTYPOS/none, ALL .player.PLAYER, CURRENT .board.PLPOS/PLAYER, ALL .fwd.PLPOS.EMPTYPOS";
-
-// log(machine.getCurrentPaths());
-
-clauses = [];
-// log(`trying clauses: ${withClause}`);
-result = propagator.parseWithClauses(withClause, clauses);
-err(result);
-// log(clauses);
-log(`---- trying clause ${clauses[0]}`);
-sArr = [];
-result = propagator.expandUnification({}, clauses[0]);
-errDiff(result.length, 1);
-sArr.push(result[0]);
-log(`---- trying clause ${clauses[1]}`);
-sArr1 = [];
-for (let i=0; i<sArr.length; i++) {
-  const subst = sArr[i];
-  result = propagator.expandUnification(subst, clauses[1]);
-  // log(`${JSON.stringify(subst)}: ${JSON.stringify(result)}`);
-  if (! Array.isArray(result)) { err('stopping on error'); }
-  result.forEach( r => sArr1.push(r) );
-}
-errDiff(sArr1.length, 2);
-errDiff(sArr1[0].PLAYER, "fly1");
-errDiff(sArr1[1].PLAYER, "fly2");
-log(`---- trying clause ${clauses[2]}`);
-sArr2 = [];
-for (let i=0; i<sArr1.length; i++) {
-  const subst = sArr1[i];
-  result = propagator.expandUnification(subst, clauses[2]);
-  // log(`${JSON.stringify(subst)}: ${JSON.stringify(result)}`);
-  if (! Array.isArray(result)) { err('stopping on error'); }
-  result.forEach( r => sArr2.push(r) );
-}
-errDiff(sArr2[0].PLAYER, "fly1");
-errDiff(sArr2[0].PLPOS, "a");
-errDiff(sArr2[1].PLAYER, "fly2");
-errDiff(sArr2[1].PLPOS, "b");
-
-
-
 
 log(`---- invert locations .board.a/fly1 => .fly1.loc/a`);
 
