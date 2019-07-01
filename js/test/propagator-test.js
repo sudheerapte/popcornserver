@@ -67,37 +67,51 @@ boardScript = [
 ];
 
 const ddScript = [
-  "WITH .piece.PIECE BEGIN",
+  "WITH ALL .piece.PIECE BEGIN",
   "P .board.a/{{PIECE}}",
   "P .board.b/{{PIECE}}",
   "P .board.c/{{PIECE}}",
-  "P .{{PIECE}}.loc/a",
-  "P .{{PIECE}}.loc/b",
-  "P .{{PIECE}}.loc/c",
   "END",
 
   "C .board.a fly1",
   "C .board.b fly2",
   "C .board.c none",
-
-  "WITH CURRENT .board.POS/PIECE BEGIN",
-  "C .{{PIECE}}.loc {{POS}}",
-  "END",
-
-  "WITH CURRENT .board.EMPTYPOS/none, ALL .player.PLAYER, CURRENT .board.PLPOS/{{PLAYER}}, ALL .fwd.{{PLPOS}}.{{EMPTYPOS}} BEGIN",
-  "P .dragndrop.{{PLPOS}}.{{EMPTYPOS}}",
-  "END",
 ];
 
 let clauses, sArr, sArr1, sArr2, withClause;
 
 log(`---- growing clauses`);
 
-machine.interpret(boardScript);
+result = machine.interpret(boardScript);
+err(result);
 propagator = new Propagator(machine, t, (s) => log(s));
-errMsg = propagator.runRenderScript(ddScript.slice(0, ddScript.length-3));
+log(`--- running render Script`);
+errMsg = propagator.runRenderScript(ddScript);
+err(errMsg);
+
+errDiff(propagator.process("{{CURRENT .board.b}}")[1], "fly2");
+
+
 withClause = "CURRENT .board.EMPTYPOS/none, ALL .player.PLAYER, CURRENT .board.PLPOS/PLAYER, ALL .fwd.PLPOS.EMPTYPOS";
 
+let withScript = [
+  `WITH ${withClause} BEGIN`,
+  'P .dnd.{{PLAYER}}.{{EMPTYPOS}}',
+  'END',
+];
+
+errMsg = propagator.runRenderScript(withScript);
+err(errMsg);
+
+log(JSON.stringify(machine.getAllPaths().filter(p => p.match(/\.dnd/))));
+
+log("OK");
+
+process.exit(0);
+
+
+
+log(`---- current machine = `);
 log(machine.getCurrentPaths().filter(p => p.match(/\.board/)));
 log(machine.getAllPaths().filter( p => p.match(/^\.fwd/)));
 

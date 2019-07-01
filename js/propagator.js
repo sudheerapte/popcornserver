@@ -47,6 +47,7 @@ class Propagator {
      unrollBlock - return unrolled lines or error message
    */
   unrollBlock(block) {
+    const me = this;
     if (block && ! block.header) {
       let pairs = block.lines.map(line => this.process(line) );
       return unrolledOrError(pairs);
@@ -68,50 +69,40 @@ class Propagator {
         return [];
       }
     }
+    /*
     m = block.header.match(/^WITH\s+(\S+)$/);
     if (m) {
       block.header = `WITH ALL ${m[1]}`;
     }
-    /*
-    m = block.header.match(/^WITH\s+(.+)$/);
-    if (m) {
-      let clauses = [];
-      this.parseWithClauses(m[1], clauses);
-      this.log(clauses);
-      if (clauses.length === 1) {
-        let expandedUnis = this.expandUnification({}, clauses[i]);
-        
-      }
-
-      let uniList = [{}];
-      for (let i=0; i<clauses.length; i++) {
-        for (let j=0; j<uniList.length; j++) {
-          const uni = uniList[j];
-          for (let k=0; k<expandedUnis.length; k++) {
-            
-          }
-        uni = newUni;
-      }
-      const output = this.expandWithScript(m[2], m[1], block.lines);
-      const pairs = output.map(line => this.process(line));
-      return unrolledOrError(pairs);
-    }
     */
-    m = block.header.match(/^WITH\s+(ALL|CURRENT|NONCURRENT)\s+(\S+)$/);
-    if (m) {
-      // this.log(`${block.header}, ${block.lines.length} lines`);
-      const output = this.expandWithScript(m[2], m[1], block.lines);
-      const pairs = output.map(line => this.process(line));
-      return unrolledOrError(pairs);
-    } else {
+    m = block.header.match(/^WITH\s+(.+)$/);
+    if (! m) {
       return `bad block header: ${block.header}`;
     }
-
+    let clauses = [];
+    const errMsg = this.parseWithClauses(m[1], clauses);
+    if (errMsg) { return errMsg; }
+    const unis = this.getAllUnifications(clauses);
+    if (! Array.isArray(unis)) {
+      return unis;
+    } // error message
+    let fullList = []; // will be returned as the unrolled lines
+    for (let i=0; i<unis.length; i++) {
+      const output = this.evalBlockVars(block.lines, unis[i]);
+      if (! Array.isArray(output)) { // error message
+        return output;
+      }
+      output.forEach( o => fullList.push(o) );
+    }
+    return fullList;
+      
     function unrolledOrError(pairs) {
       const errPos = pairs.findIndex( pair => pair[0] !== null );
       if (errPos < 0) {
         return pairs.map( pair => pair[1] );
       } else {
+        me.log(`returning error instead of unrolled lines`);
+        me.log(`line ${errPos}: ${pairs[errPos]}`);
         return `line ${errPos}: ${pairs[errPos][0]}`;
       }
     }
@@ -252,6 +243,7 @@ class Propagator {
   }
 
 
+  /*
   expandWithScript(pathString, allOrCurrent, lines) {
     const varLits = this.getVarLitTokens(pathString, allOrCurrent);
     const arr = this.unify(varLits, allOrCurrent);
@@ -265,6 +257,26 @@ class Propagator {
       }
     }
     return allLines;
+  }
+  */
+
+  /*
+    getAllUnifications - given a sequence of clauses, return an array
+    of all the substitutions that will satisfy them.
+   */
+  getAllUnifications(clauses) {
+    let sArr = [{}];
+    for (let i=0; i<clauses.length; i++) {
+      let tempArr = [];
+      for (let j=0; j<sArr.length; j++) {
+        const result = this.expandUnification(sArr[j], tempArr, clauses[i]);
+        if (result) {
+          return(`ERROR expanding |${clauses[i]}|: ${result}`);
+        }
+      }
+      sArr = tempArr;
+    }
+    return sArr;
   }
 
   /**
