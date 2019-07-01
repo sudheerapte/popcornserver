@@ -5,7 +5,7 @@ let P = {          // minimize pollution of global namespace
   mc: new Machine, // filled in by message handlers
   ws: null,        // websocket assigned by upgradeToWebsocket
   propagator: null,
-  tokenizer: new Tokenizer,
+  tokenizer: new Tokenizer, // simply passed in to new Propagator()
 // Turn this on if you want detailed logging for render scripts
 //  logger: console.log,
   logger: s => {},
@@ -20,6 +20,7 @@ function boot() {
     .catch( errMsg => console.log(errMsg) );
 }
 
+// unhidebody() - make body visible after first message is processed
 // not a promise
 function unhideBody() {
   const bodyElem = document.querySelector('body');

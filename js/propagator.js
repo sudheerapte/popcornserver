@@ -55,10 +55,10 @@ class Propagator {
     block.header = block.header.trim();
     m = block.header.match(/^ON\s+(\S+)\s+(\w+)$/);
     if (m) {
-      this.log(`${block.header}, ${block.lines.length} lines`);
+      // this.log(`${block.header}, ${block.lines.length} lines`);
       if (this.mc.isVariableParent(m[1])) {
         if (this.mc.getCurrentChildName(m[1]) !== m[2]) {
-          this.log(`ON: ${m[1]} is not ${m[2]}. Skipping.`);
+          // this.log(`ON: ${m[1]} is not ${m[2]}. Skipping.`);
         } else {
           let pairs = block.lines.map(line => this.process(line) );
           return unrolledOrError(pairs);
@@ -78,7 +78,23 @@ class Propagator {
       let clauses = [];
       this.parseWithClauses(m[1], clauses);
       this.log(clauses);
-      return "got clauses";
+      if (clauses.length === 1) {
+        let expandedUnis = this.expandUnification({}, clauses[i]);
+        
+      }
+
+      let uniList = [{}];
+      for (let i=0; i<clauses.length; i++) {
+        for (let j=0; j<uniList.length; j++) {
+          const uni = uniList[j];
+          for (let k=0; k<expandedUnis.length; k++) {
+            
+          }
+        uni = newUni;
+      }
+      const output = this.expandWithScript(m[2], m[1], block.lines);
+      const pairs = output.map(line => this.process(line));
+      return unrolledOrError(pairs);
     }
     */
     m = block.header.match(/^WITH\s+(ALL|CURRENT|NONCURRENT)\s+(\S+)$/);
@@ -138,7 +154,6 @@ class Propagator {
 
   // getScriptBlock - return an array of lines forming a block.
   // Recognizes ON, WITH, and ALL blocks and expands them.
-  // The expanded lines are pushed on to the passed-in array arr.
   //     Returns { error, numLines, header, lines array }.
   // numLines is the number of lines consumed from the input array.
   // header is the portion before the BEGIN, and linesConsumed is
@@ -236,10 +251,11 @@ class Propagator {
     }
   }
 
+
   expandWithScript(pathString, allOrCurrent, lines) {
     const varLits = this.getVarLitTokens(pathString, allOrCurrent);
     const arr = this.unify(varLits, allOrCurrent);
-    this.log(arr);
+    // this.log(arr);
     let allLines = [];
     for (let i=0; i< arr.length; i++) {
       const subst = arr[i];
@@ -251,7 +267,38 @@ class Propagator {
     return allLines;
   }
 
-  
+  /**
+     growUnifications - take clause and a list of existing and
+     grown susbtitutions. Grow the first of the existing
+     substitutions on to the end.
+     Return null on success, or error message.
+   */
+  growUnifications(subst, list, clause) {
+    const me = this;
+    this.log(`growUnifications: expanding for: ${JSON.stringify(subst)}`);
+    const result = this.expandUnification(subst, clause);
+    if (Array.isArray(result)) {
+      result.forEach( r => addIfUnique(list, r) );
+      return null;
+    } else {
+      return result;
+    }
+
+    function addIfUnique(list, item) {
+      const pos = list.findIndex( e => isEqual(e, item) );
+      if (pos < 0) {
+        list.push(item);
+      }
+    }
+
+    function isEqual(a, b) {
+      return false;
+      Object.keys(a).forEach( k => {
+        if (! b.hasOwnProperty(k)) { return false; }
+        return a[k] === b[k];
+      });
+    }
+  }
 
   /**
      expandUnification - take clause and existing substitution.
@@ -279,32 +326,24 @@ class Propagator {
      substitution fragments or error
    */
   computeUnification(subst, allOrCurrent, pathString) {
-    let evalFunc;
-    let pathStr;
-    evalFunc = this.getEvalFuncVarContext(subst);
-    const result = this.t.process(pathString, evalFunc);
-    if (result[0]) {
-      return `bad clause |${pathString}|: ${result[0]}`;
-    } else if (! result[1]) {
-      return `bad clause |${pathString}|: falsy result`;
-    }
-    // OK, we have a legit clause expanded. Tokenize it and
-    // check to make sure old vars are not being reused.
-    const eString = result[1];
-    const varLits = this.getVarLitTokens(eString);
+    const varLits = this.getVarLitTokens(pathString);
+    let varLitsCopy = []; // copy with substitutions.
     for (let i=0; i<varLits.length; i++) {
       const tok = varLits[i];
       if (tok.hasOwnProperty('VAR')) {
         const vname = tok.VAR;
-        if (subst.hasOwnProperty(vname)) {
-          return `clause |${eString}|: variable ${vname} already used`;
+        if (subst.hasOwnProperty(vname)) { // existing name: copy value
+          varLitsCopy.push({LIT: subst[vname]});
+        } else {   // new name: good.
+          varLitsCopy.push(tok);
         }
+      } else {
+        varLitsCopy.push(tok);
       }
     }
-    // any vars in this clause are new. Good.
-    return this.unify(varLits, allOrCurrent);
+    // any vars in this clause are new.
+    return this.unify(varLitsCopy, allOrCurrent);
   }
-
 
   // unify(varLitTokens, allOrCurrent) -- return substitution list
   unify(varLitTokens, allOrCurrent) {

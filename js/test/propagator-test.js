@@ -41,8 +41,6 @@ initScript = [
   'P .board.c',
 ];
 
-process.env["DEBUG"] = null;
-
 machine = new Machine();
 
 let boardScript, errMsg;
@@ -65,6 +63,7 @@ boardScript = [
   "P .fwd.a.b",
   "P .fwd.a.c",
   "P .fwd.a.d",
+  "P .fwd.b.c",
 ];
 
 const ddScript = [
@@ -90,48 +89,87 @@ const ddScript = [
   "END",
 ];
 
+let clauses, sArr, sArr1, sArr2, withClause;
+
+log(`---- growing clauses`);
+
 machine.interpret(boardScript);
 propagator = new Propagator(machine, t, (s) => log(s));
 errMsg = propagator.runRenderScript(ddScript.slice(0, ddScript.length-3));
-const withClause = "CURRENT .board.EMPTYPOS/none, ALL .player.PLAYER, CURRENT .board.PLPOS/{{PLAYER}}, ALL .fwd.{{PLPOS}}.{{EMPTYPOS}}";
-err(errMsg);
+withClause = "CURRENT .board.EMPTYPOS/none, ALL .player.PLAYER, CURRENT .board.PLPOS/PLAYER, ALL .fwd.PLPOS.EMPTYPOS";
 
-log(machine.getSerialization().filter( s => s.match(/player/) ));
+log(machine.getCurrentPaths().filter(p => p.match(/\.board/)));
+log(machine.getAllPaths().filter( p => p.match(/^\.fwd/)));
 
-let clauses = [];
+clauses = [];
 result = propagator.parseWithClauses(withClause, clauses);
 err(result);
 log(clauses);
+
+sArr = [{}];
+for (let i=0; i<clauses.length; i++) {
+  let tempArr = [];
+  log(`Growing for clause: ${clauses[i]}.`);
+  for (let j=0; j<sArr.length; j++) {
+    result = propagator.growUnifications(sArr[j], tempArr, clauses[i]);
+    if (result) {
+      log(`ERROR: ${result}`);
+    }
+  }
+  log(`added ${tempArr.length}`);
+  sArr = tempArr;
+  log(sArr);
+}
+
+process.exit(0);
+
+log(`---- expanding clauses`);
+
+machine.interpret(boardScript);
+propagator = new Propagator(machine, t, (s) => log(s));
+errMsg = propagator.runRenderScript(ddScript.slice(0, ddScript.length-3));
+withClause = "CURRENT .board.EMPTYPOS/none, ALL .player.PLAYER, CURRENT .board.PLPOS/PLAYER, ALL .fwd.PLPOS.EMPTYPOS";
+
+// log(machine.getCurrentPaths());
+
+clauses = [];
+// log(`trying clauses: ${withClause}`);
+result = propagator.parseWithClauses(withClause, clauses);
+err(result);
+// log(clauses);
 log(`---- trying clause ${clauses[0]}`);
-let sArr = [];
+sArr = [];
 result = propagator.expandUnification({}, clauses[0]);
-result.forEach( r => sArr.push(r) );
-log(sArr);
+errDiff(result.length, 1);
+sArr.push(result[0]);
 log(`---- trying clause ${clauses[1]}`);
-let sArr1 = [];
+sArr1 = [];
 for (let i=0; i<sArr.length; i++) {
   const subst = sArr[i];
   result = propagator.expandUnification(subst, clauses[1]);
-  log(`${JSON.stringify(subst)}: ${JSON.stringify(result)}`);
+  // log(`${JSON.stringify(subst)}: ${JSON.stringify(result)}`);
   if (! Array.isArray(result)) { err('stopping on error'); }
   result.forEach( r => sArr1.push(r) );
 }
-log(sArr1);
+errDiff(sArr1.length, 2);
+errDiff(sArr1[0].PLAYER, "fly1");
+errDiff(sArr1[1].PLAYER, "fly2");
 log(`---- trying clause ${clauses[2]}`);
-let sArr2 = [];
+sArr2 = [];
 for (let i=0; i<sArr1.length; i++) {
   const subst = sArr1[i];
   result = propagator.expandUnification(subst, clauses[2]);
-  log(`${JSON.stringify(subst)}: ${JSON.stringify(result)}`);
+  // log(`${JSON.stringify(subst)}: ${JSON.stringify(result)}`);
   if (! Array.isArray(result)) { err('stopping on error'); }
   result.forEach( r => sArr2.push(r) );
 }
-log(sArr2);
+errDiff(sArr2[0].PLAYER, "fly1");
+errDiff(sArr2[0].PLPOS, "a");
+errDiff(sArr2[1].PLAYER, "fly2");
+errDiff(sArr2[1].PLPOS, "b");
 
 
-//log(machine.getSerialization().filter( s => s.match(/dragandrop/) ));
 
-process.exit(0);
 
 log(`---- invert locations .board.a/fly1 => .fly1.loc/a`);
 
