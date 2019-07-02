@@ -9,6 +9,7 @@ HOST, PORT = "localhost", 8001
 
 okmatch = re.compile(r"data\:\s+ok");
 
+ignoringReceived = False
 received = None
 
 def getMoveTransaction(item, position):
@@ -52,6 +53,10 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
         print(received)
         sys.exit(1)
     while re.search(okmatch, received):
+        if ignoringReceived:
+            print('ignoring commands...');
+            time.sleep(1)
+            continue
         print('waiting for command...')
         received = str(sock.recv(1024), "utf-8")
         if (re.search(okmatch, received)):
@@ -78,7 +83,9 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
                 w = fliesmod.checkWin()
                 if not w is None:
                     print('sending .turn win-{}...'.format(w))
-                    time.sleep(1)
+                    ignoringReceived = True
+                    time.sleep(3)
+                    ignoringReceived = False
                     transaction = '''event: message
 data: update fliesdemo
 data: C .turn win-{}

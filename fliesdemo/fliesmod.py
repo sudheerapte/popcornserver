@@ -2,6 +2,7 @@ import re
 
 turn = 'spider'
 fCount = 0
+hCount = 0
 
 posdict = {
     'spider': 'h',
@@ -79,21 +80,26 @@ def move(item, position):
 
 def checkWin():
     '''return spider, flies, or None.
-    If the spider keeps returning again and again to 'f', it wins.
+    If the spider keeps returning again and again to 'f' or 'h', it wins.
     If the flies occupy 'e', 'f' and 'g', they win.
     If the spider occupies 'a', 'b', 'c', or 'd', it wins.
     '''
-    global fCount
+    global fCount, hCount
     if getPosition('spider') == 'f':
         fCount = fCount+1
-        if fCount > 3:
-            fCount = 0;
-            return 'spider'
+    if getPosition('spider') == 'h':
+        hCount = hCount+1
+    if fCount > 6 or hCount > 6:
+        fCount = 0
+        hCount = 0
+        return 'spider'
     if re.match(r'a|b|c|d', getPosition('spider')):
         fCount = 0
+        hCount = 0
         return 'spider'
     if fliesInWinningPosition():
         fCount = 0
+        hCount = 0
         return 'flies'
     return None
 
@@ -164,6 +170,8 @@ data: P .board.h/fly3
 data: P .board.h/empty
 data: P .turn/spider
 data: P .turn/flies
+data: P .turn/win-spider
+data: P .turn/win-flies
 
 '''
 
