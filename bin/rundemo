@@ -1,0 +1,15 @@
+#!/bin/sh
+here=$(dirname $(readlink -f $0))
+die() { echo $@ ; exit 1; }
+
+echo Killing any existing launch...
+pkill launch
+
+echo Running fliesdemo with launch...
+
+cd ${here}/..
+
+./bin/launch &
+sleep 2 &&
+    ./fliesdemo/doflies.py
+
