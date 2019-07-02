@@ -63,47 +63,23 @@ function sendProvide() {
   }
 }
 
-function readInitScript() {
-  const initScript = document.querySelector('script#init');
-  if (initScript) {
-    const str = initScript.textContent;
+
+function runScript(name) {
+  let result = null;
+  const script = document.querySelector(`script#${name}`);
+  if (script) {
+    const str = script.textContent;
     const lines = str.split(/\n|\r\n/)
           .filter(line => ! line.match(/^\s*$/))
           .map(line => line.trim());
-    const result = P.mc.interpret(lines);
+    result = P.propagator.runRenderScript(lines);
     if (result) {
-      console.log(`init script: ${result}`);
+      console.log(`script ${name} error:\n${result}`);
     }
   } else {
-    console.log(`init script not found; continuing`);
+    result = `script ${name} not found; continuing`;
   }
-}
-
-function runRenderScript() {
-  const renderScript = document.querySelector('script#render');
-  if (renderScript) {
-    const str = renderScript.textContent;
-    const lines = str.split(/\n|\r\n/)
-          .filter(line => ! line.match(/^\s*$/))
-          .map(line => line.trim());
-    P.propagator.runRenderScript(lines);
-  } else {
-    console.log(`render script not found; continuing`);
-  }
-}
-
-function runDebugScript() {
-  const debugScript = document.querySelector('script#debug');
-  if (debugScript) {
-    const str = debugScript.textContent;
-    str.split(/\n|\r\n/)
-      .filter(line => ! line.match(/^\s*$/))
-      .map(line => line.trim())
-      .forEach( (line, i) => {
-        const result = P.propagator.process(line);
-        console.log(result[0] ? result[0] : result[1]);
-      });
-  }
+  return result;
 }
 
 function generateXY() {
@@ -210,7 +186,7 @@ function doFirstMessage() {
       }
     }
     function proceedPastFirstMessage(resolve) {
-      readInitScript();
+      runScript('init');
       reflectMachine();
       addClickChgHandlers();
       addClickCmdHandlers();
@@ -281,7 +257,7 @@ let unknownPaths = new Map(); // suppress repeated "no such path" errors
 
 function reflectMachine() {
   if (! P.mc) { return; }
-  runRenderScript();
+  runScript('render');
   generateXY();
   const DM = "data-alt";
   const machineElems = document.querySelectorAll(`[${DM}]`);
@@ -303,7 +279,7 @@ function reflectMachine() {
       }
     }
   });
-  runDebugScript();
+  runScript('debug');
 }
 
 /**

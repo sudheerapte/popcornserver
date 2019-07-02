@@ -13,8 +13,34 @@ let evalFunc;
 let result;
 let input;
 let initScript, renderScript, arr;
+let boardScript, errMsg;
 
 let blocks;
+
+log(`---- basic ON block`);
+
+initScript = [
+  'P .turn/spider',
+  'P .turn/flies',
+];
+
+renderScript = [
+  'ON .turn spider BEGIN',
+  'P .do.something',
+  'END',
+  'ON .turn flies BEGIN',
+  'P .do.somethingelse',
+  'END',
+];
+
+machine = new Machine();
+propagator = new Propagator(machine, t, (s) => log(s));
+errMsg = propagator.runRenderScript(initScript);
+err(errMsg);
+blocks = propagator.buildBlocks(renderScript);
+// log(JSON.stringify(blocks));
+
+log(`---- drag-and-drop: create drag-and-drop pairs`);
 
 initScript = [
   'P .turn/spider',
@@ -42,10 +68,6 @@ initScript = [
 ];
 
 machine = new Machine();
-
-let boardScript, errMsg;
-
-log(`---- drag-and-drop: create drag-and-drop pairs`);
 
 // fly1 is at a, fly2 is at b, set up fly1.loc/a and fly2/loc/b.
 
@@ -103,23 +125,23 @@ let withScript = [
 errMsg = propagator.runRenderScript(withScript);
 err(errMsg);
 
-log(JSON.stringify(machine.getAllPaths().filter(p => p.match(/\.dnd/))));
+// log(JSON.stringify(machine.getAllPaths().filter(p => p.match(/\.dnd/))));
 
-log("OK");
+// log("OK");
 
-log(`---- current machine = `);
-log(machine.getCurrentPaths().filter(p => p.match(/\.board/)));
-log(machine.getAllPaths().filter( p => p.match(/^\.fwd/)));
+// log(`---- current machine = `);
+// log(machine.getCurrentPaths().filter(p => p.match(/\.board/)));
+// log(machine.getAllPaths().filter( p => p.match(/^\.fwd/)));
 
 clauses = [];
 result = propagator.parseWithClauses(withClause, clauses);
 err(result);
-log(clauses);
+// log(clauses);
 
 sArr = [{}];
 for (let i=0; i<clauses.length; i++) {
   let tempArr = [];
-  log(`Growing for clause: ${clauses[i]}.`);
+  // log(`Growing for clause: ${clauses[i]}.`);
   for (let j=0; j<sArr.length; j++) {
     result = propagator.expandUnification(sArr[j], tempArr, clauses[i]);
     if (result) {
@@ -127,7 +149,7 @@ for (let i=0; i<clauses.length; i++) {
     }
   }
   sArr = tempArr;
-  log(sArr);
+  // log(sArr);
 }
 
 errDiff(sArr.length, 2);
@@ -181,7 +203,7 @@ checkProcess("{{CURRENT .board.c}}", "none");
 checkProcess("{{CURRENT .fly1.loc}}", "a");
 checkProcess("{{CURRENT .fly2.loc}}", "b");
 
-log("OK");
+//log("OK");
 
 
 log(`---- WITH ALL example`);
@@ -213,12 +235,21 @@ const provideScript = [
 machine = new Machine();
 propagator = new Propagator(machine, t, (s) => log(s));
 arr = provideScript.slice(0);
+// log(arr);
 result = propagator.getScriptBlock(arr);
+//log(JSON.stringify(result));
 errDiff(result.numLines, 8);
 errDiff(result.lines.length, 8);
-result = propagator.getScriptBlock(arr.slice(result.numLines));
+arr = arr.slice(result.numLines);
+result = propagator.getScriptBlock(arr);
+//log(JSON.stringify(result));
 errDiff(result.numLines, 7);
 errDiff(result.lines.length, 5);
+arr = arr.slice(result.numLines);
+result = propagator.getScriptBlock(arr);
+//log(JSON.stringify(result));
+arr = arr.slice(result.numLines);
+errDiff(arr.length, 0);
 
 log(`---- WITH ALL with inserted blanks`);
 arr = provideScript.slice(0);
@@ -259,7 +290,7 @@ errDiff(blocks[2].lines.length, 5);
 
 log(`---- runRenderScript: .turn = spider`);
 
-log(`CURRENT .selectedfly = ${machine.getCurrentChildName(".selectedfly")}`);
+// log(`CURRENT .selectedfly = ${machine.getCurrentChildName(".selectedfly")}`);
 
 renderScript = [
   "ON .turn spider BEGIN",
@@ -282,7 +313,7 @@ err(machine.interpret(initScript));
 propagator = new Propagator(machine, t, (s) => log(s));
 propagator.runRenderScript(renderScript);
 
-log(`DATA .img.fly1 = ${machine.getData(".img.fly1")}`);
+// log(`DATA .img.fly1 = ${machine.getData(".img.fly1")}`);
 
 checkProcess("{{DATA .img.fly1}}", "fly");
 checkProcess("{{DATA .img.fly2}}", "fly");

@@ -54,12 +54,12 @@ class Propagator {
     } 
     let m;
     block.header = block.header.trim();
-    m = block.header.match(/^ON\s+(\S+)\s+(\w+)$/);
+    m = block.header.match(/^ON\s+(\S+)\s+(\S+)$/);
     if (m) {
-      // this.log(`${block.header}, ${block.lines.length} lines`);
       if (this.mc.isVariableParent(m[1])) {
         if (this.mc.getCurrentChildName(m[1]) !== m[2]) {
           // this.log(`ON: ${m[1]} is not ${m[2]}. Skipping.`);
+          return [];
         } else {
           let pairs = block.lines.map(line => this.process(line) );
           return unrolledOrError(pairs);
@@ -69,12 +69,6 @@ class Propagator {
         return [];
       }
     }
-    /*
-    m = block.header.match(/^WITH\s+(\S+)$/);
-    if (m) {
-      block.header = `WITH ALL ${m[1]}`;
-    }
-    */
     m = block.header.match(/^WITH\s+(.+)$/);
     if (! m) {
       return `bad block header: ${block.header}`;
@@ -138,6 +132,9 @@ class Propagator {
       if (block && block.numLines > 0) {
         blocks.push(block);
         numLines += block.numLines;
+        // this.log(`getScriptBlock: valid block: ${block.header}`);
+      } else {
+        // this.log(`null block`);
       }
     } while (block && block.numLines > 0);
     return blocks;
