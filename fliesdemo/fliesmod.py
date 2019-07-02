@@ -13,6 +13,16 @@ posdict = {
 
 okmatch = re.compile(r"data\:\s+ok");
 
+def initialize():
+    global posdict, fCount, hCount, turn
+    posdict['spider'] = 'h'
+    posdict['fly1'] = 'b'
+    posdict['fly2'] = 'a'
+    posdict['fly3'] = 'c'
+    turn = 'spider'
+    fCount = 0
+    hCount = 0
+
 def parseMove(buf):
     m = re.search(r'move\s+(\w+)\s+(\w+)', buf)
     if m is not None:

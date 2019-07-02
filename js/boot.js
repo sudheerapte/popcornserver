@@ -261,7 +261,7 @@ function reflectMachine() {
   generateXY();
   const DM = "data-alt";
   const machineElems = document.querySelectorAll(`[${DM}]`);
-  //  console.log(`machineElems = ${machineElems.length} items`);
+  // console.log(`machineElems = ${machineElems.length} items`);
   // hide all non-current alt children and unhide all other paths
   machineElems.forEach( e => {
     const mPath = e.getAttribute(DM);

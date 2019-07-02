@@ -40,13 +40,9 @@ def printCommand(buf):
 
 received = None
 
-with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-    sock.connect((HOST, PORT))
-    sck = sock
-    sock.sendall(bytes("event: appConnect\ndata: doflies\n\n", "utf-8"))
-    received = str(sock.recv(1024), "utf-8")
-    # print("appConnect: Sending initial machine...")
-    sock.sendall(bytes(fliesmod.getInitialMachineMessage(), 'utf-8'))
+def foreverSock(sock):
+    '''Plays game until it is over, then returns'''
+    global received, okmatch, ignoringReceived
     received = str(sock.recv(1024), "utf-8")
     if not re.search(okmatch, received):
         print("bad reply received:")
@@ -94,7 +90,20 @@ data: C .turn win-{}
                     sock.sendall(bytes(transaction, "utf-8"))
                     reply = str(sock.recv(1024), "utf-8")
                     print('.turn win-{} got reply: {}'.format(w,reply))
-                # print('transaction was OK')
+                    return
             else:
                 print('transaction failed: {}'.format(reply))
         received = "data: ok"
+
+
+with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+    sock.connect((HOST, PORT))
+    sck = sock
+    sock.sendall(bytes("event: appConnect\ndata: doflies\n\n", "utf-8"))
+    received = str(sock.recv(1024), "utf-8")
+    # print("appConnect: Sending initial machine...")
+    while True:
+        fliesmod.initialize()
+        sock.sendall(bytes(fliesmod.getInitialMachineMessage(), 'utf-8'))
+        foreverSock(sock)
+    
