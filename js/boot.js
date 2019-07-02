@@ -240,7 +240,7 @@ function handleMessage(ev) { // handle subsequent messages
           return;
         }
         console.log(`new machine ${P.machine} provided`);
-        readInitScript();
+        runScript('init');
         reflectMachine();
         return;
       }
