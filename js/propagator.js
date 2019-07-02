@@ -569,7 +569,7 @@ class Propagator {
       return this.evaluate(tokenArray.slice(1, tokenArray.length-1));
     }
     if (tokenArray[0].name === 'COMMAND') {
-      const result = this.executeCommand(tokenArray[0].value, tokenArray.slice(1));
+      const result = this.dispatchCommand(tokenArray[0].value, tokenArray.slice(1));
       if (! result) { // command tokenArray[0] not recognized
         return [null, tokenArray];
       } else {
@@ -578,80 +578,122 @@ class Propagator {
     }
   }
 
-  // executeCommand - try to recognize and execute "cmd", else return null
-  executeCommand(cmd, args) {
-    if (cmd === 'EXISTS') {
-      const mPath = this.composePath(args);
-      if (! mPath) {
-        return [ `bad syntax for path: ${this.t.renderTokens(args)}`, null ];
-      }
-      if (this.mc.exists(mPath)) {
-        return [ null, {name: 'NUMBER', value: "1"} ];
-      } else {
-        return [ null, {name: 'NUMBER', value: "0"}];
-      }
-    } else if (cmd === 'CURRENT') {
-      if (args.length < 1) {
-        return [`CURRENT needs at least 1 arg`, null];
-      }
-      const mPath = this.composePath(args);
-      if (! mPath) {
-        return [ `CURRENT: bad syntax for path: ${this.t.renderTokens(args)}`, null ];
-      }
-      if (this.mc.exists(mPath)) {
-        if (this.mc.isVariableParent(mPath)) {
-          const curr = this.mc.getCurrentChildName(mPath);
-          if (curr) {
-            return [ null, {name: 'WORD', value: curr} ];
-          } else {
-            return [`CURRENT: no current child`, null];
-          }
+  dispatchCommand(cmd, args) {
+    const records = [
+      {cmd: 'EXISTS', fn: args => this.existsCmd(args)},
+      {cmd: 'CURRENT', fn: args => this.currentCmd(args)},
+      {cmd: 'DATA', fn: args => this.dataCmd(args)},
+      {cmd: 'ALL', fn: args => this.allCmd(args)},
+    ];
+    const rec = records.find(r => r.cmd === cmd);
+    if (rec) {
+      return rec.fn(args);
+    } else {
+      this.log(`dispatchCommand: no such command: ${cmd}`);
+      return null;
+    }
+  }
+
+
+  existsCmd(args) {
+    const mPath = this.composePath(args);
+    if (! mPath) {
+      return [ `bad syntax for path: ${this.t.renderTokens(args)}`, null ];
+    }
+    if (this.mc.exists(mPath)) {
+      return [ null, {name: 'NUMBER', value: "1"} ];
+    } else {
+      return [ null, {name: 'NUMBER', value: "0"}];
+    }
+  }
+
+  currentCmd(args) {
+    if (args.length < 1) {
+      return [`CURRENT needs at least 1 arg`, null];
+    }
+    const mPath = this.composePath(args);
+    if (! mPath) {
+      return [ `CURRENT: bad syntax for path: ${this.t.renderTokens(args)}`, null ];
+    }
+    if (this.mc.exists(mPath)) {
+      if (this.mc.isVariableParent(mPath)) {
+        const curr = this.mc.getCurrentChildName(mPath);
+        if (curr) {
+          return [ null, {name: 'WORD', value: curr} ];
         } else {
-          return [`CURRENT: not a variable parent`, null];
+          return [`CURRENT: no current child`, null];
         }
       } else {
-        return [ `CURRENT: no such path: ${mPath}`, null ];
-      }
-    } else if (cmd === 'DATA') {
-      if (args.length < 1) {
-        return [`DATA needs at least 1 arg`, null];
-      }
-      const mPath = this.composePath(args);
-      if (! mPath) {
-        return [ `DATA: bad syntax for path: ${this.t.renderTokens(args)}`, null ];
-      }
-      if (this.mc.exists(mPath)) {
-        if (this.mc.isDataLeaf(mPath)) {
-          const data = this.mc.getData(mPath);
-          if (typeof data === 'string') {
-            return [ null, {name: 'STRING', value: data} ];
-          } else {
-            return [ null, data.map( d => {
-              return {name: 'STRING', value: d};
-            }) ];
-          }
-        } else {
-          return [`DATA: not a data leaf: ${mPath}`, null];
-        }
-      } else {
-        return [ `DATA: no such path: ${mPath}`, null ];
-      }
-    } else if (cmd === 'ALL') {
-      const result = this.expandAllConcurrentChildren(args);
-      if (result[0]) {
-        return result;
-      } else { // Build array of tokens from the child names
-        if (result[1].length === 0) { return result; }
-        const arr = [];
-        for (let i=0; i< result[1].length-1; i++) {
-          arr.push(result[1][i]);
-          arr.push({name: ',', value: null});
-        }
-        arr.push(result[1][i]);
-        return [null, arr];
+        return [`CURRENT: not a variable parent`, null];
       }
     } else {
-      return null; // not recognized
+      return [ `CURRENT: no such path: ${mPath}`, null ];
+    }
+  }
+
+  dataCmd(args) {
+    if (args.length < 1) {
+      return [`DATA needs at least 1 arg`, null];
+    }
+    const mPath = this.composePath(args);
+    if (! mPath) {
+      return [ `DATA: bad syntax for path: ${this.t.renderTokens(args)}`, null ];
+    }
+    if (this.mc.exists(mPath)) {
+      if (this.mc.isDataLeaf(mPath)) {
+        const data = this.mc.getData(mPath);
+        if (data) {
+          return [ null, {name: 'STRING', value: data} ];
+        } else {
+          return [ null, {name: 'STRING', value: ""} ];
+        }
+      } else {
+        return [`DATA: not a data leaf`, null];
+      }
+    } else {
+      return [ `DATA: no such path: ${mPath}`, null ];
+    }
+  }
+
+  allCmd(args) {
+    if (args.length < 1) {
+      return [`DATA needs at least 1 arg`, null];
+    }
+    const mPath = this.composePath(args);
+    if (! mPath) {
+      return [ `DATA: bad syntax for path: ${this.t.renderTokens(args)}`, null ];
+    }
+    if (this.mc.exists(mPath)) {
+      if (this.mc.isDataLeaf(mPath)) {
+        const data = this.mc.getData(mPath);
+        if (typeof data === 'string') {
+          return [ null, {name: 'STRING', value: data} ];
+        } else {
+          return [ null, data.map( d => {
+            return {name: 'STRING', value: d};
+          }) ];
+        }
+      } else {
+        return [`DATA: not a data leaf: ${mPath}`, null];
+      }
+    } else {
+      return [ `DATA: no such path: ${mPath}`, null ];
+    }
+  }
+
+  allCmd(args) {
+    const result = this.expandAllConcurrentChildren(args);
+    if (result[0]) {
+      return result;
+    } else { // Build array of tokens from the child names
+      if (result[1].length === 0) { return result; }
+      const arr = [];
+      for (let i=0; i< result[1].length-1; i++) {
+        arr.push(result[1][i]);
+        arr.push({name: ',', value: null});
+      }
+      arr.push(result[1][i]);
+      return [null, arr];
     }
   }
 

@@ -107,10 +107,6 @@ log(JSON.stringify(machine.getAllPaths().filter(p => p.match(/\.dnd/))));
 
 log("OK");
 
-process.exit(0);
-
-
-
 log(`---- current machine = `);
 log(machine.getCurrentPaths().filter(p => p.match(/\.board/)));
 log(machine.getAllPaths().filter( p => p.match(/^\.fwd/)));
@@ -140,8 +136,6 @@ errDiff(sArr[0].PLPOS, "a");
 errDiff(sArr[1].PLAYER, "fly2");
 errDiff(sArr[1].PLPOS, "b");
 
-process.exit(0);
-
 log(`---- invert locations .board.a/fly1 => .fly1.loc/a`);
 
 // fly1 is at a, fly2 is at b, set up fly1.loc/a and fly2/loc/b.
@@ -157,7 +151,7 @@ boardScript = [
 ];
 
 const revScript = [
-  "WITH .piece.PIECE BEGIN",
+  "WITH ALL .piece.PIECE BEGIN",
   "P .board.a/{{PIECE}}",
   "P .board.b/{{PIECE}}",
   "P .board.c/{{PIECE}}",
