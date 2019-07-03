@@ -299,15 +299,17 @@ class Tokenizer {
   }
 
   /**
-     splitPercentSections() - take a script and return sections
-     based on percent signs. Based on this input:
+     splitSections() - take a script and return sections based on
+     percent signs or [square brackets] like a Microsoft INI file.
+
+     Based on this input, showing one example of each type:
 
        % SECTIONONE
-       ...
-       ...
-       % SECTIONTWO
-       ...
-       ...
+       ...lines...
+       ...lines...
+       [ SECTIONTWO ]
+       ...lines...
+       ...lines...
 
      Return this output:
      [
@@ -315,18 +317,21 @@ class Tokenizer {
          {section: "SECTIONTWO", lines: [...] },
      ]
      
-     If the first line is not a % line, then we return null.
-     If the last line has a %, then we return an error message.
+     Section name must be single contiguous string of non-whitespace.
+
+     If the first line is not a section line, then we return null.
+     If the last line looks like a section, then we return an error message.
   */
-  splitPercentSections(lines) {
+  splitSections(lines) {
     let arr = [];
     let i=0;
     for (; i<lines.length; i++) {
-      const m = lines[i].match(/^\s*\%\s*(\S+)$/);
-      if (m) {
-        let section = {section: m[1], lines: [] };
+      if (lines[i].trim().length <= 0) { continue; }
+      const result = matchSection(lines[i]);
+      if (result) {
+        let section = {section: result, lines: [] };
         if (i=== lines.length-1) {
-          return `percentSections: last line has %`;
+          return `splitSections: last line has %`;
         }
         const sectionLines = accumulateSection(section, lines.slice(i+1));
         arr.push(section);
@@ -337,9 +342,22 @@ class Tokenizer {
     }
     return arr;
 
+    function matchSection(line) { // return null or section name
+      let m;
+      m = line.trim().match(/^\%\s*(\S+)$/);
+      if (!m) {
+        m = line.trim().match(/^\[\s*(\S+)\s*\]$/);
+      }
+      if (m) {
+        return m[1];
+      } else {
+        return null;
+      }
+    }
+
     function accumulateSection(section, lines) {
       let j=0;
-      for (; j<lines.length && ! lines[j].match(/^\s*\%/); j++) {
+      for (; j<lines.length && ! matchSection(lines[j]); j++) {
         section.lines.push(lines[j]);
       }
       return j;

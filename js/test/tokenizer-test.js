@@ -6,24 +6,26 @@ const t = require('../tokenizer.js');
 let tokens;
 let result, lines;
 
-log(`---- splitPercentSections: easy version`);
+log(`---- splitSections: easy version`);
 lines = [
   "% abc",
   "foo",
   "bar",
+  "",
   "% def",
   "foo",
   "bar",
 ];
-result = t.splitPercentSections(lines);
+result = t.splitSections(lines);
 errDiff(result.length, 2);
 errDiff(result[0].section, "abc");
-errDiff(result[0].lines.length, 2);
+errDiff(result[0].lines.length, 3);
 errDiff(result[1].section, "def");
 errDiff(result[1].lines.length, 2);
 
-log(`---- splitPercentSections: hard versions`);
+log(`---- splitSections: hard versions`);
 lines = [
+  "",
   "% abc",
   "% def",
   "foo",
@@ -31,15 +33,13 @@ lines = [
   "foo",
   "bar",
 ];
-result = t.splitPercentSections(lines);
+result = t.splitSections(lines);
 errDiff(result.length, 2);
 errDiff(result[0].section, "abc");
 errDiff(result[0].lines.length, 0);
 errDiff(result[1].section, "def");
 errDiff(result[1].lines.length, 4);
 
-log(JSON.stringify(result));
-
 lines = [
   "% abc",
   "foo",
@@ -48,14 +48,13 @@ lines = [
   "bar",
   "% def",
 ];
-result = t.splitPercentSections(lines);
+result = t.splitSections(lines);
 if (Array.isArray(result)) {
   err(`expecting a string, got an array: ${JSON.stringify(result)}`);
 }
-if (! result.match(/^percentSections/)) {
+if (! result.match(/^splitSections/)) {
   err(`expecting error string, got: ${result}`);
 }
-
 
 log(`--------- full process -------------`);
 checkFull("foo bar", [null, "foo bar"]);
