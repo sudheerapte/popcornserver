@@ -108,6 +108,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
     while True:
         foreverSock(sock)
         print("GAME OVER")
+        time.sleep(2)
         fliesmod.initialize()
         sock.sendall(bytes(fliesmod.getReinitializeMessage(), 'utf-8'))
         print("sent reinitialize message.")
