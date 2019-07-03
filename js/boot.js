@@ -199,7 +199,7 @@ function doFirstMessage() {
 }
 
 function handleMessage(ev) { // handle subsequent messages
-  // console.log(`handleMessage: |${trunc(ev.data)}|`);
+  console.log(`handleMessage: |${trunc(ev.data)}|`);
   const data = ev.data;
   if (data.match(/^update\s+/)) {
     const m = data.match(/^update\s+(\w+)/);
@@ -263,7 +263,10 @@ function reflectMachine() {
   const machineElems = document.querySelectorAll(`[${DM}]`);
   // console.log(`machineElems = ${machineElems.length} items`);
   // hide all non-current alt children and unhide all other paths
-  machineElems.forEach( e => {
+  machineElems.forEach( e => hideUnhide(e) );
+  runScript('debug');
+
+  function hideUnhide(e) {
     const mPath = e.getAttribute(DM);
     if (mPath) {
       if (! P.mc.exists(mPath) && ! unknownPaths.has(mPath)) {
@@ -273,13 +276,22 @@ function reflectMachine() {
       }
       const toHide = isNonCurrAlt(mPath);
       if (toHide) {
-        e.setAttribute("hidden", "");
-      } else if (e.hasAttribute("hidden")) {
-        e.removeAttribute("hidden");
+        if (e.tagName.match(/^g|svg|use/i)) {
+          e.setAttribute("visibility", "hidden");
+          console.log(`hiding ${e.getAttribute("id")}`);
+        } else {
+          e.setAttribute("hidden", "");
+        }
+      } else {
+        if (e.tagName.match(/^g|svg|use/i)) {
+          e.setAttribute("visibility", "visible");
+          console.log(`making visible ${e.getAttribute("id")}`);
+        } else {
+          e.removeAttribute("hidden");
+        }
       }
     }
-  });
-  runScript('debug');
+  }
 }
 
 /**

@@ -80,7 +80,7 @@ def foreverSock(sock):
                 if not w is None:
                     print('sending .turn win-{}...'.format(w))
                     ignoringReceived = True
-                    time.sleep(3)
+                    time.sleep(1)
                     ignoringReceived = False
                     transaction = '''event: message
 data: update fliesdemo
@@ -102,8 +102,12 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
     sock.sendall(bytes("event: appConnect\ndata: doflies\n\n", "utf-8"))
     received = str(sock.recv(1024), "utf-8")
     # print("appConnect: Sending initial machine...")
+    fliesmod.initialize()
+    sock.sendall(bytes(fliesmod.getInitialMachineMessage(), 'utf-8'))
+    print("sent initial machine message.")
     while True:
-        fliesmod.initialize()
-        sock.sendall(bytes(fliesmod.getInitialMachineMessage(), 'utf-8'))
         foreverSock(sock)
-    
+        print("GAME OVER")
+        fliesmod.initialize()
+        sock.sendall(bytes(fliesmod.getReinitializeMessage(), 'utf-8'))
+        print("sent reinitialize message.")

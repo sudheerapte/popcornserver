@@ -185,6 +185,22 @@ data: P .turn/win-flies
 
 '''
 
+def getReinitializeMessage():
+    return '''
+event: message
+data: update fliesdemo
+data: C .board.a fly2
+data: C .board.b fly1
+data: C .board.c fly3
+data: C .board.d empty
+data: C .board.e empty
+data: C .board.f empty
+data: C .board.g empty
+data: C .board.h spider
+data: C .turn spider
+
+'''    
+
 def isadj(x, y):
     return y in adj[x]
 
