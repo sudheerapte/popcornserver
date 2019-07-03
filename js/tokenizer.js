@@ -297,6 +297,54 @@ class Tokenizer {
 
     return tok1.name === tok2.name && tok1.value === tok2.value;
   }
+
+  /**
+     splitPercentSections() - take a script and return sections
+     based on percent signs. Based on this input:
+
+       % SECTIONONE
+       ...
+       ...
+       % SECTIONTWO
+       ...
+       ...
+
+     Return this output:
+     [
+         {section: "SECTIONONE", lines: [...] },
+         {section: "SECTIONTWO", lines: [...] },
+     ]
+     
+     If the first line is not a % line, then we return null.
+     If the last line has a %, then we return an error message.
+  */
+  splitPercentSections(lines) {
+    let arr = [];
+    let i=0;
+    for (; i<lines.length; i++) {
+      const m = lines[i].match(/^\s*\%\s*(\S+)$/);
+      if (m) {
+        let section = {section: m[1], lines: [] };
+        if (i=== lines.length-1) {
+          return `percentSections: last line has %`;
+        }
+        const sectionLines = accumulateSection(section, lines.slice(i+1));
+        arr.push(section);
+        i+= sectionLines;
+      } else {
+        return null;
+      }
+    }
+    return arr;
+
+    function accumulateSection(section, lines) {
+      let j=0;
+      for (; j<lines.length && ! lines[j].match(/^\s*\%/); j++) {
+        section.lines.push(lines[j]);
+      }
+      return j;
+    }
+  }
 }
 
 module.exports = new Tokenizer;

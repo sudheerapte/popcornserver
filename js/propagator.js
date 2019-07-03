@@ -239,24 +239,6 @@ class Propagator {
     }
   }
 
-
-  /*
-  expandWithScript(pathString, allOrCurrent, lines) {
-    const varLits = this.getVarLitTokens(pathString, allOrCurrent);
-    const arr = this.unify(varLits, allOrCurrent);
-    // this.log(arr);
-    let allLines = [];
-    for (let i=0; i< arr.length; i++) {
-      const subst = arr[i];
-      const result = this.evalBlockVars(lines, subst);      
-      for (let j=0; j<result.length; j++) {
-        allLines.push(result[j]);
-      }
-    }
-    return allLines;
-  }
-  */
-
   /*
     getAllUnifications - given a sequence of clauses, return an array
     of all the substitutions that will satisfy them.

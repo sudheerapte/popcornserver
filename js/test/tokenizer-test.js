@@ -1,10 +1,61 @@
 "use strict";
 
-const [log, err] = require('./logerr.js');
+const [log, err, errDiff] = require('./logerr.js');
 const t = require('../tokenizer.js');
 
 let tokens;
-let result;
+let result, lines;
+
+log(`---- splitPercentSections: easy version`);
+lines = [
+  "% abc",
+  "foo",
+  "bar",
+  "% def",
+  "foo",
+  "bar",
+];
+result = t.splitPercentSections(lines);
+errDiff(result.length, 2);
+errDiff(result[0].section, "abc");
+errDiff(result[0].lines.length, 2);
+errDiff(result[1].section, "def");
+errDiff(result[1].lines.length, 2);
+
+log(`---- splitPercentSections: hard versions`);
+lines = [
+  "% abc",
+  "% def",
+  "foo",
+  "bar",
+  "foo",
+  "bar",
+];
+result = t.splitPercentSections(lines);
+errDiff(result.length, 2);
+errDiff(result[0].section, "abc");
+errDiff(result[0].lines.length, 0);
+errDiff(result[1].section, "def");
+errDiff(result[1].lines.length, 4);
+
+log(JSON.stringify(result));
+
+lines = [
+  "% abc",
+  "foo",
+  "bar",
+  "foo",
+  "bar",
+  "% def",
+];
+result = t.splitPercentSections(lines);
+if (Array.isArray(result)) {
+  err(`expecting a string, got an array: ${JSON.stringify(result)}`);
+}
+if (! result.match(/^percentSections/)) {
+  err(`expecting error string, got: ${result}`);
+}
+
 
 log(`--------- full process -------------`);
 checkFull("foo bar", [null, "foo bar"]);
