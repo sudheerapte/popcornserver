@@ -136,12 +136,15 @@ mkdir -p ~/.popcorn/fliesdemo &&
       C .tomove spider
     END
     ON .turn flies BEGIN
+      D .img.spider spider
       D .img.fly1 fly
       D .img.fly2 fly
       D .img.fly3 fly
       D .img.{{CURRENT .selectedfly}} fly-selected
-      D .img.spider spider
       C .tomove {{CURRENT .selectedfly}}
+    END
+    ON .selectedfly empty BEGIN
+      D .img.empty emptyspot
     END
     ON .turn win-spider BEGIN
       D .img.fly1 emptyspot
