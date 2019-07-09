@@ -12,8 +12,9 @@ class Propagator {
     this.evalFunc = this.getEvalFunc(this.mc);
   }
 
-  process(line) {
-    return this.t.process(line, this.evalFunc);
+  process(line, anEvalFunc) {
+    if (! anEvalFunc) { anEvalFunc = this.evalFunc; }
+    return this.t.process(line, anEvalFunc);
   }
 
   /**
@@ -80,15 +81,13 @@ class Propagator {
     if (! Array.isArray(unis)) {
       return unis;
     } // error message
-    let fullList = []; // will be returned as the unrolled lines
+    // return this.substituteBlockVars(block.lines, unis);
+    let results = [];
     for (let i=0; i<unis.length; i++) {
-      const output = this.evalBlockVars(block.lines, unis[i]);
-      if (! Array.isArray(output)) { // error message
-        return output;
-      }
-      output.forEach( o => fullList.push(o) );
+      let a = this.evalBlock(block.lines, this.getEvalFuncVarContext(unis[i]));
+      a.filter( out => out.length > 0 ).forEach( out => results.push(out) );
     }
-    return fullList;
+    return results;
       
     function unrolledOrError(pairs) {
       const errPos = pairs.findIndex( pair => pair[0] !== null );
@@ -264,6 +263,7 @@ class Propagator {
      return null on success, or error message
    */
   expandUnification(subst, arr, clause) {
+    const me = this;
     const m = clause.match(/^(ALL|CURRENT|NONCURRENT)\s+(.+)$/);
     if (!m) { return `bad WITH clause: ${clause}`; }
     const partials = this.computeUnification(subst, m[1], m[2]);
@@ -281,16 +281,25 @@ class Propagator {
 
     function addIfUnique(list, item) {
       const pos = list.findIndex( e => isEqual(e, item) );
+      // me.log(`addIfUnique: ${JSON.stringify(list)}, ${JSON.stringify(item)}: pos = ${pos}`);
       if (pos < 0) {
         list.push(item);
       }
     }
 
     function isEqual(a, b) {
-      Object.keys(a).forEach( k => {
-        if (! b.hasOwnProperty(k)) { return false; }
-        return a[k] === b[k];
-      });
+      const keys = Object.keys(a);
+      for (let i=0; i< keys.length; i++) {
+        const k = keys[i];
+        if (! b.hasOwnProperty(k)) {
+          return false;
+        }
+        const equal = a[k] === b[k];
+        if (! equal) {
+          return false;
+        }
+      }
+      return true;
     }
   }
 
@@ -422,6 +431,27 @@ class Propagator {
     }
   }
 
+  // renderVarLitTokens - NOT USED - TODO delete
+  renderVarLitTokens(arr, subst) {
+    let s = "";
+    for (let i=0; i<arr.length; i++) {
+      if (arr[i].hasOwnProperty("LIT")) {
+        s += arr[i].LIT;
+      } else if (arr[i].hasOwnProperty("VAR")) {
+        if (subst.hasOwnProperty(arr[i].VAR)) {
+          s += subst[arr[i].VAR];
+        } else {
+          s += arr[i].VAR + " ";
+        }
+      } else if (arr[i].hasOwnProperty("WILDCARD")) {
+        s += '*';
+      } else { // error -- should never happen
+        s += "(" + JSON.stringify(arr[i]) + ")";
+      }
+    }
+    return s;
+  }
+
   // evalBlock - take a list of strings and evaluate them,
   // returning a corresponding list of strings.
   // Optionally takes an evalFunc (see tokenizer.process()).
@@ -447,6 +477,24 @@ class Propagator {
     });
   }
 
+  // substituteBlockVars - take a list of strings and generate
+  // new ones where a set of capitalized variables are substituted
+  // with their values.
+  // Example: input:
+  //   [ 'board.POS/PLAYER' ], [ {POS: 'a', PLAYER: 'fly1'},
+  //                             {POS: 'b', PLAYER: 'fly2'}, ]
+  // output:
+  //   [ 'board.a/fly1', 'board.b/fly2' ]
+  substituteBlockVars(todo, substList) {
+    const tokenized = todo.map( line => this.getVarLitTokens(line) );
+    let result = [];
+    for (let i=0; i<substList.length; i++) {
+      tokenized.map(tokList => this.renderVarLitTokens(tokList, substList[i]))
+        .forEach( s => result.push(s) );
+    }
+    return result;
+  }
+
 
   // evalBlockVars - take a list of strings and evaluate them
   // in a context of vars, returning a corresponding list of strings.
@@ -467,6 +515,8 @@ class Propagator {
         this.log(`evalBlockVars: ${formula}: falsy result`);
         return "";
       } else {
+        // this.log(varContext);
+        // this.log(result[1]);
         return result[1];
       }
     });
