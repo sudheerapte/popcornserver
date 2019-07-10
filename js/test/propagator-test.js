@@ -18,7 +18,6 @@ let clauses, sArr, sArr1, sArr2, withClause;
 
 let blocks, temp;
 
-
 initScript = [
   'P .board.a/none',
   'P .board.b/none',
@@ -169,7 +168,7 @@ log(`--- running WITH Script for drag and drop`);
 machine = new Machine();
 result = machine.interpret(boardScript);
 err(result);
-log(`---- ---- boardScript done`);
+
 propagator = new Propagator(machine, t, (s) => log(s));
 errMsg = propagator.runRenderScript(revScript);
 err(errMsg);
@@ -280,8 +279,8 @@ initScript = [
   'P .tomove/flies',
 
   'WITH ALL .img.PLAYER BEGIN',
-  'P .tomove/PLAYER',
-  'P .selectedfly/PLAYER',
+  'P .tomove/{{PLAYER}}',
+  'P .selectedfly/{{PLAYER}}',
   'END',
 
   'C .selectedfly fly1',
@@ -328,7 +327,6 @@ log(`   OK`);
 
 log(`---- runRenderScript: .turn = flies`);
 machine.interpret([ 'C .turn flies' ]);
-//log(machine.getSerialization().filter( s => s.match(/\.turn/)) );
 
 propagator.runRenderScript(renderScript);
 
@@ -358,7 +356,7 @@ function checkProcess(input, output) {
   let tResult;
   tResult = propagator.process(input);
   err(tResult[0]);
-  log(' '.repeat(40 - input.length)+`${input}| ==> |${tResult[1]}|`);
+  // log(' '.repeat(40 - input.length)+`${input}| ==> |${tResult[1]}|`);
   if (tResult[1] !== output) {
     err(`expected |${output}|, but got |${JSON.stringify(tResult[1])}|`);
   }

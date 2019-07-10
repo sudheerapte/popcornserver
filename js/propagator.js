@@ -78,10 +78,9 @@ class Propagator {
     const errMsg = this.parseWithClauses(m[1], clauses);
     if (errMsg) { return errMsg; }
     const unis = this.getAllUnifications(clauses);
-    if (! Array.isArray(unis)) {
+    if (! Array.isArray(unis)) { // error message
       return unis;
-    } // error message
-    // return this.substituteBlockVars(block.lines, unis);
+    }
     let results = [];
     for (let i=0; i<unis.length; i++) {
       let a = this.evalBlock(block.lines, this.getEvalFuncVarContext(unis[i]));
@@ -284,6 +283,9 @@ class Propagator {
       // me.log(`addIfUnique: ${JSON.stringify(list)}, ${JSON.stringify(item)}: pos = ${pos}`);
       if (pos < 0) {
         list.push(item);
+        return true;
+      } else {
+        return false;
       }
     }
 
@@ -477,6 +479,7 @@ class Propagator {
     });
   }
 
+  // substituteBlockVars - Not used -- TODO remove
   // substituteBlockVars - take a list of strings and generate
   // new ones where a set of capitalized variables are substituted
   // with their values.
@@ -515,8 +518,6 @@ class Propagator {
         this.log(`evalBlockVars: ${formula}: falsy result`);
         return "";
       } else {
-        // this.log(varContext);
-        // this.log(result[1]);
         return result[1];
       }
     });
