@@ -504,23 +504,7 @@ class Propagator {
   // This function substitutes that token wherever a COMMAND with that
   // capitalized name is found, and then evaluates the entire input string.
   evalBlockVars(todo, varContext) {
-    const varFunc = this.getEvalFuncVarContext(varContext);
-    return todo.map( formula => {
-      if (!formula) {
-        this.log(`evalBlock: formula is null`);
-        return "";
-      }
-      let result = this.t.process(formula, varFunc);
-      if (result[0]) {
-        this.log(`evalBlockVars: ${formula}: ${result[0]}`);
-        return "";
-      } else if (! result[1]) {
-        this.log(`evalBlockVars: ${formula}: falsy result`);
-        return "";
-      } else {
-        return result[1];
-      }
-    });
+    return this.evalBlock(todo, this.getEvalFuncVarContext(varContext));
   }
 
   // getEvalFunc - return a function suitable to pass in to
