@@ -17,6 +17,7 @@ Popcorn - make beautiful web-based applications
    how-to-write
    deployment
    grammar
+   commands
 
 Popcorn is an unusual HTTP server designed from the ground up for
 beautifully designed, highly responsive browser-based applications. It
