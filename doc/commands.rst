@@ -1,36 +1,65 @@
+.. _commands:
 
-UX Model Commands
-====================
+UXML - UX Model Command Language
+================================
+
+We describe UXML, a simple ascii-based language with three sets of
+commands:
+
+1. State Space commands, to build up the UX model.
+2. State Description commands, to describe an individual state.
+3. Queries on the state space and the current state.
+
+In addition to the commands, this ascii-based language also offers a
+powerful **macro facility** and **block expansion** constructs, to
+express state-dependent behavior.  These constructs are described
+below.
+
+This language is used in Popcorn scripts to build and modify a UX
+model, and to use the current state of the model to perform actions:
+
+- modify the HTML DOM,
+- post any input modes, and
+- cause commands to be sent to the back-end app.
+
+UXML extensions to perform these actions are described in the next
+chapter.
+
 
 Describing the State Space of a UX Model
 ----------------------------------------
 
-The state space of a UX model is described as a tree of nodes. A
-particular state within this space is described as a set of
+The state space of a UX model is described as a tree of nodes, where
+each node stands for a sub-state. At any given time, the current state
+of the UX model is the combination of sub-states in the tree that are
+current.
+
+A particular state within this space is described as a set of
 current-child designators and a set of data items assigned to some of
-the nodes in this tree.
+the nodes in this tree.  The state space of a UX model must be defined
+before you can use the model and talk about individual states.
 
-We describe a simple ascii-based language that is used for three things:
+UXML uses the constructs **word** and **path** to describe nodes and
+states in the UX model.
 
-1. To build up the state space of a UX model: State Space commands.
-2. To describe an individual state within a UX model: State Description commands. 
-3. To query the current state of a UX model: Queries, and With Clauses.
 
-This ascii-based language is made more powerful using a macro
-facility, which is described below.
-
-The state space of a UX model must be defined before you can use the
-model and talk about individual states.
+Words, Paths, and Parent Nodes
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 A **word** consists of one or more ascii letters, numbers, or hyphen,
 i.e., the set ``[a-z0-9-]``, where the first character must be a
-letter. A word cannot be longer than 100 characters.
+letter. A word cannot be longer than 100 characters. A node in the UX
+model tree is named with a word, for example: ``spider``
 
-A **path** is a complete sequence of traversals from the root of the
-tree to a node. Nodes in a tree can be of these types:
+A **path** is a complete sequence of parent-child traversals from the
+root of the tree to a node. The sequence separates words using a slash
+or a dot. An example of a path: ``.board.a/empty``
+
+Nodes in a tree represent sub-states of the UX model. They can be of
+these types:
 
 An **alternate-parent** node
-   It has a set of possible child nodes, only one of which can be
+   Has a set of possible child nodes, only one of which can be
    designated as the *current* child at a time.
 
 A **concurrent parent** node
@@ -40,24 +69,72 @@ A **concurrent parent** node
 
 A **leaf** node
    Has no children. If its parent is a concurrent parent node, then
-   the leaf node can be assigned a data item.
+   the leaf node can be assigned a data item (a "data leaf" node). If
+   the parent is an alternate-parent node, then the leaf node is
+   called an alterate child.
 
-Each child node has a one-word name unique under its parent node. Each
+Each child node is uniquely named under its parent node. Each
 node is thus uniquely identified by its path from the root node. The
 top-most root node always exists when the tree is created, its name is
 the special empty word ``""``, and it is a concurrent parent node.
 
 The unique name of each node is a ``word`` as described above.
 
+.. sidebar:: Paths start with a dot
+
+             The first word must be the special empty word ``""``,
+             which stands for the root node and is not used for naming
+             any other node. Since the root node is always a
+             concurrent parent, therefore all paths start with a dot,
+             ``.``.
+
 A **path** consists of a series of one or more words separated by
 single dots ``.`` or slashes ``/``, depending on whether the parent is
-a concurrent parent or an alternate-parent. The first word must be the
-special empty word ``""``, which stands for the root node and is not
-used for naming any other node. Since the root node is always a
-concurrent parent, therefore all paths start with a dot, ``.``.
+a concurrent parent or an alternate-parent.
+
+A **command word** consists of a set of one or more capital letters
+``[A-Z]``. Command words are described below with the commands that
+require them.
+
+UXML scripts
+^^^^^^^^^^^^
+
+In a script, all the UXML commands are written one per line of ascii
+text. Any non-ascii character makes the entire UXML script illegal.
+
+Lines are separated from one another by ascii NL (newline)
+characters. Blank lines and any lines starting with a hash character
+(``#``) are ignored.  Any blank characters before the first command
+word are ignored, and any blank characters between the command words
+are dropped once the command words are recognized.
+
+The command words and path syntax use a very restricted sub-set of
+ascii. The macro feature described below introduces a couple of
+special markers, ``{{`` and ``}}``, to enclose macro strings.
+
+The ``DATA`` command described below allows you to describe an
+data item consisting of arbitrary ascii characters.
+
+See later for how to send scripts to Popcorn.
+
+
+UXML Commands
+-------------
+
+In the descriptions below,
+
+**command words**
+  Always capitalized, are written like this: ``COMMAND``
+
+**command arguments**
+   Can be words or paths; they are written like this: ``parent-path``
+
+**ellipses**
+   Stand for a variable number of additional arguments: ``...``
+
 
 State Space Commands
-----------------------------------
+^^^^^^^^^^^^^^^^^^^^
 
 There are three **state space** commands, which can be
 used to build up the tree that defines a UX model::
@@ -69,20 +146,28 @@ used to build up the tree that defines a UX model::
 The ``DEF CON`` command creates a set of new concurrent state nodes as
 children of a concurrent-parent node. The ``parent-path`` describes a
 concurrent-parent node. If such a node does not exist, it will be
-created, and so on for all of its parents up to the root node.
+created, and so on for all of its parents up to the root node. The
+``child`` arguments are used as names of new child nodes. If a child
+node with that name already exists, the command ignores that argument.
 
 The ``DEF ALT`` command similarly creates a set of new alternate state
 nodes under an alternate-parent node. The parent and its ancestors
-will be automatically created if they don't exist.
+will be automatically created if they don't exist, and any ``child``
+arguments that are already names of existing child nodes will be
+ignored.
 
-The ``DEL PATH`` command deletes the given existing node and any
-sub-tree underneath that node. (This command is given for
-completeness; there is no practical use for it, since an application
-has no good reason to delete states from an existing UX model).
+.. sidebar:: DEL command
+
+  The ``DEL`` command is given for completeness; there is no practical
+  use for it, since an application has no good reason to delete states
+  from an existing UX model.
+
+The ``DEL`` command deletes the given existing node and any sub-tree
+underneath that node.
 
 
 State Definition Commands
-----------------------------------
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 State definition commands describe a desired state of the UX model. A
 series of these commands can be bundled together into a transaction,
@@ -120,15 +205,18 @@ There are two forms of the ``SET DATA`` command shown above, depending
 on how the data is supplied. In the first form, the data is a single
 **word**, whose value is supplied as the ``data`` argument.
 
-The second form supplies a set of arbitrary bytes encoded in ascii, in
-a sequence of one or more lines between ``BEGIN`` and ``END``. The
-encoding to be used is up to the application. The newlines in the
-command text are discarded; only the ascii bytes within the lines are
-used as the value.
+The second form is a multi-line command. The first line introduces the
+``SET DATA`` command and the command word ``BEGIN``. The last line
+contains only the command word ``END``. In between, you can supply a
+set of printable ascii characters broken into lines no longer than
+1000 characters each. These data characters are not interpreted in any
+way, except that they may not be the same as the command word ``END``.
+The entire string of ascii characters is assigned as the value of the
+data item.
 
 
 Queries
---------
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 A query is a command string that evaluates to an ascii string using
 the current state. If a query fails, then it evaluates to the empty
@@ -154,13 +242,24 @@ The ``DATA`` query takes the path to a data-leaf node, and returns an
 array of ascii characters that is the value of the data item assigned
 to that node.
 
-Scripts and Transactions
-------------------------
+Scripts, Transactions, and Popcorn
+-----------------------------------
+
+Scripts and Blocks
+^^^^^^^^^^^^^^^^^^^^^^^^
 
 State description commands can be listed one after another in a
-script. Any block of simple commands will be evaluated as a single
-transaction. The resulting state becomes the new state of the UX
-model. If any command fails, then the entire transaction fails.
+script of type ``text/plain``::
+
+  <script id="init" type="text/plain">
+  ... lines ...
+  ... lines ...
+  </script>
+
+The ``lines`` are UXML text. Any consecutive block of simple commands
+will be evaluated as a single transaction. The resulting state becomes
+the new state of the UX model. If any command fails, then the entire
+transaction fails.
 
 A script can contain only simple commands, or simple commands can be
 interspersed with "blocks" of commands where each block becomes one
@@ -169,6 +268,34 @@ transaction.
 There are two kinds of blocks, ``ON`` blocks and ``WITH`` blocks,
 which are explained below. Together with macros, these blocks provide
 a powerful way to describe states.
+
+Sending Scripts to Popcorn
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Popcorn expects certain scripts to be provided with the web assets:
+
+init script (mandatory)
+  A script with id ``init`` is used to create any additional UX model
+  states that the back-end app has not supplied. This is usually to
+  capture any UI state, for example, pages or tabs that are open or
+  closed. This kind of state is unique per user agent (browser), and
+  the back-end app knows nothing about it.
+
+render script (mandatory)
+  A script with id ``render`` is executed on every UX model update.
+  In this script, you can cause changes in the additional UI states,
+  modify the HTML DOM, post any input modes, and cause commands to be
+  sent to the back-end app.
+
+provide script (optional)
+  Normally, when a user agent (browser) connects to Popcorn with the
+  URL of a UX model, it expects the back-end app to provide the
+  initial UX model. But during development, before there is a back-end
+  app, the UX designer can supply their own UX model.  A script with
+  id ``provide`` can be used for this purpose. If Popcorn finds no
+  back-end app providing a UX model for the user agent, and if it
+  finds a script of id ``provide``, it will pretend that a back-end
+  app sent this UX model.
 
 
 Macros
@@ -261,8 +388,8 @@ builds up unified contexts of variable substitutions. The
 To show the power of this method, let us first show a simple example,
 and then a more complex one.
 
-Simple Example
-^^^^^^^^^^^^^^^
+Example with a pattern
+^^^^^^^^^^^^^^^^^^^^^^
 
 Let us say we are building a board game with eight positions labeled
 ``a`` through ``h``, on which three spiders and a fly can move.
@@ -284,14 +411,45 @@ and so on.
 Instead of writing 8 lines with repeated creatures, we could
 write a single ``WITH`` block as follows::
 
+  WITH ALL .board.POS BEGIN
+  DEF ALT .board.{{POS}} spider1 spider2 spider3 fly
+  END
+
+The above ``WITH`` block has the pattern ``ALL .board.POS``, which
+introduces a **block variable**, ``POS``. This pattern matches the
+entire state space in eight ways, with ``POS`` taking the values ``a``,
+``b``, ``c``, ..., ``h``.
+
+Block variables can be expanded as macros within the block lines
+wherever they appear: we see ``{{POS}}`` in the block line above. This
+line is equivalent to::
+
+  DEF ALT .board.a spider1 spider2 spider3 fly
+  DEF ALT .board.b spider1 spider2 spider3 fly
+  DEF ALT .board.c spider1 spider2 spider3 fly
+  DEF ALT .board.d spider1 spider2 spider3 fly
+  DEF ALT .board.e spider1 spider2 spider3 fly
+  DEF ALT .board.f spider1 spider2 spider3 fly
+  DEF ALT .board.g spider1 spider2 spider3 fly
+  DEF ALT .board.h spider1 spider2 spider3 fly
+
+When the script is executed, the block will be unrolled to the above
+eight lines and then executed.
+
+Example with two patterns
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+We can use two patterns to simplify the block line further::
+
   WITH ALL .creature.X ALL .board.POS BEGIN
   DEF ALT .board.{{POS}} {{X}}
   END
 
-In the above block, we introduced two variables, ``X`` and ``POS``.
-The ``X`` clause matches the existing state space in eight ways, with
-``X = a``, ``X = b``, etc., and the ``POS`` clause matches in four
-ways.
+In the above block, we have two patterns: ``ALL .creature.X`` and
+``ALL .board.POS``.  These two patterns introduce two variables, ``X``
+and ``POS``.  The first pattern matches the existing state space in
+eight ways, with ``X = a``, ``X = b``, etc., and the second pattern
+matches in four ways.
 
 When we use the variable names as macros in the ``DEF`` line, the
 block expands to 32 different ``DEF`` commands using each combination
@@ -300,12 +458,12 @@ of variable substitutions. We get the equivalent of::
   DEF ALT .board.a spider1
   DEF ALT .board.a spider2
 
-and so on.
+and so on. These 32 lines will be the result of unrolling the block.
 
 WITH patterns
 ^^^^^^^^^^^^^
 
-We can use three different kinds of ``WITH`` patterns::
+``WITH`` patterns come in three different kinds::
 
   ALL path-expression
   CURRENT path-expression
@@ -313,7 +471,7 @@ We can use three different kinds of ``WITH`` patterns::
 
 The ``ALL`` pattern, as we have seen above, matches any valid
 path in the UX model, i.e., in the state space. This is how we were
-able to obtain the 4 and the 8 matches above.
+able to obtain the 8 and the 4 matches above.
 
 The ``CURRENT`` pattern matches any path in the current state, i.e.,
 any path such that the last node and all its ancestors are current.
@@ -330,7 +488,7 @@ variable in the block, you write macros like ``{{POS}}``.
 Complex Example
 ^^^^^^^^^^^^^^^
 
-Let us say our board game requires adjacent moves. We need to encode
+Let us say our board game allows adjacent moves. We need to encode
 the adjacency information in our UX state model::
    
               a
@@ -343,11 +501,41 @@ the adjacency information in our UX state model::
             \ | /               DEF CON .adj.g c d f h
               h                 DEF CON .adj.h e f g
 
-(See complex example later, where we introduce the web support in Popcorn).
+From the above state space, we can see how we can use ``WITH``
+patterns to extract all the positions adjacent to the one that
+``spider1`` is currently on::
 
+  WITH CURRENT .board.POS/spider1 ALL .adj.POS.ADJPOS BEGIN
+    ... some action using {{POS}} and {{ADJPOS}} ...
+  END
 
+Here, too, we have two patterns::
 
+  CURRENT .board.POS/spider1
+  ALL .adj.POS.ADJPOS
+ 
+But these two patterns are not independent, unlike our earlier
+example.  One of the two block variables, ``POS``, is used in both
+patterns. These two patterns are matched simultaneously, so that only
+those paths are extracted that satisfy the ``POS`` in both patterns.
 
+This process is called "unification", and it produces combinations of
+assignments to the two block variables.
 
+Assuming that ``spider1`` is currently at position ``a``, i.e.::
 
+  .board.a/spider1
+
+Then, when unrolling the block lines, we get the following
+combinations of the two block variables ``POS`` and ``ADJPOS``::
+
+  a b
+  a c
+  a d
+
+These combinations can be extracted with ``{{POS}} {{ADJPOS}}``, and
+the resulting lines can be used to do actions specific to these
+combinations.
+
+(See the next chapter, where we introduce the web support in Popcorn).
 
