@@ -30,7 +30,7 @@
 class Tokenizer {
   constructor() {
     this.specials = {
-      DOT: '.', SLASH: '/', PLUS: '+', EQUAL: '=', OPENPAREN: '(',
+      DOT: '.', SLASH: '/', PLUS: '+', EQUAL: '=', HYPHEN: '-', OPENPAREN: '(',
       CLOSEPAREN: ')', ASTERISK: '*', AMPERSAND: '&', PERCENT: '%',
       DOLLAR: '$', HASH: '#', AT: '@', BANG: '!', TILDE: '~',
       COLON: ':', SEMICOLON: ';', COMMA: ',', OPENBRACKET: '[',
@@ -201,55 +201,109 @@ class Tokenizer {
      forms the original array.
    */
   tokenize(str) {
+    let arr = [];
+    let s = str;
+    let num = 0;
+    let more;
+    do {
+      more = false;
+      let [n, tok] = this.consumeOneToken(s);
+      if (n > 0) {
+        num += n;
+        s = s.slice(n);
+      }
+      if (tok) {
+        // console.log(`      ${n} |${s.slice(n)}`);
+        arr.push(tok);
+        more = true;
+      }
+    } while (more);
+    if (num >= str.length) {
+      return [null, arr];
+    } else {
+      return [`bad token at index ${num}`, arr ];
+    }
+  }
+
+  consumeOneToken(str) { // return [num, tok] or [num, null]
     // RULES - parsing rules for different types of tokens
     const RULES = [
-      { re: /^{{/,   type: 'BEGIN',   makeToken: true, useValue: false },
-      { re: /^}}/,   type: 'END',     makeToken: true, useValue: false },
-      { re: /^\s+/,  type: 'SPACES',  makeToken: false, useValue: false },
-      { re: /^[A-Z]+/, type: 'COMMAND', makeToken: true, useValue: true },
-      { re: /^[a-z]+[a-z0-9-]*/,type: 'WORD',makeToken: true,useValue: true },
-      { re: this.specialsRegex, type: 'SPECIAL', makeToken: true, useValue: false },
-      { re: /^\./,   type: 'DOT',     makeToken: true, useValue: false },
-      { re: /^\//,   type: 'SLASH',     makeToken: true, useValue: false },
+      { re: /^{{/,   type: 'BEGIN', useValue: false },
+      { re: /^}}/,   type: 'END', useValue: false },
+      { re: /^[A-Z]+/, type: 'COMMAND', useValue: true },
+      { re: /^[a-z]+[a-z0-9-]*/,type: 'WORD', useValue: true },
+      { re: this.specialsRegex, type: 'SPECIAL', useValue: false },
     ];
-    let arr = [];
-    if (str === null || typeof str === 'undefined') {
-      return [ "string is null", arr ];
+
+    let num = 0;
+    const spaces = str.match(/^\s+/);
+    if (spaces) {
+      //console.log(`skipping ${spaces[0].length} spaces.`);
+      num = spaces[0].length;
+      str = str.slice(num);
     }
-    if (str.length === 0) {
-      return [ null, {name: 'STRING', value: ''} ];
+    if (str.length <= 0) { return [num, null]; }
+    if (str[0] === '"') {
+      // console.log(`consuming string...`);
+      let [n, s] = this.consumeStringToken(str.slice(1));
+      // console.log(`[ ${n}, ${s}]: |${str.slice(n+1)}`);
+      if (n < 0) {
+        return [-1, null];
+      } else {
+        num += n+2;
+        return [num, {name: 'STRING', value: s}];
+      }
     }
-    if (str.match(/^"/)) {
-      return [null, {name: 'STRING', value: str.slice(1)}];
-    }
-    let ch;
-    for (let i=0; i<str.length; i++) {
-      const s = str.slice(i);
-      let m;
-      let found = false;
-      for (let j=0; j<RULES.length; j++) {
-        const rec = RULES[j];
-        m = s.match(rec.re);
-        if (m) {
-          // console.log(`i = ${i}: matched ${rec.re}`);
-          found = true;
-          i += m[0].length - 1;
-          if (rec.makeToken) {
-            let toktype = rec.type;
-            if (rec.type === 'SPECIAL') {
-              toktype = this.specialsMap.get(m[0]);
-            }
-            arr.push({name: toktype, value: (rec.useValue ? m[0] : null)});
-          }
-          break;
+    for (let j=0; j<RULES.length; j++) {
+      const rec = RULES[j];
+      const m = str.match(rec.re);
+      if (m) {
+        //console.log(`matched ${rec.re}. length = ${m[0].length}`);
+        num += m[0].length;
+        let toktype = rec.type;
+        if (rec.type === 'SPECIAL') {
+          toktype = this.specialsMap.get(m[0]);
         }
-      }
-      if (! found) {
-        arr.push({name: 'STRING', value: s});
-        i += s.length;
+        return [num, {name: toktype, value: (rec.useValue ? m[0] : null)}];
       }
     }
-    return [ null, arr];
+    return [num, null];
+  }
+
+  /**
+     consumeStringToken - we found a quote. Consume rest of string.
+
+     Call with first char past the quote. Returns two things:
+     - the number of chars before the next matching quote, and
+     - the actual string.
+
+     The above two might be different because any backslashed chars
+     need to be preserved as a single char in the string value.
+     
+     If we find an un-terminated string, or one ending in a backslash,
+     we return [-1, null].
+
+   */
+  consumeStringToken(str) {
+    let num = 0;
+    let s = "";
+    for (let i=0; i<str.length; i++) {
+      if (str[i] === '"') {
+        return [ num, s ];
+      } else if (str[i] === '\\') {
+        if (i === str.length -1) {
+          return [-1, null];
+        } else {
+          i++;
+          s += str[i];
+          num += 2;
+        }
+      } else {
+        s += str[i];
+        num++;
+      }
+    }
+    return [-1, null];
   }
 
   renderTokens(arr) {
@@ -268,7 +322,9 @@ class Tokenizer {
 
     function renderTok(tok) {
       if (tok) {
-        if (tok.name.match(/STRING|WORD|COMMAND|NUMBER/)) {
+        if (tok.name === 'STRING') {
+          return '"' + renderString(tok.value) + '"';
+        } else if (tok.name.match(/WORD|COMMAND|NUMBER/)) {
           return tok.value;
         } else if (me.specials[tok.name]) {
           return me.specials[tok.name];
@@ -277,8 +333,22 @@ class Tokenizer {
         }
       }
     }
+    function renderString(s) {
+      let buf = "";
+      for (let i=0; i<s.length; i++) {
+        if (s[i] === '"') {
+          buf += '\\"';
+        } else if (s[i] === '\\') {
+          buf += '\\\\';
+        } else {
+          buf += s[i];
+        }
+        return buf;
+      }
+    }
   }
 
+  // equal(tok1, tok2) - used in tests
   equal(tok1, tok2) {
     if (tok1.hasOwnProperty('length')) {
       if (tok2.hasOwnProperty('length')) {
@@ -295,7 +365,11 @@ class Tokenizer {
       return false;
     }
 
-    return tok1.name === tok2.name && tok1.value === tok2.value;
+    if (tok1 && tok2) {
+      return tok1.name === tok2.name && tok1.value === tok2.value;
+    } else {
+      return false;
+    }
   }
 
   /**
@@ -362,6 +436,107 @@ class Tokenizer {
       }
       return j;
     }
+  }
+
+  // --------- utilities for parsing command arguments ---------------
+
+  ifNextCommand(tokList, index, cmd) {
+    if (tokList.length < index+1) { return false; }
+    if (tokList[index].name !== 'COMMAND') { return false; }
+    return cmd === tokList[index].value;
+  }
+  ifNext2Commands(tokList, index, cmd1, cmd2) {
+    if (tokList.length < index+2) { return false; }
+    return this.ifNextCommand(tokList, index, cmd1) &&
+      this.ifNextCommand(tokList, index+1, cmd2);
+  }
+  getNextArg(tokList, index, argname, options) {
+    if (options[argname].match(tokList[index].name)) {
+      return tokList[index];
+    } else {
+      return null;
+    }
+  }
+  findNextCommand(tokList, index, commandNames) {
+    if (tokList.length < index) { return null; }
+    if (tokList[index].name !== 'COMMAND') {
+      return null;
+    }
+    for (let j=0; j<commandNames.length; j++) {
+      if (tokList[index].value === commandNames[j]) {
+        return commandNames[j];
+      }
+    }
+    return null;
+  }
+  ifNextPair(tokList, index, cmd, tok) {
+    if (ifNextCommand(tokList, index, cmd)) {
+      if (tokList.length < index+2) { return false; }
+      return this.equal(tokList[index+2], tok);
+    } else {
+      return false;
+    }
+  }
+
+  /**
+     parseRequiredTokens() - return [ null, args] on success
+
+     The returned object "args" contains attributes whose names are
+     the COMMANDS in the token list, and values are the subsequent
+     next token.
+
+     For example, if you define "options" like this:
+
+         { ID: "WORD", NAME: "WORD", VALUE: "STRING or WORD" }
+
+     And you tokenize the following string:
+
+         ID foo NAME bar VALUE "some string baz"
+
+     Then the token list can be parsed with with the above options.
+     We return an "args" object like this:
+
+     {
+       ID: {name: WORD, value: "foo"},
+       NAME: {name: WORD, value: "bar"},
+       VALUE: {name: STRING, value: '"some string baz"'},
+     }
+     
+     Moreover, every key in the "options" object must be
+     represented once in the token list, otherwise we get an error.
+
+   */
+
+  parseRequiredTokens(tokList, options) {
+    if (! tokList || tokList.length <= 0) {
+      return ['empty token list', null];
+    }
+    let args = {};
+    const keys = Object.keys(options);
+    for (let i=0; i< tokList.length; i++) {
+      let found = false;
+      const cmd = this.findNextCommand(tokList, i, keys);
+      if (cmd) {
+        const tok = this.getNextArg(tokList, i+1, cmd, options);
+        if (tok) {
+          found = true;
+          args[cmd] = tok;
+          i++;
+          continue;
+        } else {
+          return [`bad arg for ${cmd}`, args];
+        }
+      } else {
+        return [ `bad option: ${this.renderTokens(tokList[i])}`, args ];
+      }
+    }
+    const opts = Object.keys(args);
+    for (let i=0; i<keys.length; i++) {
+      if (! args.hasOwnProperty(keys[i])) {
+        return [`required option ${keys[i]} missing`, args];
+      }
+    }
+    return [null, args];
   }
 }
 

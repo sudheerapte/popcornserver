@@ -4,8 +4,7 @@ Popcorn Web Actions
 ================================
 
 In the previous chapter we described UXML, with which you can build
-and modify a UX model, and query it. This allows you to use the
-current state of the model to perform actions.
+and modify a UX model, and query it to to perform actions.
 
 In this chapter, we explain what kinds of actions are possible with
 Popcorn's web server. Briefly, these actions are of three kinds:
@@ -20,25 +19,33 @@ We describe UXML extensions to perform these three kinds of actions.
 Modify the HTML DOM
 -------------------
 
-The ``SET ATTR`` command sets the value of an attribute of an HTML element
-by ID::
+Setting attribute values
+^^^^^^^^^^^^^^^^^^^^^^^^
 
-  SET ATTR id name word
+The ``DOM SET id ATTR =`` command sets the value of an attribute of an
+HTML element by ID::
 
-The above form sets the value to the given word.
+  DOM SET ID = id ATTR = name word
 
-For boolean attributes, there are ``SET BOOL`` and ``RESET BOOL``
-commands::
+The above form sets the value of attribute named ``name`` to the given
+value ``word``. The ``id`` argument is the value of the element's
+``id`` attribute. Possible errors: No such element.
 
-  SET BOOL id name
-  RESET BOOL id name
+For boolean attributes, there are ``DOM SET BOOL`` and ``DOM RESET
+BOOL`` commands::
 
-The ``SET BOOL`` command turns the boolean attribute on, while the
-``RESET BOOL`` command sets it off.
+  DOM SET id BOOL name
+  DOM RESET id BOOL name
 
-The ``SET TEXT WORD`` and ``SET TEXT`` commands set the text content
-of an HTML element, respectively to the given word argument or a
-string argument.
+The ``DOM SET BOOL`` command turns the boolean attribute ``name`` on,
+while the ``DOM RESET BOOL`` command sets it off.
+
+Setting element text content
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The ``DOM SET TEXT WORD`` and ``DOM SET TEXT`` commands set the text
+content of an HTML element, respectively to the given word argument or
+a string argument.
 
 
 Query the HTML DOM
