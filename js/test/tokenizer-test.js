@@ -91,24 +91,28 @@ function checkTokenizeFailure(input, index) {
 
 log(`---- parseRequiredTokens`);
 options = { ID: 'WORD', NAME: 'WORD', VALUE: 'STRING or WORD',};
-tokens = t.tokenize('VALUE "some command" ID tagname NAME click ');
-err(tokens[0]);
-tokens = tokens[1];
-result = t.parseRequiredTokens(tokens, options, args);
-err(result[0]);
-args = result[1];
-err(args.ID); err(args.NAME); err(args.VALUE);
-errDiff(args.ID.value, 'tagname');
-errDiff(args.VALUE.value, 'some command');
+checkRequiredTokens('VALUE "some command" ID tagname NAME click ',
+                    null,
+                    "ID",
+                    "NAME");
+
+checkRequiredTokens('ID tagname NAME click random VALUE "some command"',
+                    'bad option: random');
+
+function checkRequiredTokens(input, wantResult, wantOne, wantTwo) {
+  log(`${' '.repeat(50-input.length)}|${input}| - `);
+  result = t.tokenize(input);
+  err(result[0]);
+  tokens = result[1];
+  result = t.parseRequiredTokens(tokens, options);
+  errDiff(result[0], wantResult);
+  args = result[1];
+  if (wantOne) { err(args[wantOne]); }
+  if (wantTwo) { err(args[wantTwo]); }
+}
 
 
-options = { ID: 'WORD', NAME: 'WORD', VALUE: 'STRING or WORD',};
-tokens = t.tokenize('ID tagname NAME click random VALUE "some command"');
-err(tokens[0]);
-tokens = tokens[1];
-result = t.parseRequiredTokens(tokens, options, args);
-log(result[0]);
-
+process.exit(0);
 
 log(`---- splitSections: easy version`);
 lines = [
@@ -167,7 +171,6 @@ checkFull("{{foo bar}}", [null, "foobar"]);
 checkFull("{{foo {{bar}}", ['No END found', "{{foo bar"]);
 checkFull("foo {{bar}}}}", [null, "foo bar}}"]);
 log('--');
-log(t.process("foo {{\"bar}}}}"));
 checkFull("foo {{\"bar}}}}", ["bad token at index 0", "foo {{\"bar}}}}"]);
 
 log(`--------- testTokenize -------------`);
