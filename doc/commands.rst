@@ -429,8 +429,8 @@ time.  Together, you can provide a list of patterns to build up
 unified contexts of variable substitutions. The *macro-line*\s are
 expanded using each of these contexts.
 
-To show the power of this method, let us first show a simple example,
-and then a more complex one.
+Let us first show a simple example of ``WITH`` blocks, and then a more
+complex one.
 
 Example with a pattern
 ^^^^^^^^^^^^^^^^^^^^^^
@@ -537,8 +537,14 @@ variable in the block, you write macros like ``{{POS}}``.
 Adjacency Example
 ^^^^^^^^^^^^^^^^^
 
-Let us say our board game allows adjacent moves. We need to encode
-the adjacency information in our UX state model::
+The above uses of ``WITH`` block variables were like nested ``for``
+loops in programming languages. But ``WITH`` blocks are far more
+powerful. We show an example now.
+
+Let us say our board game allows adjacent moves, and we would like to enable drag-and-drop from a creature's current position to the adjacent positions.
+
+First, we need to encode the adjacency information in our UX state
+model::
    
               a
             / | \               DEF CON .adj.a b c d 
@@ -550,8 +556,8 @@ the adjacency information in our UX state model::
             \ | /               DEF CON .adj.g c d f h
               h                 DEF CON .adj.h e f g
 
-We show a sketch of the board positions and adjacencies on the left.
-On the right, we create a UX model state space under ``.adj`` that
+See a sketch of the board positions and adjacencies on the left.  On
+the right, we construct a UX model state space under ``.adj`` that
 encodes which positions are adjacent to which others: for example, the
 first line says that position ``a`` is adjacent to ``b``, ``c``, and
 ``d``.
@@ -562,11 +568,11 @@ drag-and-drop with the three adjacent positions as destinations.
 
 From the ``.adj`` paths above, we can see how we can use ``WITH``
 patterns to extract all the positions adjacent to the one that
-``spider1`` is currently on::
+``spider1`` is currently on:
 
-  WITH CURRENT .board.POS/spider1 ALL .adj.POS.ADJPOS BEGIN
-    ... some action using {{POS}} and {{ADJPOS}} ...
-  END
+  | ``WITH CURRENT .board.POS/spider1 ALL .adj.POS.ADJPOS BEGIN``
+  |   ... *some action using* ``{{POS}}`` *and* ``{{ADJPOS}}`` ...
+  | ``END``
 
 Here, too, we are using two patterns with two variables::
 
@@ -599,7 +605,7 @@ combinations of the two block variables ``POS`` and ``ADJPOS``:
 These combinations can be extracted with ``{{POS}} {{ADJPOS}}``, and
 the resulting lines can be used to do actions specific to these
 combinations; in our case, we want to enable drag-and-drop from
-position `a` to position `b`, and so on.
+position ``a`` to position ``b``, ``a`` to ``c``, and ``a`` to ``d``.
 
 (See the next chapter, where we introduce the web support in Popcorn).
 
