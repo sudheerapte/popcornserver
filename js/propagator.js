@@ -657,7 +657,13 @@ class Propagator {
       if (this.mc.isDataLeaf(mPath)) {
         const data = this.mc.getData(mPath);
         if (data) {
-          return [ null, {name: 'STRING', value: data} ];
+          if (data.trim().match(/^\d+$/)) {
+            return [ null, {name: 'NUMBER', value: data.trim()} ];
+          } else if (data.trim().match(/^[a-z][a-z0-9-]+$/)) {
+            return [ null, {name: 'WORD', value: data.trim()} ];
+          } else {
+            return [ null, {name: 'STRING', value: data} ];
+          }
         } else {
           return [ null, {name: 'STRING', value: ""} ];
         }

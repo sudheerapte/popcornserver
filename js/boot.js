@@ -101,7 +101,7 @@ function generateXY() {
         } else {
           const output = result[1];
           if (! output) { output = ""; }
-          // console.log(`${formula}=|${output}|`);
+          //console.log(`${formula}=|${output}|`);
           useNode.setAttribute(coord, output);
         }
       }
