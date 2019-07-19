@@ -3,8 +3,12 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Popcorn - make beautiful web-based applications
+.. image:: uxmal.svg
+   :width: 800px
+
+UXmal - make beautiful web-based applications
 ===============================================
+
 
 .. toctree::
    :maxdepth: 1

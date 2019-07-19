@@ -54,11 +54,13 @@ A **path** is a complete sequence of parent-child traversals from the
 root of the tree to a node. In this sequence, words are separated
 using a slash or a dot. An example of a path: ``.board.a/empty``
 
-Words and paths are used to describe the Popcorn tree-based UX Model;
-see :doc:`popcorn-ux-model` for details.
+.. sidebar:: The UX Model
 
-Briefly, nodes in a tree represent sub-states of the UX model. They
-can be of these types:
+   This is a brief outline of the tree-based UX Model; see
+   :doc:`popcorn-ux-model` for details.
+
+Nodes in a tree represent sub-states of the UX model. They can be of
+these types:
 
 An **alternate-parent** node
    Has a set of possible child nodes, only one of which can be
@@ -92,13 +94,16 @@ top-most root node always exists when the tree is created.
              concurrent parent, therefore all paths start with a dot,
              ``.``.
 
-A **path** consists of a series of one or more words separated by
-single dots ``.`` or slashes ``/``, depending on whether the parent is
-a concurrent parent or an alternate-parent.
+In the descriptions below, we use the following terms:
 
-A **command word** consists of a set of one or more capital letters
-``[A-Z]``. Command words are described below with the commands that
-require them.
+*path*
+  Consists of a series of one or more words separated by single dots
+  ``.`` or slashes ``/``, depending on whether the parent is a
+  concurrent parent or an alternate-parent.
+
+*command word*
+  Consists of a set of one or more capital letters ``[A-Z]``. Command
+  words are described below with the commands that require them.
 
 UXML scripts
 ^^^^^^^^^^^^
@@ -124,18 +129,6 @@ See later for how to send scripts to Popcorn.
 
 UXML Commands
 -------------
-
-In the descriptions below,
-
-**command words**
-  Always capitalized, are written like this: ``COMMAND``
-
-**command arguments**
-   Can be words or paths; they are written like this: ``parent-path``
-
-**ellipses**
-   Stand for a variable number of additional arguments: ``...``
-
 
 State Space Commands
 ^^^^^^^^^^^^^^^^^^^^
