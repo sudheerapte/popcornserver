@@ -352,9 +352,9 @@ transaction. This transaction comes after any commands that appear
 earlier in the script, and before any commands that appear later in
 the script.
 
-The only kind of condition that can be used is::
+The only kind of condition that can be used is:
 
-  | *path* *child*
+  | *path child*
 
 where *path* is an alternate-parent and *child* is the name of a
 child. The condition evaluates to true if the given child of the
@@ -505,7 +505,17 @@ and so on. These 32 lines will be the result of unrolling the block.
 The three kinds of WITH patterns
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-``WITH`` patterns come in three different kinds::
+``WITH`` patterns come in three different kinds:
+
+  ==============  ==============================================
+  Kind            Meaning
+  ==============  ==============================================
+  ``ALL``         The path is part of the state space
+  ``CURRENT``     The path is in the current state
+  ``NONCURRENT``  The path is NOT in the current state
+  ==============  ==============================================
+
+The patterns are used as follows::
 
   ALL path-expression
   CURRENT path-expression

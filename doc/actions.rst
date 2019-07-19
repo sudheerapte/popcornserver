@@ -6,8 +6,8 @@ Popcorn Web Actions
 Action Commands in UXML
 -------------------------
 
-In the previous chapter we described UXML, with which you can build
-and modify a UX model, and query it to to perform actions.
+In the previous chapter we described UXML commands to build and modify
+a UX model, and query it to to perform actions.
 
 In this chapter, we explain what kinds of actions are possible with
 Popcorn's web server. Briefly, these actions are of three kinds:
@@ -18,10 +18,11 @@ Popcorn's web server. Briefly, these actions are of three kinds:
 
 We describe UXML extensions to perform these three kinds of actions.
 
-Popcorn can be extended to actions that have nothing to do with the
-web; the UXML commands described thus far are general-purpose
-commands. The following commands are specific to web-based
-implementations of Popcorn.
+In the future, Popcorn could be extended to other environments where
+user inputs and outputs involve unusual sensors and actuators. For
+such environments, UXML commands will have to be developed for these
+kinds of sensors and actuators.
+
 
 Command descriptions
 ^^^^^^^^^^^^^^^^^^^^^
@@ -51,10 +52,9 @@ Setting attribute values
   Command              Arguments          Meaning
   ===================  =================  ===================================
   ``DOM SET``          ``ID ATTR VALUE``  Set the value of an attribute
-  ``DOM SET BOOL``     ``ID ATTR``        Set value of boolean attribute
-  ``DOM RESET BOOL``   ``ID ATTR``        Reset value of boolean attribute
+  ``DOM SET BOOL``     ``ID ATTR``        Set boolean attribute
+  ``DOM RESET BOOL``   ``ID ATTR``        Reset boolean attribute
   ===================  =================  ===================================
-
 
 The ``DOM SET ATTR`` command sets the value of a non-boolean attribute
 of an HTML element by ID:
@@ -125,8 +125,8 @@ set:
 If the condition is true, i.e., the attribute named by the ``ATTR`` argument is set, then the *lines* between ``BEGIN`` and ``END`` are executed.
 
 
-Post Input Modes
------------------
+Posting Input Modes
+--------------------
 
 What is an input mode?
 ^^^^^^^^^^^^^^^^^^^^^^^^
