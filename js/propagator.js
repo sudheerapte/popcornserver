@@ -9,6 +9,8 @@ class Propagator {
     this.mc = machine;
     this.t = tokenizer;
     this.log = logfunc ? logfunc : console.log;
+    this._commands = {};
+    this.addBasicCommandSet();
     this.evalFunc = this.getEvalFunc(this.mc);
   }
 
@@ -575,40 +577,34 @@ class Propagator {
       return this.evaluate(tokenArray.slice(1, tokenArray.length-1));
     }
     if (tokenArray[0].name === 'COMMAND') {
-      const result = this.dispatchCommand(tokenArray[0].value, tokenArray.slice(1));
-      if (! result) { // command tokenArray[0] not recognized
+      const rec = this._commands[tokenArray[0].value];
+      if (rec) {
+        return rec.fn(tokenArray.slice(1));
+      } else { // not recognized
+        this.log(`No such command: ${tokenArray[0].value}`);
         return [null, tokenArray];
-      } else {
-        return result;
       }
     }
   }
 
   /**
-     addCommandSet() - add records for interpreting commands
+     addBasicCommandSet() - add records for interpreting commands
      Each record is: { cmd, func(args) }
      The args are an array of tokens. Func should return [null, result]
   */
 
-  addCommandSet(arr) {
-
-  }
-
-  dispatchCommand(cmd, args) {
+  addBasicCommandSet() {
     const records = [
       {cmd: 'EXISTS', fn: args => this.existsCmd(args)},
       {cmd: 'CURRENT', fn: args => this.currentCmd(args)},
       {cmd: 'DATA', fn: args => this.dataCmd(args)},
     ];
-    const rec = records.find(r => r.cmd === cmd);
-    if (rec) {
-      return rec.fn(args);
-    } else {
-      this.log(`dispatchCommand: no such command: ${cmd}`);
-      return null;
-    }
+    this.addCommands(records);
   }
 
+  addCommands(arr) {
+    arr.forEach( rec => this._commands[rec.cmd] = rec );
+  }
 
   existsCmd(args) {
     const mPath = this.composePath(args);
@@ -652,7 +648,8 @@ class Propagator {
     }
     const mPath = this.composePath(args);
     if (! mPath) {
-      return [ `DATA: bad syntax for path: ${this.t.renderTokens(args)}`, null ];
+      return [ `DATA: bad syntax for path: ${this.t.renderTokens(args)}`,
+               null ];
     }
     if (this.mc.exists(mPath)) {
       if (this.mc.isDataLeaf(mPath)) {
