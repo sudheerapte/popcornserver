@@ -511,15 +511,7 @@ class Propagator {
   // this.t.process().
 
   getEvalFunc() {
-    return (tokens => {
-      const eResult = this.evaluate(tokens);
-      if (! eResult) {
-        this.log(`--------- evaluate returned null!`);
-        this.log(JSON.stringify(tokens));
-      }
-      if (eResult[0]) { return eResult; }
-      return [ null, eResult[1] ];
-    });
+    return (tokens => this.evaluate(tokens));
   }
 
   // getEvalFuncVarContext - return a function suitable to pass in to
@@ -590,6 +582,16 @@ class Propagator {
         return result;
       }
     }
+  }
+
+  /**
+     addCommandSet() - add records for interpreting commands
+     Each record is: { cmd, func(args) }
+     The args are an array of tokens. Func should return [null, result]
+  */
+
+  addCommandSet(arr) {
+
   }
 
   dispatchCommand(cmd, args) {
