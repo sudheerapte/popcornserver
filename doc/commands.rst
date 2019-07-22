@@ -136,22 +136,34 @@ State Space Commands
 There are three **state space** commands, which can be
 used to build up the tree that defines a UX model:
 
-  | ``DEF CON`` *parent-path* *child1* *child2* ...
-  | ``DEF ALT`` *parent-path* *child1* *child2* ...
-  | ``DEL`` *path*
+  ==============  ==============================================
+  Command         Purpose
+  ==============  ==============================================
+  ``DEF CON``     Define a concurrent parent and its children
+  ``DEF ALT``     Define an alternate-parent and its children
+  ``DEL``         Delete a path and its sub-tree
+  ==============  ==============================================
+
 
 The ``DEF CON`` command creates a set of new concurrent state nodes as
-children of a concurrent-parent node. The *parent-path* describes a
-concurrent-parent node. If such a node does not exist, it will be
-created, and so on for all of its parents up to the root node. The
-*child* arguments are used as names of new child nodes. If a child
-node with that name already exists, the command ignores that argument.
+children of a concurrent-parent node.
+
+  | ``DEF CON`` *parent-path* *child1* *child2* ...
+
+The *parent-path* describes a concurrent-parent node. If such a node
+does not exist, it will be created, and so on for all of its parents
+up to the root node. The *child* arguments are used as names of new
+child nodes. If a child node with that name already exists, the
+command ignores that argument.
 
 The ``DEF ALT`` command similarly creates a set of new alternate state
-nodes under an alternate-parent node. The parent and its ancestors
-will be automatically created if they don't exist, and any *child*
-arguments that are already names of existing child nodes will be
-ignored.
+nodes under an alternate-parent node.
+
+  | ``DEF ALT`` *parent-path* *child1* *child2* ...
+
+The parent and its ancestors will be automatically created if they
+don't exist, and any *child* arguments that are already names of
+existing child nodes will be ignored.
 
 .. sidebar:: DEL command
 
@@ -162,28 +174,51 @@ ignored.
 The ``DEL`` command deletes the given existing node and any sub-tree
 underneath that node.
 
+  | ``DEL`` *path*
+
 
 State Definition Commands
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-State definition commands describe a desired state of the UX model. A
-series of these commands can be bundled together into a transaction,
+State definition commands describe a desired state of the UX model.
+
+
+  ================  =================================================
+  Command           Purpose
+  ================  =================================================
+  ``SET CURRENT``   Make a child of an alt-parent the current child
+  ``SET DATAW``     Assign a *word* of data to a data-leaf
+  ``SET DATA``      Assign one or more *lines* of data to a data-leaf
+  ================  =================================================
+
+A series of these commands can be bundled together into a transaction,
 and all of these definitions are applied at once to create a new
 state. If any of the commands fails, then the entire transaction
 fails.
 
+The ``SET CURRENT`` command sets the current child.
+
   | ``SET CURRENT`` *path* *child*
 
-The ``SET CURRENT`` command sets the current child. The *path* must
-be an existing alternate-parent node, and *child* must be a word
-that names an existing child node. The named child will be made the
-current child in the new state. It is not an error if the named child
-is already the current child.
+The *path* must be an existing alternate-parent node, and *child* must
+be a word that names an existing child node. The named child will be
+made the current child in the new state. It is not an error if the
+named child is already the current child.
 
 Possible errors: no such path; no such child.
 
+The ``SET DATA`` or ``SET DATAW`` command assigns a data string to a
+data leaf.
 
-  | ``SET DATA`` *path* *word*
+For both commands, a *path* must be supplied to an existing data-leaf
+node, i.e., a concurrent node with no children.
+
+In the ``DATAW`` command, the data is a single **word**, whose
+value is supplied as the *data* argument.
+
+  | ``SET DATAW`` *path* *word*
+
+The ``DATA`` command is a multi-line command.
 
   | ``SET DATA`` *path* ``BEGIN``
   | *line*
@@ -191,22 +226,16 @@ Possible errors: no such path; no such child.
   | ...
   | ``END``
 
-The ``SET DATA`` command assigns the given data string to a data leaf.
-The *path* must be an existing data-leaf node, i.e., a concurrent
-node with no children.
+The first line introduces the ``SET DATA`` command and the command
+word ``BEGIN``. The last line contains only the command word
+``END``. In between, you can supply a set of printable ascii
+characters broken into lines no longer than 1000 characters
+each. These data characters are not interpreted in any way, except
+that no line may consist of the three characters ``END``.  All the
+*line* values are concatenated into a single string and assigned as
+the value of the data item.
 
-There are two forms of the ``SET DATA`` command shown above, depending
-on how the data is supplied. In the first form, the data is a single
-**word**, whose value is supplied as the *data* argument.
-
-The second form is a multi-line command. The first line introduces the
-``SET DATA`` command and the command word ``BEGIN``. The last line
-contains only the command word ``END``. In between, you can supply a
-set of printable ascii characters broken into lines no longer than
-1000 characters each. These data characters are not interpreted in any
-way, except that no line may consist of the three characters ``END``.
-All the *line* values are concatenated into a single string and
-assigned as the value of the data item.
+Possible errors: no such path; node is not data-leaf.
 
 
 Queries
@@ -216,6 +245,14 @@ A query is a command string that evaluates to an ascii string using
 the current state. If a query fails, then it evaluates to the empty
 string.
 
+  ==============  ==============================================
+  Query           Returns...
+  ==============  ==============================================
+  ``CURRENT``     The current child of an alt-parent node.
+  ``DATAW``       The *word* assigned to a data-leaf node.
+  ``DATA``        The string assigned to a data-leaf node.
+  ==============  ==============================================
+
 There are two queries, ``CURRENT`` and ``DATA``:
 
   |  ``CURRENT`` *path*
@@ -223,7 +260,8 @@ There are two queries, ``CURRENT`` and ``DATA``:
 The ``CURRENT`` query takes a path to an alternate-parent node, and
 returns a word that is the name of the current child.
 
-The ``DATA`` query has two forms:
+The ``DATA`` and ``DATAW`` queries extract the data string previously
+assigned to a data-leaf node:
 
   |  ``DATA WORD`` *path*
   |  ``DATA`` *path*
@@ -337,15 +375,15 @@ ON Blocks
 An ``ON`` block is a list of commands to be executed as a transaction
 only when a given **condition** is true::
 
-  ON .finished spider BEGIN
+  ON CURRENT .finished/spider BEGIN
   SET CURRENT .turn flies
   END
 
-In the above ``ON`` block, the condition is ``.finished spider``,
-which means the block between ``BEGIN`` and ``END`` should be executed
-only if the current child of the alternate-parent ``.finished`` is
-``spider``. The block contains one ``SET CURRENT`` command, which will
-be executed in that case.
+In the above ``ON`` block, the condition is ``CURRENT .finished
+spider``, which means the block between ``BEGIN`` and ``END`` should
+be executed only if the current child of the alternate-parent
+``.finished`` is ``spider``. The block contains one ``SET CURRENT``
+command, which will be executed in that case.
 
 The block of commands in the ``ON`` block is executed as one
 transaction. This transaction comes after any commands that appear
@@ -354,12 +392,11 @@ the script.
 
 The only kind of condition that can be used is:
 
-  | *path child*
+  | ``CURRENT`` *path*
 
-where *path* is an alternate-parent and *child* is the name of a
-child. The condition evaluates to true if the given child of the
-parent is current. If the condition is not true, then the block of
-commands is not executed.
+The condition evaluates to true if the given path is in the current
+state.  If the condition is not true, then the block of commands is
+not executed.
   
 
 WITH Blocks
@@ -371,8 +408,8 @@ and apply these patterns to generate macro commands.
 A ``WITH`` block has the following structure:
 
   | ``WITH`` *pattern* *pattern* ... ``BEGIN``
-  | *macro-line*
-  | *macro-line*
+  | *line*
+  | *line*
   | ...
   | ``END``
 
@@ -419,7 +456,7 @@ You can provide any number of variables; each will match only one word
 at a time.  If you provide the same variable names in different
 patterns, Popcorn will match each variable with the same word each
 time.  Together, you can provide a list of patterns to build up
-unified contexts of variable substitutions. The *macro-line*\s are
+unified contexts of variable substitutions. The *line*\s are
 expanded using each of these contexts.
 
 Let us first show a simple example of ``WITH`` blocks, and then a more
