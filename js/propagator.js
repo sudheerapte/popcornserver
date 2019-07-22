@@ -597,7 +597,6 @@ class Propagator {
       {cmd: 'EXISTS', fn: args => this.existsCmd(args)},
       {cmd: 'CURRENT', fn: args => this.currentCmd(args)},
       {cmd: 'DATA', fn: args => this.dataCmd(args)},
-      {cmd: 'ALL', fn: args => this.allCmd(args)},
     ];
     const rec = records.find(r => r.cmd === cmd);
     if (rec) {
@@ -672,70 +671,6 @@ class Propagator {
       }
     } else {
       return [ `DATA: no such path: ${mPath}`, null ];
-    }
-  }
-
-  allCmd(args) {
-    if (args.length < 1) {
-      return [`DATA needs at least 1 arg`, null];
-    }
-    const mPath = this.composePath(args);
-    if (! mPath) {
-      return [ `DATA: bad syntax for path: ${this.t.renderTokens(args)}`, null ];
-    }
-    if (this.mc.exists(mPath)) {
-      if (this.mc.isDataLeaf(mPath)) {
-        const data = this.mc.getData(mPath);
-        if (typeof data === 'string') {
-          return [ null, {name: 'STRING', value: data} ];
-        } else {
-          return [ null, data.map( d => {
-            return {name: 'STRING', value: d};
-          }) ];
-        }
-      } else {
-        return [`DATA: not a data leaf: ${mPath}`, null];
-      }
-    } else {
-      return [ `DATA: no such path: ${mPath}`, null ];
-    }
-  }
-
-  allCmd(args) {
-    const result = this.expandAllConcurrentChildren(args);
-    if (result[0]) {
-      return result;
-    } else { // Build array of tokens from the child names
-      if (result[1].length === 0) { return result; }
-      const arr = [];
-      for (let i=0; i< result[1].length-1; i++) {
-        arr.push(result[1][i]);
-        arr.push({name: ',', value: null});
-      }
-      arr.push(result[1][i]);
-      return [null, arr];
-    }
-  }
-
-  expandAllConcurrentChildren(args) {
-    if (args.length < 1) {
-      return [`ALL needs at least 1 arg`, null];
-    }
-    const mPath = this.composePath(args);
-    if (! mPath) {
-      return [ `ALL: bad syntax for path: ${this.t.renderTokens(args)}`, null ];
-    }
-    if (this.mc.exists(mPath)) {
-      if (this.mc.isConcurrentParent(mPath)) {
-        const state = this.mc.getState(mPath);
-        return [null, state.c.map( child => {
-          return {name: 'WORD', value: child};
-        }) ];
-      } else {
-        return [`ALL: not a concurrent parent: ${mPath}`, null];
-      }
-    } else {
-      return [ `ALL: no such path: ${mPath}`, null ];
     }
   }
 
