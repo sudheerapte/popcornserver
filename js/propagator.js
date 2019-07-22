@@ -597,6 +597,7 @@ class Propagator {
     const records = [
       {cmd: 'EXISTS', fn: args => this.existsCmd(args)},
       {cmd: 'CURRENT', fn: args => this.currentCmd(args)},
+      {cmd: 'DATAW', fn: args => this.datawCmd(args)},
       {cmd: 'DATA', fn: args => this.dataCmd(args)},
     ];
     this.addCommands(records);
@@ -642,13 +643,13 @@ class Propagator {
     }
   }
 
-  dataCmd(args) {
+  datawCmd(args) {
     if (args.length < 1) {
-      return [`DATA needs at least 1 arg`, null];
+      return [`DATAW needs at least 1 arg`, null];
     }
     const mPath = this.composePath(args);
     if (! mPath) {
-      return [ `DATA: bad syntax for path: ${this.t.renderTokens(args)}`,
+      return [ `DATAW: bad syntax for path: ${this.t.renderTokens(args)}`,
                null ];
     }
     if (this.mc.exists(mPath)) {
@@ -662,6 +663,31 @@ class Propagator {
           } else {
             return [ null, {name: 'STRING', value: data} ];
           }
+        } else {
+          return [ null, {name: 'STRING', value: ""} ];
+        }
+      } else {
+        return [`DATAW: not a data leaf`, null];
+      }
+    } else {
+      return [ `DATAW: no such path: ${mPath}`, null ];
+    }
+  }
+
+  dataCmd(args) {
+    if (args.length < 1) {
+      return [`DATA needs at least 1 arg`, null];
+    }
+    const mPath = this.composePath(args);
+    if (! mPath) {
+      return [ `DATA: bad syntax for path: ${this.t.renderTokens(args)}`,
+               null ];
+    }
+    if (this.mc.exists(mPath)) {
+      if (this.mc.isDataLeaf(mPath)) {
+        const data = this.mc.getData(mPath);
+        if (data) {
+          return [ null, {name: 'STRING', value: data} ];
         } else {
           return [ null, {name: 'STRING', value: ""} ];
         }

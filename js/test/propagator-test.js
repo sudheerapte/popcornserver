@@ -315,9 +315,9 @@ propagator.runRenderScript(renderScript);
 // log(`DATA .img.fly1 = ${machine.getData(".img.fly1")}`);
 
 checkProcess("{{CURRENT .turn}}", "spider");
-checkProcess("{{DATA .img.fly1}}", "fly");
-checkProcess("{{DATA .img.fly2}}", "fly");
-checkProcess("{{DATA .img.spider}}", "spider-selected");
+checkProcess("{{DATAW .img.fly1}}", "fly");
+checkProcess("{{DATAW .img.fly2}}", "fly");
+checkProcess("{{DATAW .img.spider}}", "spider-selected");
 checkProcess("{{CURRENT .tomove}}", "spider");
 
 log(`---- check for bad path syntax`);
@@ -332,9 +332,9 @@ propagator.runRenderScript(renderScript);
 
 checkProcess("{{CURRENT .turn}}", "flies");
 checkProcess("{{CURRENT .selectedfly}}", "fly1");
-checkProcess("{{DATA .img.fly1}}", "fly-selected");
-checkProcess("{{DATA .img.fly2}}", "fly");
-checkProcess("{{DATA .img.spider}}", "spider");
+checkProcess("{{DATAW .img.fly1}}", "fly-selected");
+checkProcess("{{DATAW .img.fly2}}", "fly");
+checkProcess("{{DATAW .img.spider}}", "spider");
 checkProcess("{{CURRENT .tomove}}", "fly1");
 
 log(`---- evalBlockVars`);
