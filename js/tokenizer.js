@@ -538,6 +538,38 @@ class Tokenizer {
     }
     return [null, args];
   }
+
+  composePath(args) {
+    if (args.length === 0) {
+      return '';
+    }
+    if (args[0].name !== 'DOT') {
+      return null;
+    }
+    let str = '.';
+    let wantWord = true;
+    for (let i = 1; i< args.length; i++) {
+      if (wantWord) {
+        if (args[i].name !== 'WORD') {
+          return null;
+        } else {
+          str += args[i].value;
+          wantWord = false;
+        }
+      } else {
+        if (args[i].name === 'DOT') {
+          str += '.';
+          wantWord = true;
+        } else if (args[i].name === 'SLASH') {
+          str += '/';
+          wantWord = true;
+        } else {
+          return null;
+        }
+      }
+    }
+    return str;
+  }
 }
 
 module.exports = new Tokenizer;

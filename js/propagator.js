@@ -595,7 +595,6 @@ class Propagator {
 
   addBasicCommandSet() {
     const records = [
-      {cmd: 'EXISTS', fn: args => this.existsCmd(args)},
       {cmd: 'CURRENT', fn: args => this.currentCmd(args)},
       {cmd: 'DATAW', fn: args => this.datawCmd(args)},
       {cmd: 'DATA', fn: args => this.dataCmd(args)},
@@ -607,23 +606,11 @@ class Propagator {
     arr.forEach( rec => this._commands[rec.cmd] = rec );
   }
 
-  existsCmd(args) {
-    const mPath = this.composePath(args);
-    if (! mPath) {
-      return [ `bad syntax for path: ${this.t.renderTokens(args)}`, null ];
-    }
-    if (this.mc.exists(mPath)) {
-      return [ null, {name: 'NUMBER', value: "1"} ];
-    } else {
-      return [ null, {name: 'NUMBER', value: "0"}];
-    }
-  }
-
   currentCmd(args) {
     if (args.length < 1) {
       return [`CURRENT needs at least 1 arg`, null];
     }
-    const mPath = this.composePath(args);
+    const mPath = this.t.composePath(args);
     if (! mPath) {
       return [ `CURRENT: bad syntax for path: ${this.t.renderTokens(args)}`, null ];
     }
@@ -647,7 +634,7 @@ class Propagator {
     if (args.length < 1) {
       return [`DATAW needs at least 1 arg`, null];
     }
-    const mPath = this.composePath(args);
+    const mPath = this.t.composePath(args);
     if (! mPath) {
       return [ `DATAW: bad syntax for path: ${this.t.renderTokens(args)}`,
                null ];
@@ -678,7 +665,7 @@ class Propagator {
     if (args.length < 1) {
       return [`DATA needs at least 1 arg`, null];
     }
-    const mPath = this.composePath(args);
+    const mPath = this.t.composePath(args);
     if (! mPath) {
       return [ `DATA: bad syntax for path: ${this.t.renderTokens(args)}`,
                null ];
@@ -699,37 +686,6 @@ class Propagator {
     }
   }
 
-  composePath(args) {
-    if (args.length === 0) {
-      return '';
-    }
-    if (args[0].name !== 'DOT') {
-      return null;
-    }
-    let str = '.';
-    let wantWord = true;
-    for (let i = 1; i< args.length; i++) {
-      if (wantWord) {
-        if (args[i].name !== 'WORD') {
-          return null;
-        } else {
-          str += args[i].value;
-          wantWord = false;
-        }
-      } else {
-        if (args[i].name === 'DOT') {
-          str += '.';
-          wantWord = true;
-        } else if (args[i].name === 'SLASH') {
-          str += '/';
-          wantWord = true;
-        } else {
-          return null;
-        }
-      }
-    }
-    return str;
-  }
 }
 
 module.exports = Propagator;

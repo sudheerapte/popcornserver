@@ -349,7 +349,7 @@ propagator = new Propagator(machine, t, (s) => log(s));
   err(result);
 });
 
-checkProcess("{{EXISTS .board.b}}", "1");
+//checkProcess("{{EXISTS .board.b}}", "1");
 checkProcess("{{CURRENT .fly1.position}}", "a");
 checkProcess("{{CURRENT .fly2.position}}", "a");
 
