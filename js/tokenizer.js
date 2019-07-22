@@ -343,8 +343,8 @@ class Tokenizer {
         } else {
           buf += s[i];
         }
-        return buf;
       }
+      return buf;
     }
   }
 

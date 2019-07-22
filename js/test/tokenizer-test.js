@@ -7,6 +7,10 @@ let tokens;
 let result, lines;
 let options, args;
 
+log(`---- renderToken`);
+result = t.renderTokens({name: 'STRING', value: "foobar"});
+errDiff(result, '"foobar"');
+
 log(`---- basic parsing of one token`);
 
 checkToken('"a string"', 10, {name: 'STRING', value: 'a string'});

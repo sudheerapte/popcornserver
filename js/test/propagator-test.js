@@ -333,6 +333,7 @@ propagator.runRenderScript(renderScript);
 checkProcess("{{CURRENT .turn}}", "flies");
 checkProcess("{{CURRENT .selectedfly}}", "fly1");
 checkProcess("{{DATAW .img.fly1}}", "fly-selected");
+checkProcess("{{DATA .img.fly1}}", '"fly-selected"');
 checkProcess("{{DATAW .img.fly2}}", "fly");
 checkProcess("{{DATAW .img.spider}}", "spider");
 checkProcess("{{CURRENT .tomove}}", "fly1");
