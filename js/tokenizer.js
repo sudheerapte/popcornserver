@@ -453,10 +453,37 @@ class Tokenizer {
   getNextArg(tokList, index, argname, options) {
     if (options[argname].match(tokList[index].name)) {
       return tokList[index];
-    } else {
+    } else if (options[argname] === 'PATH') {
       return null;
     }
   }
+  // consumeArgs: consume as many tokens as possible; return number.
+  // "index" points to the first token after the COMMAND argname.
+  consumeArgs(tokList, index, argname, options) {
+    const opt = options[argname];
+    if (opt === 'COMMAND') {
+      return tokList[index].name === 'COMMAND' ? 1 : 0;
+    } else if (opt === 'WORD') {
+      return tokList[index].name === 'WORD' ? 1 : 0;
+    } else if (opt === 'STRING') {
+      return tokList[index].name === 'STRING' ? 1 : 0;
+    } else if (opt === 'WORDS') {
+      let num = 0;
+      for (let i=index; i<tokList.length; i++, num++) {
+        if (tokList[i].name !== 'WORD')  {
+          return num;
+        }
+      }
+      return num;
+    } else if (opt === 'PATH') {
+      return this.consumePath(tokList.slice(index));
+    } else if (opt.match(/WORD/) && opt.match(/STRING/)) {
+      return tokList[index].name.match(/WORD|STRING/) ? 1 : 0;
+    }
+    console.log(`consumeArgs: bad option: ${opt}`);
+    return 0;
+  }
+
   findNextCommand(tokList, index, commandNames) {
     if (tokList.length < index) { return null; }
     if (tokList[index].name !== 'COMMAND') {
@@ -505,6 +532,16 @@ class Tokenizer {
      Moreover, every key in the "options" object must be
      represented once in the token list, otherwise we get an error.
 
+     ==============   ====================================
+     option value     meaning
+     ==============   ====================================
+     WORD             a single word, [a-z][a-z0-9-]*
+     COMMAND          a single COMMAND, [A-Z]+
+     WORDS            a series of words
+     PATH             a path, DOT WORD DOT/SLASH WORD ...
+     COMMAND or WORD  either a COMMAND or a word
+     ==============   ====================================
+
    */
 
   parseRequiredTokens(tokList, options) {
@@ -517,11 +554,11 @@ class Tokenizer {
       let found = false;
       const cmd = this.findNextCommand(tokList, i, keys);
       if (cmd) {
-        const tok = this.getNextArg(tokList, i+1, cmd, options);
-        if (tok) {
+        let num = this.consumeArgs(tokList, i+1, cmd, options);
+        if (num > 0) {
           found = true;
-          args[cmd] = tok;
-          i++;
+          args[cmd] = (num > 1) ? tokList.slice(i+1, i+1+num) : tokList[i];
+          i += num;
           continue;
         } else {
           return [`bad arg for ${cmd}`, args];
@@ -538,6 +575,8 @@ class Tokenizer {
     }
     return [null, args];
   }
+
+  // composePath - return a string. Input must be valid path sequence
 
   composePath(args) {
     if (args.length === 0) {
@@ -570,6 +609,41 @@ class Tokenizer {
     }
     return str;
   }
+
+  // consumePath - return number of tokens consumed from front.
+  // Consumes as many tokens as possible to form a legal path.
+  consumePath(args) {
+    if (args.length === 0) {
+      return 0;
+    }
+    if (args[0].name !== 'DOT') {
+      return 0;
+    }
+    let wantWord = true;
+    let numConsumed = 1;
+    for (let i = 1; i< args.length; i++) {
+      if (wantWord) {
+        if (args[i].name !== 'WORD') {
+          return numConsumed - 1;
+        } else {
+          numConsumed ++;
+          wantWord = false;
+        }
+      } else {
+        if (args[i].name === 'DOT') {
+          numConsumed ++;
+          wantWord = true;
+        } else if (args[i].name === 'SLASH') {
+          numConsumed ++;
+          wantWord = true;
+        } else {
+          return numConsumed;
+        }
+      }
+    }
+    return numConsumed;
+  }
+
 }
 
 module.exports = new Tokenizer;

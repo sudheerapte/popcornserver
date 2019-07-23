@@ -598,12 +598,23 @@ class Propagator {
       {cmd: 'CURRENT', fn: args => this.currentCmd(args)},
       {cmd: 'DATAW', fn: args => this.datawCmd(args)},
       {cmd: 'DATA', fn: args => this.dataCmd(args)},
+      {cmd: 'DEF', fn: args => this.defCmd(args)},
+      {cmd: 'DEL', fn: args => this.delCmd(args)},
     ];
     this.addCommands(records);
   }
 
   addCommands(arr) {
     arr.forEach( rec => this._commands[rec.cmd] = rec );
+  }
+
+  defCmd(args) {
+    let result, options;
+    if (this.t.ifNextCommand(args, 1, "CON")) {
+      options = {PARENT: "PATH", CHILDREN: "WORDS"};
+      result = this.t.parseRequiredTokens(args.slice(1), options);
+      
+    }
   }
 
   currentCmd(args) {

@@ -93,31 +93,6 @@ function checkTokenizeFailure(input, index) {
   errDiff(result[0], `bad token at index ${index}`);
 }
 
-log(`---- parseRequiredTokens`);
-options = { ID: 'WORD', NAME: 'WORD', VALUE: 'STRING or WORD',};
-checkRequiredTokens('VALUE "some command" ID tagname NAME click ',
-                    null,
-                    "ID",
-                    "NAME");
-
-checkRequiredTokens('ID tagname NAME click random VALUE "some command"',
-                    'bad option: random');
-
-function checkRequiredTokens(input, wantResult, wantOne, wantTwo) {
-  log(`${' '.repeat(50-input.length)}|${input}| - `);
-  result = t.tokenize(input);
-  err(result[0]);
-  tokens = result[1];
-  result = t.parseRequiredTokens(tokens, options);
-  errDiff(result[0], wantResult);
-  args = result[1];
-  if (wantOne) { err(args[wantOne]); }
-  if (wantTwo) { err(args[wantTwo]); }
-}
-
-
-process.exit(0);
-
 log(`---- splitSections: easy version`);
 lines = [
   "% abc",
@@ -250,4 +225,47 @@ function checkFull(input, output) {
   }
 }
 
+log(`---- consumePath`);
+[
+  {input: '  ', numConsumed: 0},
+  {input: '.a.b.c/d foo', numConsumed: 8},
+  {input: '.a.b.c.d',     numConsumed: 8},
+  {input: 'a.b.c.d foo',  numConsumed: 0},
+  {input: '  a. foo',     numConsumed: 0},
+  {input: '   FOO a. foo',  numConsumed: 0},
+]
+  .forEach( rec => {
+    result = t.tokenize(rec.input);
+    err(result[0]);
+    tokens = result[1];
+    errDiff(t.consumePath(tokens), rec.numConsumed);
+  });
+
+log(`---- parseRequiredTokens`);
+options = { ID: 'WORD', NAME: 'WORD', VALUE: 'STRING or WORD',};
+checkRequiredTokens('VALUE "some command" ID tagname NAME click ',
+                    null,
+                    "ID",
+                    "NAME");
+
+checkRequiredTokens('ID tagname NAME click random VALUE "some command"',
+                    'bad option: random');
+
+options = { PARENT: 'PATH', CHILDREN: 'WORDS',};
+result = t.tokenize('PARENT .a.b/c CHILDREN foo bar');
+err(result[0]);
+tokens = result[1];
+errDiff(tokens.length, 10);
+
+function checkRequiredTokens(input, wantResult, wantOne, wantTwo) {
+  log(`${' '.repeat(50-input.length)}|${input}| - `);
+  result = t.tokenize(input);
+  err(result[0]);
+  tokens = result[1];
+  result = t.parseRequiredTokens(tokens, options);
+  errDiff(result[0], wantResult);
+  args = result[1];
+  if (wantOne) { err(args[wantOne]); }
+  if (wantTwo) { err(args[wantTwo]); }
+}
 
