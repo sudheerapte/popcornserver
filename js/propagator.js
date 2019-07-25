@@ -549,42 +549,57 @@ class Propagator {
     if (tokenArray.length === 1) {
       return [ null, tokenArray[0] ];
     }
-    let i = tokenArray.findIndex( tok => tok.name === 'BEGIN' );
-    if (i >= 0) {
-      let j = tokenArray.slice(i).findIndex( tok => tok.name === 'END' );
-      if (j >= 0) {
-        let subEval = this.evaluate(tokenArray.slice(i+1, i+j));
-        if (subEval[0]) { // error
-          return subEval;
-        } else {
-          let newArray = tokenArray.slice(0, i);
-          // subEval could be single token or an array
-          if (subEval[1].hasOwnProperty('length')) {
-            subEval[1].forEach( tok => newArray.push(tok) );
-          } else {
-            newArray.push(subEval[1]);
-          }
-          tokenArray.slice(i+j+1, tokenArray.length)
-            .forEach( tok => newArray.push(tok));
-          return this.evaluate(newArray);
+    // Look for macros; find innermost macro.
+    let [b, e] = this.innerBeginEnd(tokenArray);
+
+    if (b < 0 && e < 0) { // No macros found.
+      if (tokenArray[0].name === 'COMMAND') {
+        const rec = this._commands[tokenArray[0].value];
+        if (rec) {
+          return rec.fn(tokenArray.slice(1));
+        } else { // anything else evaluates as itself.
+          this.log(`No such command: ${tokenArray[0].value}`);
+          return [null, tokenArray];
         }
-      } else {
-        return [`BEGIN without END`, null];
       }
+    }
+    if (b >= 0 && e >= 0) {
+      // Expand innermost macro and re-evaluate
+      let subEval = this.evaluate(tokenArray.slice(b+1, e));
+      if (subEval[0]) { // error
+        return subEval;
+      } else {
+        let newArray = tokenArray.slice(0, b);
+        // subEval could be single token or an array
+        if (subEval[1].hasOwnProperty('length')) {
+          subEval[1].forEach( tok => newArray.push(tok) );
+        } else {
+          newArray.push(subEval[1]);
+        }
+        tokenArray.slice(e+1, tokenArray.length)
+          .forEach( tok => newArray.push(tok));
+        return this.evaluate(newArray);
+      }
+    }
+    if (e < 0) {
+      return [`BEGIN without END`, tokenArray];
     }
 
-    if (tokenArray[0].name === 'BEGIN' && tokenArray[tokenArray.length-1] === 'END') {
-      return this.evaluate(tokenArray.slice(1, tokenArray.length-1));
-    }
-    if (tokenArray[0].name === 'COMMAND') {
-      const rec = this._commands[tokenArray[0].value];
-      if (rec) {
-        return rec.fn(tokenArray.slice(1));
-      } else { // not recognized
-        this.log(`No such command: ${tokenArray[0].value}`);
-        return [null, tokenArray];
+  }
+
+  // innerBeginEnd - return [BEGIN, END] indexes
+  innerBeginEnd(tokenArray) {
+    for (let i= tokenArray.length-1; i>= 0; i--) {
+      if (tokenArray[i].name === 'END') {
+        for (let j=i; j>= 0; j--) {
+          if (tokenArray[j].name === 'BEGIN') {
+            return [j, i];
+          }
+        }
+        return [-1, i];
       }
     }
+    return [-1, -1];
   }
 
   /**
