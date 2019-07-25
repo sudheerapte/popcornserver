@@ -625,11 +625,30 @@ class Propagator {
   }
 
   defCmd(args) {
-    let result, options;
-    if (this.t.ifNextCommand(args, 1, "CON")) {
-      options = {PARENT: "PATH", CHILDREN: "WORDS"};
-      result = this.t.parseRequiredTokens(args.slice(1), options);
-      
+    if (this.t.ifNextCommand(args, 0, "CON") ||
+        this.t.ifNextCommand(args, 0, "ALT")) {
+      const type = args[0].value;
+      const sep = type === 'CON' ? '.' : '/';
+      let options = {PARENT: "PATH", CHILDREN: "WORDS"};
+      let result = this.t.parseRequiredTokens(args.slice(1), options);
+      if (result[0]) { return [ `DEF ${type}: ${result[0]}`, args ]; }
+      const struct = result[1];
+      if (type === 'CON' && this.mc.isVariableParent(struct.PARENT)) {
+        return [`DEF CON ${struct.PARENT}: already alt-parent`, args];
+      }
+      if (type === 'ALT' && this.mc.isConcurrentParent(struct.PARENT)) {
+        return [`DEF ALT ${struct.PARENT}: already concurrent parent`, args];
+      }
+      const children = struct.CHILDREN;
+      let arr =  children.map(child => `P ${struct.PARENT}${sep}${child}`);
+      result = this.mc.interpret(arr);
+      if (result) {
+        return [`DEF ${type} ${struct.PARENT}: ${result}`, args];
+      } else {
+        return [null, null];
+      }
+    } else {
+      return [`DEF: must be either CON or ALT`, args];
     }
   }
 
@@ -710,46 +729,6 @@ class Propagator {
       }
     } else {
       return [ `DATA: no such path: ${mPath}`, null ];
-    }
-  }
-
-  defCmd(args) {
-    if (args.length < 5) {
-      return [`DEF needs at least 5 args`, null];
-    }
-    let command; // ALT or CON
-    if (this.t.ifNextCommand(args, 0, 'ALT')) {
-      command = 'ALT';
-    } else if (this.t.ifNextCommand(args, 0, 'CON')) {
-      command = 'CON';
-    } else {
-      return [`DEF: must be CON or ALT`, null];
-    }
-    const options = {PARENT: 'PATH', CHILDREN: 'WORDS'};
-    args = args.slice(1);
-    let [errMsg, struct] = this.t.parseRequiredTokens(args, options);
-    if (errMsg) {
-      return [`DEF: ${errMsg}`, null];
-    }
-    if (this.mc.exists(struct.PARENT.value)) {
-      if (this.mc.isDataLeaf(mPath)) {
-        const data = this.mc.getData(mPath);
-        if (data) {
-          if (data.trim().match(/^\d+$/)) {
-            return [ null, {name: 'NUMBER', value: data.trim()} ];
-          } else if (data.trim().match(/^[a-z][a-z0-9-]+$/)) {
-            return [ null, {name: 'WORD', value: data.trim()} ];
-          } else {
-            return [ null, {name: 'STRING', value: data} ];
-          }
-        } else {
-          return [ null, {name: 'STRING', value: ""} ];
-        }
-      } else {
-        return [`DATAW: not a data leaf`, null];
-      }
-    } else {
-      return [ `DATAW: no such path: ${mPath}`, null ];
     }
   }
 

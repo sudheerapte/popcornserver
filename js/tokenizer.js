@@ -578,7 +578,7 @@ class Tokenizer {
       if (num <= 1) {
         return [0, 'not PATH'];
       } else {
-        return [num, this.composePath(args.slice(index, index+num))];
+        return [num, this.composePath(tokList.slice(index, index+num))];
       }
     } else if (opt.match(/WORD/) && opt.match(/STRING/)) {
       return tok.name.match(/WORD|STRING/) ? [1, tok.value] : [0, 'not found'];
