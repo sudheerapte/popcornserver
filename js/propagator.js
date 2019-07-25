@@ -588,6 +588,7 @@ class Propagator {
   }
 
   // innerBeginEnd - return [BEGIN, END] indexes
+  // We find the last of the innermost macros in the token array.
   innerBeginEnd(tokenArray) {
     for (let i= tokenArray.length-1; i>= 0; i--) {
       if (tokenArray[i].name === 'END') {
@@ -709,6 +710,46 @@ class Propagator {
       }
     } else {
       return [ `DATA: no such path: ${mPath}`, null ];
+    }
+  }
+
+  defCmd(args) {
+    if (args.length < 5) {
+      return [`DEF needs at least 5 args`, null];
+    }
+    let command; // ALT or CON
+    if (this.t.ifNextCommand(args, 0, 'ALT')) {
+      command = 'ALT';
+    } else if (this.t.ifNextCommand(args, 0, 'CON')) {
+      command = 'CON';
+    } else {
+      return [`DEF: must be CON or ALT`, null];
+    }
+    const options = {PARENT: 'PATH', CHILDREN: 'WORDS'};
+    args = args.slice(1);
+    let [errMsg, struct] = this.t.parseRequiredTokens(args, options);
+    if (errMsg) {
+      return [`DEF: ${errMsg}`, null];
+    }
+    if (this.mc.exists(struct.PARENT.value)) {
+      if (this.mc.isDataLeaf(mPath)) {
+        const data = this.mc.getData(mPath);
+        if (data) {
+          if (data.trim().match(/^\d+$/)) {
+            return [ null, {name: 'NUMBER', value: data.trim()} ];
+          } else if (data.trim().match(/^[a-z][a-z0-9-]+$/)) {
+            return [ null, {name: 'WORD', value: data.trim()} ];
+          } else {
+            return [ null, {name: 'STRING', value: data} ];
+          }
+        } else {
+          return [ null, {name: 'STRING', value: ""} ];
+        }
+      } else {
+        return [`DATAW: not a data leaf`, null];
+      }
+    } else {
+      return [ `DATAW: no such path: ${mPath}`, null ];
     }
   }
 
