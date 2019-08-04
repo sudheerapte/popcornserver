@@ -3,10 +3,10 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-.. image:: uxmal.svg
+.. image:: popcorn-logo3.svg
    :width: 800px
 
-UXmal - make beautiful web-based applications
+Popcorn - make beautiful web-based applications
 ===============================================
 
 
