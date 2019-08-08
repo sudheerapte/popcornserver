@@ -21,6 +21,7 @@ Popcorn - make beautiful web-based applications
    how-to-write
    deployment
    grammar
+   uxml-environment
    commands
    actions
 
