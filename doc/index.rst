@@ -22,6 +22,7 @@ Popcorn - make beautiful web-based applications
    deployment
    grammar
    uxml-environment
+   input-modes
    commands
    actions
 
