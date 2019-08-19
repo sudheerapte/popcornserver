@@ -38,9 +38,10 @@ additional member:
 
   cc: an array containing the short names of all child states
 
-In addition, a variable parent state also has a "curr" member,
-which has the *index* of the current sub-state.  By default, "curr"
-is set to zero.
+In addition, a variable parent state also has a "curr" member, which
+has the *index* of the current sub-state.  By default, "curr" is set
+to zero. A variable parent always has at least one child, otherwise we
+delete the ``curr`` and ``cc`` members and treat it like a leaf state.
 
 All the states in the machine are indexed by their full path in the
 STATE_TREE map. The root state's path is always the empty string

@@ -541,16 +541,15 @@ class Machine {
     // First remove the path from the STATE_TREE map, then modify parent
     this.STATE_TREE.delete(path);
 
-    // Special case for variable parent becoming empty
-    if (parent.hasOwnProperty("curr") && parent.cc.length === 1 &&
-        parent.cc[0] === leafName) {
-      delete parent.curr;
-      delete parent.cc;
-      return null;
-    }
-    // Normal case: drop the leaf name from parent
+    // Drop the leaf name from parent
     const cpos = parent.cc.findIndex(c => c === leafName);
     parent.cc.splice(cpos, 1);
+
+    // Special case for parent becoming empty
+    if (parent.hasOwnProperty("cc") && parent.cc.length === 0) {
+      delete parent.cc;
+      if (parent.hasOwnProperty("curr")) { delete parent.curr;}
+    }
     return null;
   }
 
