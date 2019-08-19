@@ -31,7 +31,7 @@ two attributes:
 
   name: the short string name of this state
   parent: a pointer to the parent state object.
-          (the parent pointer is not present in the root state)
+  (the parent pointer is not present in the root state)
 
 Leaf states have only the above two members. Parent states have one
 additional member:
