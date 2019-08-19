@@ -15,52 +15,6 @@
 */
 
 /**
-   This class represents one state machine tree. When you create an
-   instance, it has only the root path "" and is in edit mode.
-
-   External API:
-
-   interpret(array)
-
-   Takes an array of commands called a "block" and executes them all
-   in sequence as a transaction. On error, it returns an error message.
-   On success it returns null.
-
-   Internal representation:
-
-   A parent state can be either:
-   (a) a variable parent, OR
-   (b) a concurrent parent.
-
-   Leaf states can be either:
-   (a) children of a variable parent, OR
-   (b) children of a concurrent parent having a 'data' member.
-
-   All states are represented with a simple Javascript object with
-   two attributes:
-
-     name: the short string name of this state
-     parent: a pointer to the parent state object.
-             (the parent pointer is not present in the root state)
-
-   Leaf states have only the above two members. Parent states have one
-   additional member:
-
-     cc: an array containing the short names of all child states
-
-   In addition, a variable parent state also has a "curr" member,
-   which has the *index* of the current sub-state.  By default, "curr"
-   is set to zero.
-
-   All the states in the machine are indexed by their full path in the
-   STATE_TREE map. The root state's path is always the empty string
-   "", so you can start a traversal by looking up that key.  The value
-   of the key will be a state object, and if it is a parent state,
-   then it will contain its children's short names in "cc".
-
-   Each child state object can be found by appending either a "." or a
-   "/" to the parent's key, and then the child's short name, to form
-   the child's key in the STATE_TREE map.
 
  */
 
@@ -108,6 +62,50 @@ class Machine {
   }
 
   /**
+     New command support:
+     Each function takes and updates a delta object.
+     A delta object contains two arrays: delta and undo.
+     The 'delta' array gets atomic commands to do the indicated
+     thing, and the 'undo' array gets atomic commands to undo the thing.
+     the 'delta' array is built up by appending, while the
+     'undo' array is built up by prepending.
+     Returns null on success, else error string.
+   */
+  createChildDelta(parent, sep, child, delta) {
+    if (this.isLeaf(parent)) { return `not a parent: ${parent}`; }
+    if (this.isVariableParent(parent) && sep === '/' ||
+        (this.isConcurrentParent(parent) && sep === '.')) {
+      const p = this.getState(parent);
+      if (! p["cc"]) { p.cc = []; }
+      if (! p.hasOwnProperty("curr")) { p.curr = 0; }
+      const pos = p.cc.findIndex(c => c === child);
+      if (pos > -1) {
+        return null; // no op
+      } else {
+        delta.delta.push(`P ${parent}${sep}${child}`);
+        delta.undo.unshift(`D ${parent}${sep}${child}`);
+      }
+    } else {
+      return `not a '${sep}' parent: ${parent}`;
+    }
+  }
+  setCurrentDelta(parent, child, delta) {
+    if (this.isLeaf(parent)) { return `not a parent: ${parent}`; }
+    if (this.isVariableParent(parent)) {
+      const p = this.getState(parent);
+      if (! p.hasOwnProperty("curr")) { return `no such child: ${child}`; }
+      if (p.cc[p.curr] === child) {
+        return null; // no op
+      } else {
+        delta.delta.push(`C ${parent} ${child}`);
+        delta.undo.unshift(`C ${parent} ${p.cc[p.curr]}`);
+      }
+    } else {
+      return `not a '/' parent: ${parent}`;
+    }
+  }
+
+  /**
      @function(interpretOp)
      interpret one line containing a command.
      @return(null) iff successful, else error string
@@ -117,6 +115,7 @@ class Machine {
      P command
      C command
      D command
+     X command - delete leaf path
    */
 
   interpretOp(str) {
@@ -175,6 +174,19 @@ class Machine {
       if (str !== 'E') { return `interpretOp: E command must be standalone`; }
       this.makeEmpty();
       return null;
+    } else if (str.startsWith('X')) {
+      m = str.slice(1).match(Machine.PATHPAT);
+      if (m) {
+        const path = this.normalizePath(str.slice(1));
+        if (path === null) { return `X: bad path: ${path}`; }
+        if (this.isLeaf(path)) {
+          return this._deleteLeaf(path);
+        } else {
+          return `X: path is not leaf: ${path}`;
+        }
+      } else {
+        return `X: bad path string: ${m.slice(1)}`;
+      }
     } else {
       return `interpretOp: ${str}\nbad command: ${str.slice(0,1)}`;
     }
@@ -501,6 +513,45 @@ class Machine {
       if (pos < slashPos) { pos = slashPos; }
       return this._addSubState(path.slice(0,pos), path[pos], path.slice(pos+1));
     }
+  }
+
+  /**
+     @function(_deleteLeaf)
+     Given path is a leaf. Remove it.
+     If the parent has no other children, then parent becomes
+     a data parent.
+     @return null iff successful, else string with error message
+   */
+
+  _deleteLeaf(path) {
+    path = this.normalizePath(path);
+    if (! this.exists(path)) { return null; }
+    let dotPos = path.lastIndexOf(".");
+    let slashPos = path.lastIndexOf("/");
+    if (dotPos < 0 && slashPos < 0) {
+      return `deleteLeaf: bad path: |${path}|`;
+    }
+
+    let pos = dotPos;
+    if (pos < slashPos) { pos = slashPos; }
+    const leafName = path.slice(pos+1);
+    const parent = this.getState(path.slice(0,pos));
+    if (!parent) { return null; }
+
+    // First remove the path from the STATE_TREE map, then modify parent
+    this.STATE_TREE.delete(path);
+
+    // Special case for variable parent becoming empty
+    if (parent.hasOwnProperty("curr") && parent.cc.length === 1 &&
+        parent.cc[0] === leafName) {
+      delete parent.curr;
+      delete parent.cc;
+      return null;
+    }
+    // Normal case: drop the leaf name from parent
+    const cpos = parent.cc.findIndex(c => c === leafName);
+    parent.cc.splice(cpos, 1);
+    return null;
   }
 
   _addSubState(parentPath, separator, name) {
