@@ -72,7 +72,14 @@ class Machine {
      Returns null on success, else error string.
    */
   createChildDelta(parent, sep, child, delta) {
-    if (this.isLeaf(parent)) { return `not a parent: ${parent}`; }
+    if (this.isLeaf(parent)) {
+      const p = this.getState(parent);
+      if (p.hasOwnProperty("data") && p[data] && p[data].length > 0) {
+        return `leaf has data: ${parent}`;
+      }
+      p.cc = [];
+      if (sep === '/') { p.curr = 0; }
+    }
     if (this.isVariableParent(parent) && sep === '/' ||
         (this.isConcurrentParent(parent) && sep === '.')) {
       const p = this.getState(parent);
@@ -83,7 +90,7 @@ class Machine {
         return null; // no op
       } else {
         delta.delta.push(`P ${parent}${sep}${child}`);
-        delta.undo.unshift(`D ${parent}${sep}${child}`);
+        delta.undo.unshift(`X ${parent}${sep}${child}`);
       }
     } else {
       return `not a '${sep}' parent: ${parent}`;
@@ -175,9 +182,10 @@ class Machine {
       this.makeEmpty();
       return null;
     } else if (str.startsWith('X')) {
-      m = str.slice(1).match(Machine.PATHPAT);
+      const cdr = str.slice(1).trim();
+      m = cdr.match(Machine.PATHPAT);
       if (m) {
-        const path = this.normalizePath(str.slice(1));
+        const path = this.normalizePath(cdr);
         if (path === null) { return `X: bad path: ${path}`; }
         if (this.isLeaf(path)) {
           return this._deleteLeaf(path);
@@ -550,6 +558,32 @@ class Machine {
       delete parent.cc;
       if (parent.hasOwnProperty("curr")) { delete parent.curr;}
     }
+    return null;
+  }
+
+  _addLeaf(parent, sep, child) {
+    let p = this.STATE_TREE.get(parent);
+    if (!p) { return `no such path: ${parent}`; }
+    if (! child) { return `empty child`; }
+    child = child.trim().toLowerCase();
+    const fullPath = `${parent}${sep}${child}`;
+    if (this.STATE_TREE.exists(fullPath)) {
+      return `child path already exists: ${fullPath}`;
+    }
+    if (! p["cc"]) { // convert leaf to a parent
+      if (p.hasOwnProperty("data")){
+        if (p[data] && p.data.length > 0) {
+          return `parent has data: ${parent}`;
+        } else {
+          delete p.data;
+        }
+      }
+      p.cc = [ child ];
+      if (sep === '/') { p.curr = 0; }
+    } else { // already a parent -- just add the child
+      p.cc.push(child);
+    }
+    this.STATE_TREE.set(fullPath, {name: child, parent: p});
     return null;
   }
 

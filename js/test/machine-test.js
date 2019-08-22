@@ -48,6 +48,7 @@ let list = [
 
 // --------------------------------------------------------------
 // Section 1:  Direct calls to _addState() - no events generated
+log(`---- addState`);
 list.forEach( path => {
   const result = machine._addState(path);
   err(result);

@@ -29,29 +29,37 @@ Leaf states can be either:
 All states are represented with a simple Javascript object with
 two attributes:
 
-  name: the short string name of this state
-  parent: a pointer to the parent state object.
-  (the parent pointer is not present in the root state)
+``name``:
+  the short string name of this state. Must be all lowercase; might
+  contain hyphens and digits; the first character must be a letter.
+  Examples: ``one``, ``two-three``, ``four4``.
+``parent``:
+   a pointer to the parent state object.
+   (the parent pointer is not present in the root state)
 
 Leaf states have only the above two members. Parent states have one
 additional member:
 
-  cc: an array containing the short names of all child states
+``cc``:
+  an array containing the short names of all child states
 
-In addition, a variable parent state also has a "curr" member, which
-has the *index* of the current sub-state.  By default, "curr" is set
-to zero. A variable parent always has at least one child, otherwise we
-delete the ``curr`` and ``cc`` members and treat it like a leaf state.
+In addition, a variable parent state also has a ``curr`` member, which
+has the *index* of the current sub-state.  By default, ``curr`` is set
+to zero, which means the first-added child is the current child.
 
 All the states in the machine are indexed by their full path in the
 STATE_TREE map. The root state's path is always the empty string
-"", so you can start a traversal by looking up that key.  The value
-of the key will be a state object, and if it is a parent state,
-then it will contain its children's short names in "cc".
+``""``, so you can start a traversal by looking up that key.  The
+value of the key will be a state object, and if it is a parent state,
+then it will contain its children's short names in ``cc``.
 
-Each child state object can be found by appending either a "." or a
-"/" to the parent's key, and then the child's short name, to form
-the child's key in the STATE_TREE map.
+Each child state object can be found by appending either a ``.`` or a
+``/`` to the parent's path, and then the child's short name, to form
+the child's path, which is a key in the STATE_TREE map.
+
+When deleting leaves with ``_deleteLeaf``, we ensure that a parent
+always has at least one child, otherwise we delete the ``cc`` member
+(and any ``curr`` member) and treat it like a leaf state.
 
 
 
