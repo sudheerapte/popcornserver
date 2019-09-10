@@ -145,6 +145,16 @@ errDiff(machine.getCurrent(".a")[1], "c");
 result = machine.doCommand("setCurrent .a foo");
 errDiff(result, "no such child: foo");
 
+log(`---- setData`);
+machine = new Machine();
+undos = [];
+result = machine.doCommand("addLeaf . a", undos); err(result);
+result = machine.doCommand("addLeaf .a / b", undos); err(result);
+result = machine.doCommand("setData .a/b foo bar"); err(result);
+err(machine.getData(".a/b")[0]);
+errDiff(machine.getData(".a/b")[1], "foo bar");
+errDiff(machine.getData(".a")[0], "not a leaf: .a");
+
 log(`---- clone`);
 list = [
   'addLeaf . a',
