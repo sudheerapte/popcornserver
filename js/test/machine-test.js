@@ -23,6 +23,7 @@ let log, err, errDiff;
 [log, err, errDiff] = require('./logerr.js');
 
 let result;
+let delta;
 
 let list = [
   '.boot',
@@ -129,6 +130,30 @@ result = machine.interpret([
 ]);
 err(result);
 // log(s);
+
+// --------------------------------------------------------------
+log(`---- createLeafDelta`);
+machine = new Machine();
+delta = {delta: [], undo: []};
+result = machine.createChildDelta("", ".", "a", delta);
+err(result);
+//log(JSON.stringify(delta));
+result = machine.createChildDelta(".a", ".", "b", delta);
+err(result);
+result = machine.createChildDelta(".a", "/", "foo", delta);
+log(`tried adding /foo and failed: result`);
+const m = result.match(/^not/);
+log(m);
+if (m === null) { err(result); }
+log(`--- done with adding`);
+errDiff(delta.delta.length, 1);
+errDiff(delta.delta.length, 2);
+result = machine.interpret(delta.delta);
+err(result);
+errDiff(machine.getAllPaths().length, 2);
+
+process.exit(0);
+
 
 // --------------------------------------------------------------
 // interpret()

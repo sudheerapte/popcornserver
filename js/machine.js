@@ -63,37 +63,57 @@ class Machine {
 
   /**
      New command support:
-     Each function takes and updates a delta object.
+     Each function updates a passed-in delta object.
      A delta object contains two arrays: delta and undo.
-     The 'delta' array gets atomic commands to do the indicated
-     thing, and the 'undo' array gets atomic commands to undo the thing.
+     The 'delta' array has atomic commands to do the indicated action,
+     and the 'undo' array has atomic commands to undo the action.
      the 'delta' array is built up by appending, while the
      'undo' array is built up by prepending.
      Returns null on success, else error string.
    */
-  createChildDelta(parent, sep, child, delta) {
-    if (this.isLeaf(parent)) {
+  createLeafDelta(parent, sep, child, delta) {
+    if (! child || ! child.match(/
+    if (this.isLeaf(parent)) { // make it a parent
       const p = this.getState(parent);
       if (p.hasOwnProperty("data") && p[data] && p[data].length > 0) {
         return `leaf has data: ${parent}`;
       }
+      if (p.hasOwnProperty("data")) { delete p.data; }
       p.cc = [];
       if (sep === '/') { p.curr = 0; }
     }
+    // parent is a parent
     if (this.isVariableParent(parent) && sep === '/' ||
         (this.isConcurrentParent(parent) && sep === '.')) {
       const p = this.getState(parent);
-      if (! p["cc"]) { p.cc = []; }
-      if (! p.hasOwnProperty("curr")) { p.curr = 0; }
       const pos = p.cc.findIndex(c => c === child);
       if (pos > -1) {
-        return null; // no op
-      } else {
-        delta.delta.push(`P ${parent}${sep}${child}`);
-        delta.undo.unshift(`X ${parent}${sep}${child}`);
+        return null; // child already exists
       }
+      p.cc.push(child);
+      delta.delta.push(`P ${parent}${sep}${child}`);
+      delta.undo.unshift(`X ${parent}${sep}${child}`);
+      return null;
     } else {
       return `not a '${sep}' parent: ${parent}`;
+    }
+  }
+  /**
+     deleteLeafDelta - create a delta for deleteLeaf
+   */
+  deleteLeafDelta(parent, child, delta) {
+    if (this.isLeaf(parent)) {
+      return `parent is a leaf: |${parent}|`;
+    }
+    const p = this.getState(parent);
+    const sep = p.hasOwnProperty('curr') ? '/' : '.';
+    const pos = p.cc.findIndex(c => c === child);
+    if (pos > -1) {
+      delta.delta.push(`X ${parent}${sep}${child}`);
+      delta.undo.unshift(`P ${parent}${sep}${child}`);
+      return null;
+    } else {
+      return `no such child: ${child}`;
     }
   }
   setCurrentDelta(parent, child, delta) {

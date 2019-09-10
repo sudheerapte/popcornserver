@@ -1,34 +1,5 @@
 "use strict";
 
-/**
-   Four actions:
-
-   addLeaf P sep C
-   deleteLastLeaf P
-   setCurrent P C
-   setData P D
-
-   Each action accumulates an undo record (or not).
-
-   Queries:
-
-   exists P      => true/false
-   isParent P    => true/false
-   isAltParent P => true/false
-   isConParent P => true/false
-   isLeaf P      => true/false
-   isAltChild P  => true/false
-   isConChild P  => true/false
-   getParent P   => P
-   getCurrent P  => C
-   getChildren P => <list of C>
-   getNonCurrent P => <list of C>
-   isCurrent P C => true/false
-   getData P     => <string>
-
-   isEqual(machine) = true or false
-*/
-
 class Machine {
   constructor() {
     this._root = {name: "", parent: "", cc: []};
@@ -82,7 +53,7 @@ class Machine {
     return [null, ppath];
   }
   getCurrent(p) {
-    if (! isAltParent(p)) { return [`not an alt parent: ${p}`, null]; }
+    if (! this.isAltParent(p)) { return [`not an alt parent: ${p}`, null]; }
     const node = this.getState(p);
     return [null, node.cc[node.curr] ];
   }
@@ -131,18 +102,19 @@ class Machine {
   }
   
   addLeaf(p, sep, c, undos) {
+    if (! undos) { undos = []; }
     if (! this._paths.has(p)) {
       return `no such path: ${p}`;
     }
     if (! c || ! c.match(this.WORDPAT)) {
-      return `bad child: |${c}|`;
+      return `bad word format: |${c}|`;
     }
     if (! sep || ! sep.match(/^[/.]$/)) {
       return `bad separator: |${sep}|`;
     }
     const path = p + sep + c;
     if (this._paths.has(path)) {
-      return `path exists: ${path}`;
+      return `child exists: ${path}`;
     }
     const parent = this._paths.get(p);
     const newState = {name: c, parent: parent};
@@ -166,6 +138,7 @@ class Machine {
     return null;
   }
   deleteLastLeaf(p, undos) {
+    if (! undos) { undos = []; }
     if (! this.isParent(p)) {
       return `no such parent: |${p}|`;
     }
@@ -174,15 +147,20 @@ class Machine {
     const sep = node.hasOwnProperty("curr") ? "/" : ".";
     const childPath = p + sep + lastChild;
     if (! this.isLeaf(childPath)) {
-      return `child is not leaf: ${childPath}`;
+      return `last child is not a leaf: ${childPath}`;
+    }
+    if (node.hasOwnProperty("curr") && node.curr >= node.cc.length-1) {
+      node.curr --;
+      undos.unshift(`setCurrent ${p} ${lastChild}`);
+    }
+    const childState = this._paths.get(childPath);
+    let childData = childState.data;
+    if (childData && childData.length > 0) {
+      undos.unshift(`setData ${childPath} ${childData}`);
     }
     this._paths.delete(childPath);
     node.cc.pop();
     undos.unshift(`addLeaf ${p} ${sep} ${lastChild}`);
-    if (node.hasOwnProperty("curr") && node.curr >= node.cc.length) {
-      node.curr --;
-      undos.unshift(`setCurrent ${p} ${lastChild}`);
-    }
     // if no children left, convert parent to a leaf
     if (node.cc.length <= 0) {
       delete node.cc;
@@ -191,29 +169,32 @@ class Machine {
     return null;
   }
 
-  setCurrent(p, c) {
+  setCurrent(p, c, undos) {
+    if (! undos) { undos = []; }
     if (! this.isAltParent(p)) { return `not an alt parent: ${p}`; }
     if (! c.match(this.WORDPAT)) {
-      return `bad child format: ${c}`;
+      return `bad word format: ${c}`;
     }
     const node = this.getState(p);
-    const newCurr = p.cc.indexOf(c);
-    if (newCurr < 0) { return `not a child state: ${c}`; }
-    if (newCurr === node.curr) { return null; } // already done
+    const newCurr = node.cc.indexOf(c);
+    if (newCurr < 0) { return `no such child: ${c}`; }
     const oldCurr = node.curr;
+    if (newCurr === oldCurr) { return null; } // already done
     node.curr = newCurr;
     undos.unshift(`setCurrent ${p} ${oldCurr}`);
     return null;
   }
-  setData(p, d) {
+  setData(p, d, undos) {
+    if (! undos) { undos = []; }
     if (! this.isLeaf(p)) { return `not a leaf: ${p}`; }
     if (typeof d !== 'string') { return `not a string: ${d}`; }
     const node = this.getState(p);
-    if (node.hasOwnProperty("data"))
-
-    if (d.length > 0) {
-      node.data = d;
+    let oldData = false;
+    if (node.hasOwnProperty("data") && node.data.length > 0) {
+      oldData = true;
+      undos.unshift(`setData ${p} ${node.data}`);
     }
+    node.data = d;
     return null;
   }
 
@@ -272,6 +253,8 @@ class Machine {
     if (! str || str.length <= 0) { return `interpret: empty string`; }
     str = str.trim();
     let args;
+
+    // addLeaf
     args = getArgs(str, "addLeaf");
     if (args) {
       let m2 = args.match(/^(\S+)\s+([/.])\s+(\S+)$/);
@@ -284,6 +267,8 @@ class Machine {
       }
       return `addLeaf needs three args`;
     }
+
+    // deleteLastLeaf
     args = getArgs(str, "deleteLastLeaf");
     if (args !== null) {
       if (args === '') {
@@ -296,6 +281,42 @@ class Machine {
         return `deleteLastLeaf: not a path: ${args}`;
       }
     }
+
+    // setData
+    args = getArgs(str, "setData");
+    let spacePos;
+    if (args && args.length !== 0) {
+      spacePos = args.indexOf(' ');
+      if (spacePos < 0) {
+        if (! args.match(this.PATHPAT)) {
+          return `setData: bad path: |${args}|`;
+        }
+        return this.setData(args, "", undos);
+      }
+      const p = args.slice(0, spacePos);
+      const data = args.slice(spacePos+1);
+      return this.setData(p, data, undos);
+    }
+
+    // setCurrent
+    args = getArgs(str, "setCurrent");
+    if (args && args.length !== 0) {
+      spacePos = args.indexOf(' ');
+      if (spacePos < 0) {
+        return `setCurrent needs two args`;
+      }
+      const argArray = args.split(/\s+/);
+      const p = argArray[0];
+      if (! p.match(this.PATHPAT)) {
+        return `bad path: ${p}`;
+      }
+      const word = argArray[1];
+      if (! word.match(this.WORDPAT)) {
+        return `bad current: ${p}`;
+      }
+      return this.setCurrent(p, word, undos);
+    }
+
     return `bad command: ${str}`;
 
     // getArgs() - match the given command followed by args.

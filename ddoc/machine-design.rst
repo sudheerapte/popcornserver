@@ -9,11 +9,171 @@ instance, it has only the root path "" and is in edit mode.
 External API
 -------------
 
+
+Commands for modifying the machine
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+  ============== ======  =======================================
+  Command        Space      Purpose
+  ============== ======  =======================================
+  setCurrent     no       Set the current child of an alt-parent
+  setData        no       Assign a data string to a leaf
+  addLeaf        yes      Append a new child to list of children
+  deleteLastLeaf yes      Delete the last child from the list
+  ============== ======  =======================================
+
+These four commands each make one modification to the machine. The
+last two, addLeaf and deleteLastLeaf, also modify the state space.
+
+The resulting machine always has a new current state.
+
+Each command takes an undo list as an argument and prepends to it
+any commands needed to undo its own effect.
+
+Each command returns ``null`` if it succeeds or an error string if it
+fails. If it fails, it is guaranteed not to change the machine or
+modify the undo list.
+
+In the following descriptions:
+
+  =========== =======================================================
+  Symbol      Meaning
+  =========== =======================================================
+   ``P``      A path
+   ``W``      A word
+  ``sep``     Separator, either ``/`` or ``.``
+  ``STRING``  An arbitrary UTF-8 string no longer than 100 characters
+  =========== =======================================================
+
+
+addLeaf
+^^^^^^^^^^^^
+::
+
+   addLeaf P sep W
+
+Adds a new leaf named ``W`` to the tree under the parent path
+``P``. This expands the state space.
+
+.. sidebar:: addLeaf Errors
+
+   no such path; bad word format; bad separator; child exists;
+   parent has data; not a con parent; not an alt parent
+
+Path ``P`` must be an existing node that is either a leaf, or a
+parent.
+
+**If ``P`` is a parent,** it must be the right type of parent. If
+``sep`` is ``/``, then the parent must be an alt-parent.  If ``sep``
+is ``.``, then the parent must be a con-parent.  In either case, the
+name ``W`` must not already belong to an existing child of ``P``.
+
+This command adds a new leaf to the end of any existing children of
+``P``.
+
+**If ``P`` is a leaf:** This command turns it into a parent;
+furthermore, if the new parent is an alt-parent, then the new first
+leaf is automatically made its current child.
+
+On success, this command adds a corresponding ``deleteLastLeaf``
+command to the beginning of the undo list.
+
+deleteLastLeaf
+^^^^^^^^^^^^^^
+::
+
+   deleteLastLeaf P
+
+Deletes the last child, which must be a leaf, of the given state
+``P``.  This contracts the state space.
+
+If the child being deleted has data assigned to it, the data is lost.
+
+.. sidebar:: deleteLastLeaf Errors
+
+   no such parent; last child is not a leaf
+
+Path ``P`` must be an existing parent node.
+
+This command takes the last child of ``P``, which must be a leaf, and
+deletes it. If ``P`` had only one child, then this command turns ``P``
+into a leaf.
+
+On success, this command adds a corresponding ``addLeaf`` command to
+the beginning of the undo list.  If the parent was an alt-parent whose
+current child is being deleted, then this command makes the previous
+child current, and inserts a ``setCurrent`` command after the
+``addLeaf``. If the deleted leaf had data assigned to it, then this
+command also inserts a ``setData`` command after the ``addLeaf``.
+
+
+setCurrent
+^^^^^^^^^^^^^^
+::
+   
+   setCurrent P W
+
+Sets the current child of the parent ``P`` to ``W``.
+
+
+.. sidebar:: deleteLastLeaf Errors
+
+   not an alt-parent; bad word format; no such child
+
+``P`` must be an
+alt-parent, and one of its children must be named ``W``.  If the
+parent's current child is already ``W``, then this command is a no-op.
+
+
+
+setData
+^^^^^^^^^^^^^^
+::
+
+   setData P STRING
+
+Assigns the data ``STRING`` to the existing leaf state ``P``.
+
+.. sidebar:: setData Errors
+
+   not a leaf; bad string format
+
+If ``P`` already had a different data string assigned to it, then
+this command prepends a ``setData`` command to restore that value.
+
+
+
+Queries
+^^^^^^^
+
+::
+
+   exists P      => true/false
+   isParent P    => true/false
+   isAltParent P => true/false
+   isConParent P => true/false
+   isLeaf P      => true/false
+   isAltChild P  => true/false
+   isConChild P  => true/false
+   getParent P   => P
+   getCurrent P  => C
+   getChildren P => <list of C>
+   getNonCurrent P => <list of C>
+   isCurrent P C => true/false
+   getData P     => <string>
+
+   isEqual(machine) = true or false
+
+
+Interpret block
+^^^^^^^^^^^^^^^^
+
 interpret(array)
 
 Takes an array of commands called a "block" and executes them all
 in sequence as a transaction. On error, it returns an error message.
 On success it returns null.
+
 
 Internal representation:
 --------------------------

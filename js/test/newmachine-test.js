@@ -59,7 +59,102 @@ if (!machinecopy.isEqual(orig)) {
   err(`*** machinecopy is not equal to orig`);
 }
 
+// addLeaf - not an alt parent
+machine = new Machine();
+undos = [];
+result = machine.doCommand("addLeaf . a", undos); err(result);
+result = machine.doCommand("addLeaf .a . b", undos); err(result);
+result = machine.doCommand("addLeaf .a / c", undos);
+if (! result.match(/^not an alt/)) {
+  err(`*** did not get 'not an alt parent' error: got |${result}|`);
+}
+
+// addLeaf - parent has data
+machine = new Machine();
+undos = [];
+result = machine.doCommand("addLeaf . a", undos); err(result);
+result = machine.doCommand("setData .a fooBar", undos); err(result);
+result = machine.doCommand("addLeaf .a . b", undos);
+if (! result.match(/^parent has data/)) {
+  err(`*** did not get 'parent has data' error: got |${result}|`);
+}
+
+// addLeaf turning a leaf into an alt parent
+machine = new Machine();
+undos = [];
+result = machine.doCommand("addLeaf . a", undos); err(result);
+result = machine.doCommand("addLeaf .a / b", undos); err(result);
+if (! machine.isAltParent(".a")) {
+  err(`.a is not alt parent!`);
+}
+result = machine.getCurrent(".a"); err(result[0]);
+if (result[1] !== "b") {
+  err(`*** addLeaf did not set current pointer to "b"`);
+}
+
+// deleteLastLeaf turning an alt parent into a leaf
+machine = new Machine();
+undos = [];
+result = machine.doCommand("addLeaf . a", undos); err(result);
+err(machine.isLeaf(".a"));
+result = machine.doCommand("addLeaf .a / b", undos); err(result);
+err(machine.isAltParent(".a"));
+result = machine.doCommand("addLeaf .a / c", undos); err(result);
+result = machine.doCommand("deleteLastLeaf .a", undos); err(result);
+result = machine.doCommand("deleteLastLeaf .a", undos); err(result);
+err(machine.isLeaf(".a"));
+
+// deleteLastLeaf - try undo with an alt parent
+machine = new Machine();
+undos = [];
+result = machine.doCommand("addLeaf . a", undos); err(result);
+undos = [];
+result = machine.doCommand("addLeaf .a / b", undos); err(result);
+unundos = [];
+for (let i=0; i<undos.length; i++) {
+  //log(`    running undo command: ${undos[i]}`);
+  result = machine.doCommand(undos[i], unundos); err(result);
+}
+err(machine.isLeaf(".a"));
+
+// deleteLastLeaf - setCurrent and try undo with an alt parent
+machine = new Machine();
+undos = [];
+result = machine.doCommand("addLeaf . a", undos); err(result);
+result = machine.doCommand("addLeaf .a / b", undos); err(result);
+result = machine.doCommand("addLeaf .a / c", undos); err(result);
+result = machine.setCurrent(".a", "c", undos); err(result);
+let cmd = "deleteLastLeaf .a";
+result = machine.doCommand(cmd, undos); err(result);
+result = machine.getCurrent(".a"); err(result[0]);
+errDiff(result[1], "b");
+
+log(`---- setCurrent`);
+machine = new Machine();
+undos = [];
+result = machine.doCommand("addLeaf . a", undos); err(result);
+result = machine.doCommand("addLeaf .a / b", undos); err(result);
+result = machine.doCommand("addLeaf .a / c", undos); err(result);
+//log(`current = ${machine.getCurrent(".a")[1]}`);
+err(machine.getCurrent(".a")[0]);
+errDiff(machine.getCurrent(".a")[1], "b");
+result = machine.doCommand("setCurrent .a c"); err(result);
+err(machine.getCurrent(".a")[0]);
+errDiff(machine.getCurrent(".a")[1], "c");
+// Try bad current child
+result = machine.doCommand("setCurrent .a foo");
+errDiff(result, "no such child: foo");
+
 log(`---- clone`);
+list = [
+  'addLeaf . a',
+  'addLeaf . b',
+  'addLeaf .b . c',
+  'addLeaf .b . d',
+  'addLeaf .b . e',
+  'setData .b.e SomeData0123',
+];
+
 machine = new Machine();
 undos = [];
 for (let i=0; i<list.length; i++) {
@@ -69,6 +164,11 @@ machinecopy = machine.clone();
 machine.getAllPaths().forEach( p => {
   if (! machinecopy.exists(p)) {
     err(`*** machinecopy does not have path |${p}|`);
+  }
+  if (machine.getState(p).hasOwnProperty("data")) {
+    if (machine.getState(p).data !== machinecopy.getState(p).data) {
+      err(`*** machinecopy |${p}| data does not match`);
+    }
   }
 });
 machinecopy.getAllPaths().forEach( p => {
