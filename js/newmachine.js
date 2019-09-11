@@ -196,7 +196,7 @@ class Machine {
     const oldCurr = node.curr;
     if (newCurr === oldCurr) { return null; } // already done
     node.curr = newCurr;
-    undos.unshift(`setCurrent ${p} ${oldCurr}`);
+    undos.unshift(`setCurrent ${p} ${node.cc[oldCurr]}`);
     return null;
   }
   setData(p, d, undos) {
@@ -240,17 +240,33 @@ class Machine {
   }
 
   isEqual(machine) {
+    let found = false; // any mismatch found
     this._paths.forEach( (s,p) => {
-      if (! machine.exists(p)) {
-        return false;
+      if (! machine._paths.has(p)) {
+        found = true;
+        return;
+      }
+      if (s.hasOwnProperty("curr")) {
+        if (s.curr !== machine._paths.get(p).curr) {
+          found = true;
+          return;
+        }
+      }
+      if (s.hasOwnProperty("data")) {
+        if (s.data !== machine._paths.get(p).data) {
+          found = true;
+          return;
+        }
       }
     });
+    if (found) { return false; }
+
     machine._paths.forEach( (s,p) => {
-      if (! this.exists(p)) {
-        return false;
+      if (! this._paths.has(p)) {
+        found = true;
       }
     });
-    return true;
+    return ! found;
   }
 
   clone() {
@@ -259,6 +275,10 @@ class Machine {
     this._paths.forEach( (s, p) => {
       let newState = {};
       Object.assign(newState, s);
+      if (s.hasOwnProperty("cc")) {
+        newState.cc = [];
+        s.cc.forEach( word => newState.cc.push(word) );
+      }
       copy._paths.set(p, newState);
     });
     this._paths.forEach( (s, p) => {
@@ -356,7 +376,32 @@ class Machine {
         }
       }
     }
+  }
 
+  /**
+     interpret - execute all commands one by one and return null.
+
+     If one fails, then undo the actions already done, and
+     return the error.
+     If the undo fails, we are in trouble. Return the undo error.
+     The machine will be in a strange state.
+   */
+  interpret(arr, undos) {
+    for (let i=0; i<arr.length; i++) {
+      const cmd = arr[i].trim();
+      if (cmd.length > 0) {
+        const result = this.doCommand(cmd, undos);
+        if (result) {
+          for (let j=0; j<i; j++) {
+            const undoResult = this.doCommand(undos[j]);
+            if (undoResult) {
+              return `ERROR undo ${j}: |${undos[j]}|: ${undoResult}`;
+            }
+          }
+          return `${i}: ${result}`;
+        }
+      }
+    }
   }
 
 }

@@ -138,7 +138,9 @@ result = machine.doCommand("addLeaf .a / c", undos); err(result);
 //log(`current = ${machine.getCurrent(".a")[1]}`);
 err(machine.getCurrent(".a")[0]);
 errDiff(machine.getCurrent(".a")[1], "b");
-result = machine.doCommand("setCurrent .a c"); err(result);
+undos = [];
+result = machine.doCommand("setCurrent .a c", undos); err(result);
+errDiff(undos[0], "setCurrent .a b");
 err(machine.getCurrent(".a")[0]);
 errDiff(machine.getCurrent(".a")[1], "c");
 // Try bad current child
@@ -160,6 +162,35 @@ errDiff(machine.getData(".a/b")[1], "baz");
 result = machine.doCommand("setData .a/b bat", undos); err(result);
 errDiff(undos[0], "setData .a/b baz");
 errDiff(machine.getData(".a/b")[1], "bat");
+
+log(`---- interpret`);
+machine = new Machine();
+undos = [];
+let arr1 = [
+  "addLeaf . a",
+  "addLeaf .a / b",
+  "addLeaf .a / c",
+];
+result = machine.interpret(arr1, undos);
+const copy = machine.clone();
+log(machine.getAllPaths());
+log(`isEqual = ${machine.isEqual(copy)}`);
+let arr2 = [
+  "setData .a/b foo bar",
+  "setData .a/b baz",
+  "setData .a/b bat",
+  "setCurrent .a c",
+];
+log(arr2);
+undos = [];
+result = machine.interpret(arr2, undos);
+log(`isEqual = ${machine.isEqual(copy)}`);
+err(result);
+log(`---- executing undos`);
+result = machine.interpret(undos);
+err(result);
+log(`isEqual = ${machine.isEqual(copy)}`);
+
 
 log(`---- clone`);
 list = [
