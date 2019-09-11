@@ -154,6 +154,12 @@ result = machine.doCommand("setData .a/b foo bar"); err(result);
 err(machine.getData(".a/b")[0]);
 errDiff(machine.getData(".a/b")[1], "foo bar");
 errDiff(machine.getData(".a")[0], "not a leaf: .a");
+result = machine.doCommand("setData .a/b baz", undos); err(result);
+errDiff(undos[0], "setData .a/b foo bar");
+errDiff(machine.getData(".a/b")[1], "baz");
+result = machine.doCommand("setData .a/b bat", undos); err(result);
+errDiff(undos[0], "setData .a/b baz");
+errDiff(machine.getData(".a/b")[1], "bat");
 
 log(`---- clone`);
 list = [

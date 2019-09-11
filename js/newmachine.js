@@ -79,6 +79,21 @@ class Machine {
     return [null, value];
   }
 
+  // ------------- data encoding
+  // All data is held as binary, at most 512 bits (64 bytes).
+  // For convenience, it can be stored and extracted in these ways:
+  // B = Binary: String (Javascript 16-bit Unicode)
+  // W = Word: String of space separated words [a-z][a-z0-9-]*
+  // N = Number: String of space-separated numbers [+-]?[0-9]+
+
+  getDataWords(p) {
+    return this.getData(p);
+  }
+
+  getDataNumbers(p) {
+    return this.getData(p);
+  }
+
   isAltChild(c) {
     if (! this.exists(c)) { return false; }
     const child = this.getState(c);
@@ -189,12 +204,17 @@ class Machine {
     if (! this.isLeaf(p)) { return `not a leaf: ${p}`; }
     if (typeof d !== 'string') { return `not a string: ${d}`; }
     const node = this.getState(p);
-    let oldData = false;
     if (node.hasOwnProperty("data") && node.data.length > 0) {
-      oldData = true;
-      undos.unshift(`setData ${p} ${node.data}`);
+      if (node.data === d) {
+        return null;
+      } else {
+        undos.unshift(`setData ${p} ${node.data}`);
+        node.data = d;
+      }
+    } else {
+      node.data = d;
+      undos.unshift(`setData ${p}`);
     }
-    node.data = d;
     return null;
   }
 
