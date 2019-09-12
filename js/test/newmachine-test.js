@@ -241,6 +241,30 @@ function printAll(machine) {
   });
 }
 
+log(`---- serialize`);
+
+list = [
+  'addLeaf . a',
+  'addLeaf . b',
+  'addLeaf .a / c',
+  'addLeaf .a / d',
+  'addLeaf .b / e',
+  'addLeaf .b / f',
+  'setData .b/e foo bar',
+  'setData .b/e',
+  'addLeaf .b/e . g',
+];
+
+machine = new Machine();
+undos = [];
+result = machine.interpret(list, undos); err(result);
+//log(machine.serialize());
+const list2 = machine.serialize();
+copy = new Machine();
+undos = [];
+result = copy.interpret(list2); err(result);
+err(machine.isEqual(copy));
+
 // --------------------------
 
 process.on('beforeExit', code => {

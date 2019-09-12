@@ -133,10 +133,12 @@ class Machine {
       return `child exists: ${path}`;
     }
     const parent = this._paths.get(p);
-    const newState = {name: c, parent: parent};
-    if (parent.hasOwnProperty("data")) {
+    if (parent.hasOwnProperty("data") && parent.data) {
       return `parent has data: ${p}`;
     }
+    // make p a parent if needed
+    if (parent.hasOwnProperty("data")) { delete parent.data; }
+    const newState = {name: c, parent: parent};
     if (! parent.hasOwnProperty("cc")) {
       parent.cc = [];
       if (sep === '/') {
@@ -422,8 +424,41 @@ class Machine {
         }
       }
     }
+    return null;
   }
 
+  /**
+     serialize - generate array of commands to recreate from scratch
+   */
+  serialize() {
+    let arr = [];
+    let p = "";
+    const me = this;
+
+    appendChildren("");
+    return arr;
+
+    function appendLeaf(p, sep, ch) {
+      arr.push(`addLeaf ${p} ${sep} ${ch}`);
+      const node = me._paths.get(p+sep+ch);
+      if (node.hasOwnProperty("data") && node.data) {
+        arr.push(`setData ${p+sep+ch} ${node.data}`);
+      }
+      appendChildren(p+sep+ch);
+    }
+
+    function appendChildren(p) {
+      const node = me._paths.get(p);
+      if (node.hasOwnProperty("cc")) {
+        const sep = node.hasOwnProperty("curr") ? "/" : ".";
+        node.cc.forEach( ch =>appendLeaf(p, sep, ch) );
+        if (sep === '/' && node.curr !== 0) {
+          arr.push(`setCurrent p ${node.cc[node.curr]}`);
+        }
+      }
+    }
+    
+  }
 }
 
 module.exports = Machine;
