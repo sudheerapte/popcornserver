@@ -6,16 +6,60 @@ let machine = new Machine();
 let log, err, errDiff;
 [log, err, errDiff] = require('./logerr.js');
 
+let list, copy;
 let result;
 let undos;
 
+log(`---- clone test`);
+
+list = [
+  'addLeaf . a',
+  'addLeaf . b',
+  'addLeaf .a / c',
+  'addLeaf .a / d',
+  'addLeaf .b / e',
+  'addLeaf .b / f',
+];
+
+machine = new Machine();
+undos = [];
+for (let i=0; i<list.length; i++) {
+  err(machine.doCommand(list[i], undos));
+}
+copy = machine.clone();
+log(`---- comparing with copy`);
+errDiff(machine.isEqual(copy), true);
+undos = [];
+result = copy.doCommand('setCurrent .b f', undos); err(result);
+errDiff(machine.isEqual(copy), false);
+log(`---- running undos on the copy`);
+result = copy.doCommand(undos[0], undos); err(result);
+errDiff(machine.isEqual(copy), true);
+
 log(`---- addLeaf, undos, unundos`);
+
+
+function printStates(machine) {
+  machine._paths.forEach( (s, p) => {
+    const parent = s.parent.name;
+    let details = "";
+    if (s.hasOwnProperty("cc")) {
+      details = "[" + s.cc.length + "]";
+      if (s.hasOwnProperty("curr")) { details += "."+s.curr; }
+    } else {
+      if (s.hasOwnProperty("data")) {
+        details += "data = |" + s.data + "|";
+      }
+    }
+    log(` [|${s.name}| parent=|${parent}| ${details}]`);
+  });
+}
 
 // Build up machine using list, then use undos to empty it.
 // While using undos, build unundos list.
 // FInally, use unundos to rebuild the original machine.
 
-let list = [
+list = [
   'addLeaf . a',
   'addLeaf . b',
   'addLeaf .b . c',
@@ -23,6 +67,8 @@ let list = [
   'addLeaf .b . e',
   'addLeaf .a . f',
 ];
+
+
 
 machine = new Machine();
 undos = [];
@@ -171,59 +217,29 @@ let arr1 = [
   "addLeaf .a / b",
   "addLeaf .a / c",
 ];
-result = machine.interpret(arr1, undos);
-const copy = machine.clone();
-log(machine.getAllPaths());
-log(`isEqual = ${machine.isEqual(copy)}`);
+result = machine.interpret(arr1, undos); err(result);
+copy = machine.clone();
+
+errDiff(machine.isEqual(copy), true);
 let arr2 = [
   "setData .a/b foo bar",
   "setData .a/b baz",
   "setData .a/b bat",
   "setCurrent .a c",
 ];
-log(arr2);
 undos = [];
-result = machine.interpret(arr2, undos);
-log(`isEqual = ${machine.isEqual(copy)}`);
-err(result);
+result = machine.interpret(arr2, undos); err(result);
+errDiff(machine.isEqual(copy), false);
+
 log(`---- executing undos`);
-result = machine.interpret(undos);
-err(result);
-log(`isEqual = ${machine.isEqual(copy)}`);
+result = machine.interpret(undos); err(result);
+errDiff(machine.isEqual(copy), true);
 
-
-log(`---- clone`);
-list = [
-  'addLeaf . a',
-  'addLeaf . b',
-  'addLeaf .b . c',
-  'addLeaf .b . d',
-  'addLeaf .b . e',
-  'setData .b.e SomeData0123',
-];
-
-machine = new Machine();
-undos = [];
-for (let i=0; i<list.length; i++) {
-  err(machine.doCommand(list[i], undos));
+function printAll(machine) {
+  machine._paths.forEach( (n, p) => {
+    log(n);
+  });
 }
-machinecopy = machine.clone();
-machine.getAllPaths().forEach( p => {
-  if (! machinecopy.exists(p)) {
-    err(`*** machinecopy does not have path |${p}|`);
-  }
-  if (machine.getState(p).hasOwnProperty("data")) {
-    if (machine.getState(p).data !== machinecopy.getState(p).data) {
-      err(`*** machinecopy |${p}| data does not match`);
-    }
-  }
-});
-machinecopy.getAllPaths().forEach( p => {
-  if (! machine.exists(p)) {
-    err(`*** machine does not have clone's path |${p}|`);
-  }
-});
-
 
 // --------------------------
 

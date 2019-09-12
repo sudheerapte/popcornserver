@@ -2,7 +2,8 @@
 
 class Machine {
   constructor() {
-    this._root = {name: "", parent: "", cc: []};
+    this._root = {name: "", cc: []};
+    this._root.parent = this._root;
     this._paths = new Map();
     this._paths.set("", this._root);
     this.WORDPAT = /^[a-z][a-z0-9-]*$/;
@@ -42,7 +43,7 @@ class Machine {
     const dotPos = p.lastIndexOf(".");
     const slashPos = p.lastIndexOf("/");
     if (dotPos < 0 && slashPos < 0) {
-      return [`has no parent: ${p}`, null];
+      return [null, ""];
     }
     let pos = dotPos;
     if (pos < slashPos) { pos = slashPos; }
@@ -246,17 +247,9 @@ class Machine {
         found = true;
         return;
       }
-      if (s.hasOwnProperty("curr")) {
-        if (s.curr !== machine._paths.get(p).curr) {
-          found = true;
-          return;
-        }
-      }
-      if (s.hasOwnProperty("data")) {
-        if (s.data !== machine._paths.get(p).data) {
-          found = true;
-          return;
-        }
+      if (! stateEqual(s, machine._paths.get(p))) {
+        found = true;
+        return;
       }
     });
     if (found) { return false; }
@@ -267,6 +260,25 @@ class Machine {
       }
     });
     return ! found;
+
+    function stateEqual(s1, s2) {
+      let has1, has2;
+      if (s1.name !== s2.name) { return false; }
+      if (s1.parent.name !== s2.parent.name) { return false; }
+      has1 = s1.hasOwnProperty("cc");
+      has2 = s2.hasOwnProperty("cc");
+      if (has1 !== has2) { return false; }
+      if (has1 && (s1.cc.length !== s2.cc.length)) { return false; }
+      has1 = s1.hasOwnProperty("curr");
+      has2 = s2.hasOwnProperty("curr");
+      if (has1 !== has2) { return false; }
+      if (has1 && (s1.curr !== s2.curr)) { return false; }
+      let d1, d2;
+      d1 = s1.hasOwnProperty("data") ? s1.data : "";
+      d2 = s2.hasOwnProperty("data") ? s2.data : "";
+      if (d1 !== d2) { return false; }
+      return true;
+    }
   }
 
   clone() {
@@ -274,16 +286,24 @@ class Machine {
     // First, make copies of all our states, then fix parent pointers.
     this._paths.forEach( (s, p) => {
       let newState = {};
-      Object.assign(newState, s);
+      newState.name = s.name;
       if (s.hasOwnProperty("cc")) {
         newState.cc = [];
         s.cc.forEach( word => newState.cc.push(word) );
       }
+      if (s.hasOwnProperty("curr")) {
+        newState.curr = s.curr;
+      }
       copy._paths.set(p, newState);
     });
     this._paths.forEach( (s, p) => {
-      let parent = copy._paths.get(this.getParent(p));
-      (copy._paths.get(p)).parent = parent;
+      const result = this.getParent(p);
+      if (result[0]) { console.log(`ERROR: ${result[0]}`); }
+      const pp = result[1];
+      if (! copy._paths.get(pp)) {
+        console.log(`clone: copy does not have |${pp}|`);
+      }
+      copy._paths.get(p).parent = copy._paths.get(pp);
     });
     return copy;
   }
