@@ -2,12 +2,15 @@
 
 class Machine {
   constructor() {
-    this._root = {name: "", cc: []};
+    this._root = {name: ""};
     this._root.parent = this._root;
     this._paths = new Map();
     this._paths.set("", this._root);
     this.WORDPAT = /^[a-z][a-z0-9-]*$/;
+    this.MULTIWORDPAT = /^([a-z][a-z0-9-]*\s*)+$/;
+    this.MULTINUMPAT = /^([+-]?[0-9]+\s*)+$/;
     this.PATHPAT = /^\.[a-z][a-z0-9-/.]*$/;
+    this.DATAPAT = /^=[a-zA-Z0-9+/=]+$/;
   }
   getState(p) { return this._paths.get(p); }
   exists(p) { return this._paths.has(p);  }
@@ -77,7 +80,16 @@ class Machine {
     let value = "";
     let node = this.getState(p);
     if (node.hasOwnProperty("data")) { value = node.data; }
-    return [null, value];
+    if (value === '') {
+      return [null, value];
+    } else if (value.match(this.DATAPAT)) {
+      return [null, value];
+    } else if (value.match(this.MULTIWORDPAT) ||
+               value.match(this.MULTINUMPAT)) {
+      return [null, value];
+    } else {
+      return [`getData: internal error: bad value`, null];
+    }
   }
 
   // ------------- data encoding
@@ -347,7 +359,10 @@ class Machine {
     // setData
     args = getArgs(str, "setData");
     let spacePos;
-    if (args && args.length !== 0) {
+    if (args) {
+      if (args.trim().length === 0) {
+        return this.setData("", "", undos);
+      }
       spacePos = args.indexOf(' ');
       if (spacePos < 0) {
         if (! args.match(this.PATHPAT)) {
@@ -357,7 +372,15 @@ class Machine {
       }
       const p = args.slice(0, spacePos);
       const data = args.slice(spacePos+1);
-      return this.setData(p, data, undos);
+      if (data.match(this.DATAPAT)) {
+        return this.setData(p, data, undos);
+      } else if (data.match(this.MULTIWORDPAT) ||
+                 data.match(this.MULTINUMPAT)) {
+        const b64 = Buffer.from(data).toString('base64');
+        return this.setData(p, '=' + b64, undos);
+      } else {
+        return `setData: bad value: |${data}|`;
+      }
     }
 
     // setCurrent
@@ -382,6 +405,8 @@ class Machine {
     return `bad command: ${str}`;
 
     // getArgs() - match the given command followed by args.
+    // return the portion after leading spaces, or
+    // return an empty string "" if nothing follows the command.
     function getArgs(str, command) {
       const pat = new RegExp(`^${command}\\s+(.+)$`);
       // console.log(`pat = ${pat}`);

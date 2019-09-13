@@ -136,10 +136,38 @@ Assigns the data ``STRING`` to the existing leaf state ``P``.
 
 .. sidebar:: setData Errors
 
-   not a leaf; bad string format
+   not a leaf; bad path; bad value
 
-If ``P`` already had a different data string assigned to it, then
-this command prepends a ``setData`` command to restore that value.
+If ``P`` already had a different data string assigned to it, then this
+command prepends a ``setData`` command to the undo list, to restore
+that value.
+
+Format of setData string
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The data string can be any bytes converted to Base64 format per RFC
+4648 Section 4, preceded by an ``=`` sign. For example, the Base64
+conversion of the bytes ``foo`` is ``Zm9v``, so the setData
+command would be::
+
+  setData .a.b =Zm9v
+
+Alternatively, there are two special formats for the ``setData``
+command for common cases:
+
+- when the value is one or more *words* separated by spaces, you can
+  just write them directly on the rest of the line. For example, if
+  the value is ``foo`` or ``foo bar``::
+
+    setData .a.b foo
+    setData .a.b foo bar
+  
+- when the value is one or more *numbers* separated by spaces, you can
+  just write them directly on the rest of the line::
+
+    setData .a.b 123
+    setData .a.b 123 456
+
 
 
 

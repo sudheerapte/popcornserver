@@ -10,6 +10,26 @@ let list, copy;
 let result;
 let undos;
 
+log(`---- setData`);
+machine = new Machine();
+undos = [];
+machine.addLeaf("", ".", "a");
+list = [
+  { data: `.a`,             result: null },
+  { data: `.a abc-1 abc-2`, result: null },
+  { data: `.a 123 456`,     result: null },
+  { data: `.a 123a 456`,    result: "setData: bad value: |123a 456|"},
+  { data: `.a 122`,            result: null },
+  { data: `.a word`,           result: null },
+];
+
+for (let i=0; i<list.length; i++) {
+  const entry = list[i];
+  result = machine.doCommand("setData " + entry.data);
+  errDiff(result, entry.result);
+}
+
+
 log(`---- clone test`);
 
 list = [
@@ -68,8 +88,6 @@ list = [
   'addLeaf .a . f',
 ];
 
-
-
 machine = new Machine();
 undos = [];
 for (let i=0; i<list.length; i++) {
@@ -119,7 +137,7 @@ if (! result.match(/^not an alt/)) {
 machine = new Machine();
 undos = [];
 result = machine.doCommand("addLeaf . a", undos); err(result);
-result = machine.doCommand("setData .a fooBar", undos); err(result);
+result = machine.doCommand("setData .a =fooBar", undos); err(result);
 result = machine.doCommand("addLeaf .a . b", undos);
 if (! result.match(/^parent has data/)) {
   err(`*** did not get 'parent has data' error: got |${result}|`);
@@ -192,22 +210,6 @@ errDiff(machine.getCurrent(".a")[1], "c");
 // Try bad current child
 result = machine.doCommand("setCurrent .a foo");
 errDiff(result, "no such child: foo");
-
-log(`---- setData`);
-machine = new Machine();
-undos = [];
-result = machine.doCommand("addLeaf . a", undos); err(result);
-result = machine.doCommand("addLeaf .a / b", undos); err(result);
-result = machine.doCommand("setData .a/b foo bar"); err(result);
-err(machine.getData(".a/b")[0]);
-errDiff(machine.getData(".a/b")[1], "foo bar");
-errDiff(machine.getData(".a")[0], "not a leaf: .a");
-result = machine.doCommand("setData .a/b baz", undos); err(result);
-errDiff(undos[0], "setData .a/b foo bar");
-errDiff(machine.getData(".a/b")[1], "baz");
-result = machine.doCommand("setData .a/b bat", undos); err(result);
-errDiff(undos[0], "setData .a/b baz");
-errDiff(machine.getData(".a/b")[1], "bat");
 
 log(`---- interpret`);
 machine = new Machine();
