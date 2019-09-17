@@ -10,9 +10,11 @@ mkdir ~/.popcorn
   "httpHost": "0.0.0.0",
   "httpPort": "8000",
   "machineDirs": {
-    "fliesdemo": "%U/.popcorn/fliesdemo"
+    "fliesdemo": "%U/.popcorn/fliesdemo",
+    "uidemo": "%U/.popcorn/uidemo"
   },
   "appPort": "8001"
 }
 EOF
 ${here}/composeflies
+${here}/composeuidemo

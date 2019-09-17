@@ -1,0 +1,32 @@
+#!/bin/sh
+# Called from initialize to produce uidemo-index.html from assets
+die() { echo $@ ; exit 1; }
+[ -d ~/.popcorn ] || die No popcorn dir ~/.popcorn
+grep -q uidemo ~/.popcorn/options.json ||
+    die "options.json does not contain uidemo"
+htmlfile=~/.popcorn/uidemo/uidemo-index.html
+mkdir -p ~/.popcorn/uidemo &&
+    rm -f ${htmlfile}
+<< 'EOF' cat > ${htmlfile} && echo Created uidemo-index.html
+<html>
+  <meta charset='utf-8'>
+  <head><title>UI Demo</title>
+    <style>
+      div { width: 640px; background: lightyellow; }
+    </style>
+</head>
+  <body>
+    <script id="provide" type="text/plain">
+      P .board.a/fly2
+    </script>
+    <script id="init" type="text/plain">
+      P .loc.a.x
+    </script>
+    <script id="render" type="text/plain">
+    </script>
+    <div>
+    Hello! This is a UI demo.
+    </div>
+  </body>
+</html>
+EOF
