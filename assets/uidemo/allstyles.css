@@ -5,21 +5,28 @@ body {
     margin: 0;
 }
 header {
-    background: purple;
-    height: 100px;
+    background: lightblue;
+    text-align: center;
 }
 h1 {
     text-align: center;
-    color: white;
-    line-height: 100px;
+    line-height: 20px;
     margin: 0;
 }
 article {
     padding: 10px;
-    margin: 10px;
-    background: aqua;
+    margin: 5px;
+    background: lightblue;
 }
+
+/*
+article:nth-of-type(3) {
+    flex: 100px;
+}
+*/
 
 section {
     display: flex;
+    align-items: stretch;
+    justify-content: space-around;
 }
