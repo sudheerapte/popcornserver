@@ -7,4 +7,6 @@ die() { echo $@; exit 1; }
 
 cd ${here}/.. &&
    sphinx-build -b html -a doc doc/_build &&
-   readlink -f doc/_build
+   readlink -f doc/_build &&
+   sphinx-build -b html -a ddoc ddoc/_build &&
+   readlink -f ddoc/_build

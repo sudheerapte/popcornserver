@@ -9,6 +9,8 @@ class Propagator {
     this.mc = machine;
     this.t = tokenizer;
     this.log = logfunc ? logfunc : console.log;
+    this._commands = {};
+    this.addBasicCommandSet();
     this.evalFunc = this.getEvalFunc(this.mc);
   }
 
@@ -504,38 +506,14 @@ class Propagator {
   // This function substitutes that token wherever a COMMAND with that
   // capitalized name is found, and then evaluates the entire input string.
   evalBlockVars(todo, varContext) {
-    const varFunc = this.getEvalFuncVarContext(varContext);
-    return todo.map( formula => {
-      if (!formula) {
-        this.log(`evalBlock: formula is null`);
-        return "";
-      }
-      let result = this.t.process(formula, varFunc);
-      if (result[0]) {
-        this.log(`evalBlockVars: ${formula}: ${result[0]}`);
-        return "";
-      } else if (! result[1]) {
-        this.log(`evalBlockVars: ${formula}: falsy result`);
-        return "";
-      } else {
-        return result[1];
-      }
-    });
+    return this.evalBlock(todo, this.getEvalFuncVarContext(varContext));
   }
 
   // getEvalFunc - return a function suitable to pass in to
   // this.t.process().
 
   getEvalFunc() {
-    return (tokens => {
-      const eResult = this.evaluate(tokens);
-      if (! eResult) {
-        this.log(`--------- evaluate returned null!`);
-        this.log(JSON.stringify(tokens));
-      }
-      if (eResult[0]) { return eResult; }
-      return [ null, eResult[1] ];
-    });
+    return (tokens => this.evaluate(tokens));
   }
 
   // getEvalFuncVarContext - return a function suitable to pass in to
@@ -571,69 +549,106 @@ class Propagator {
     if (tokenArray.length === 1) {
       return [ null, tokenArray[0] ];
     }
-    let i = tokenArray.findIndex( tok => tok.name === 'BEGIN' );
-    if (i >= 0) {
-      let j = tokenArray.slice(i).findIndex( tok => tok.name === 'END' );
-      if (j >= 0) {
-        let subEval = this.evaluate(tokenArray.slice(i+1, i+j));
-        if (subEval[0]) { // error
-          return subEval;
-        } else {
-          let newArray = tokenArray.slice(0, i);
-          // subEval could be single token or an array
-          if (subEval[1].hasOwnProperty('length')) {
-            subEval[1].forEach( tok => newArray.push(tok) );
-          } else {
-            newArray.push(subEval[1]);
-          }
-          tokenArray.slice(i+j+1, tokenArray.length)
-            .forEach( tok => newArray.push(tok));
-          return this.evaluate(newArray);
+    // Look for macros; find innermost macro.
+    let [b, e] = this.innerBeginEnd(tokenArray);
+
+    if (b < 0 && e < 0) { // No macros found.
+      if (tokenArray[0].name === 'COMMAND') {
+        const rec = this._commands[tokenArray[0].value];
+        if (rec) {
+          return rec.fn(tokenArray.slice(1));
+        } else { // anything else evaluates as itself.
+          this.log(`No such command: ${tokenArray[0].value}`);
+          return [null, tokenArray];
         }
-      } else {
-        return [`BEGIN without END`, null];
       }
+    }
+    if (b >= 0 && e >= 0) {
+      // Expand innermost macro and re-evaluate
+      let subEval = this.evaluate(tokenArray.slice(b+1, e));
+      if (subEval[0]) { // error
+        return subEval;
+      } else {
+        let newArray = tokenArray.slice(0, b);
+        // subEval could be single token or an array
+        if (subEval[1].hasOwnProperty('length')) {
+          subEval[1].forEach( tok => newArray.push(tok) );
+        } else {
+          newArray.push(subEval[1]);
+        }
+        tokenArray.slice(e+1, tokenArray.length)
+          .forEach( tok => newArray.push(tok));
+        return this.evaluate(newArray);
+      }
+    }
+    if (e < 0) {
+      return [`BEGIN without END`, tokenArray];
     }
 
-    if (tokenArray[0].name === 'BEGIN' && tokenArray[tokenArray.length-1] === 'END') {
-      return this.evaluate(tokenArray.slice(1, tokenArray.length-1));
-    }
-    if (tokenArray[0].name === 'COMMAND') {
-      const result = this.dispatchCommand(tokenArray[0].value, tokenArray.slice(1));
-      if (! result) { // command tokenArray[0] not recognized
-        return [null, tokenArray];
-      } else {
-        return result;
-      }
-    }
   }
 
-  dispatchCommand(cmd, args) {
+  // innerBeginEnd - return [BEGIN, END] indexes
+  // We find the last of the innermost macros in the token array.
+  innerBeginEnd(tokenArray) {
+    for (let i= tokenArray.length-1; i>= 0; i--) {
+      if (tokenArray[i].name === 'END') {
+        for (let j=i; j>= 0; j--) {
+          if (tokenArray[j].name === 'BEGIN') {
+            return [j, i];
+          }
+        }
+        return [-1, i];
+      }
+    }
+    return [-1, -1];
+  }
+
+  /**
+     addBasicCommandSet() - add records for interpreting commands
+     Each record is: { cmd, func(args) }
+     The args are an array of tokens. Func should return [null, result]
+  */
+
+  addBasicCommandSet() {
     const records = [
-      {cmd: 'EXISTS', fn: args => this.existsCmd(args)},
       {cmd: 'CURRENT', fn: args => this.currentCmd(args)},
+      {cmd: 'DATAW', fn: args => this.datawCmd(args)},
       {cmd: 'DATA', fn: args => this.dataCmd(args)},
-      {cmd: 'ALL', fn: args => this.allCmd(args)},
+      {cmd: 'DEF', fn: args => this.defCmd(args)},
+      {cmd: 'DEL', fn: args => this.delCmd(args)},
     ];
-    const rec = records.find(r => r.cmd === cmd);
-    if (rec) {
-      return rec.fn(args);
-    } else {
-      this.log(`dispatchCommand: no such command: ${cmd}`);
-      return null;
-    }
+    this.addCommands(records);
   }
 
+  addCommands(arr) {
+    arr.forEach( rec => this._commands[rec.cmd] = rec );
+  }
 
-  existsCmd(args) {
-    const mPath = this.composePath(args);
-    if (! mPath) {
-      return [ `bad syntax for path: ${this.t.renderTokens(args)}`, null ];
-    }
-    if (this.mc.exists(mPath)) {
-      return [ null, {name: 'NUMBER', value: "1"} ];
+  defCmd(args) {
+    if (this.t.ifNextCommand(args, 0, "CON") ||
+        this.t.ifNextCommand(args, 0, "ALT")) {
+      const type = args[0].value;
+      const sep = type === 'CON' ? '.' : '/';
+      let options = {PARENT: "PATH", CHILDREN: "WORDS"};
+      let result = this.t.parseRequiredTokens(args.slice(1), options);
+      if (result[0]) { return [ `DEF ${type}: ${result[0]}`, args ]; }
+      const struct = result[1];
+      if (type === 'CON' && this.mc.isVariableParent(struct.PARENT)) {
+        return [`DEF CON ${struct.PARENT}: already alt-parent`, args];
+      }
+      if (type === 'ALT' && this.mc.isConcurrentParent(struct.PARENT)) {
+        return [`DEF ALT ${struct.PARENT}: already concurrent parent`, args];
+      }
+      const children = struct.CHILDREN;
+      let arr =  children.map(child => `P ${struct.PARENT}${sep}${child}`);
+      result = this.mc.interpret(arr);
+      if (result) {
+        return [`DEF ${type} ${struct.PARENT}: ${result}`, args];
+      } else {
+        return [null, null];
+      }
     } else {
-      return [ null, {name: 'NUMBER', value: "0"}];
+      return [`DEF: must be either CON or ALT`, args];
     }
   }
 
@@ -641,7 +656,7 @@ class Propagator {
     if (args.length < 1) {
       return [`CURRENT needs at least 1 arg`, null];
     }
-    const mPath = this.composePath(args);
+    const mPath = this.t.composePath(args);
     if (! mPath) {
       return [ `CURRENT: bad syntax for path: ${this.t.renderTokens(args)}`, null ];
     }
@@ -661,13 +676,45 @@ class Propagator {
     }
   }
 
+  datawCmd(args) {
+    if (args.length < 1) {
+      return [`DATAW needs at least 1 arg`, null];
+    }
+    const mPath = this.t.composePath(args);
+    if (! mPath) {
+      return [ `DATAW: bad syntax for path: ${this.t.renderTokens(args)}`,
+               null ];
+    }
+    if (this.mc.exists(mPath)) {
+      if (this.mc.isDataLeaf(mPath)) {
+        const data = this.mc.getData(mPath);
+        if (data) {
+          if (data.trim().match(/^\d+$/)) {
+            return [ null, {name: 'NUMBER', value: data.trim()} ];
+          } else if (data.trim().match(/^[a-z][a-z0-9-]+$/)) {
+            return [ null, {name: 'WORD', value: data.trim()} ];
+          } else {
+            return [ null, {name: 'STRING', value: data} ];
+          }
+        } else {
+          return [ null, {name: 'STRING', value: ""} ];
+        }
+      } else {
+        return [`DATAW: not a data leaf`, null];
+      }
+    } else {
+      return [ `DATAW: no such path: ${mPath}`, null ];
+    }
+  }
+
   dataCmd(args) {
     if (args.length < 1) {
       return [`DATA needs at least 1 arg`, null];
     }
-    const mPath = this.composePath(args);
+    const mPath = this.t.composePath(args);
     if (! mPath) {
-      return [ `DATA: bad syntax for path: ${this.t.renderTokens(args)}`, null ];
+      return [ `DATA: bad syntax for path: ${this.t.renderTokens(args)}`,
+               null ];
     }
     if (this.mc.exists(mPath)) {
       if (this.mc.isDataLeaf(mPath)) {
@@ -685,101 +732,6 @@ class Propagator {
     }
   }
 
-  allCmd(args) {
-    if (args.length < 1) {
-      return [`DATA needs at least 1 arg`, null];
-    }
-    const mPath = this.composePath(args);
-    if (! mPath) {
-      return [ `DATA: bad syntax for path: ${this.t.renderTokens(args)}`, null ];
-    }
-    if (this.mc.exists(mPath)) {
-      if (this.mc.isDataLeaf(mPath)) {
-        const data = this.mc.getData(mPath);
-        if (typeof data === 'string') {
-          return [ null, {name: 'STRING', value: data} ];
-        } else {
-          return [ null, data.map( d => {
-            return {name: 'STRING', value: d};
-          }) ];
-        }
-      } else {
-        return [`DATA: not a data leaf: ${mPath}`, null];
-      }
-    } else {
-      return [ `DATA: no such path: ${mPath}`, null ];
-    }
-  }
-
-  allCmd(args) {
-    const result = this.expandAllConcurrentChildren(args);
-    if (result[0]) {
-      return result;
-    } else { // Build array of tokens from the child names
-      if (result[1].length === 0) { return result; }
-      const arr = [];
-      for (let i=0; i< result[1].length-1; i++) {
-        arr.push(result[1][i]);
-        arr.push({name: ',', value: null});
-      }
-      arr.push(result[1][i]);
-      return [null, arr];
-    }
-  }
-
-  expandAllConcurrentChildren(args) {
-    if (args.length < 1) {
-      return [`ALL needs at least 1 arg`, null];
-    }
-    const mPath = this.composePath(args);
-    if (! mPath) {
-      return [ `ALL: bad syntax for path: ${this.t.renderTokens(args)}`, null ];
-    }
-    if (this.mc.exists(mPath)) {
-      if (this.mc.isConcurrentParent(mPath)) {
-        const state = this.mc.getState(mPath);
-        return [null, state.c.map( child => {
-          return {name: 'WORD', value: child};
-        }) ];
-      } else {
-        return [`ALL: not a concurrent parent: ${mPath}`, null];
-      }
-    } else {
-      return [ `ALL: no such path: ${mPath}`, null ];
-    }
-  }
-
-  composePath(args) {
-    if (args.length === 0) {
-      return '';
-    }
-    if (args[0].name !== 'DOT') {
-      return null;
-    }
-    let str = '.';
-    let wantWord = true;
-    for (let i = 1; i< args.length; i++) {
-      if (wantWord) {
-        if (args[i].name !== 'WORD') {
-          return null;
-        } else {
-          str += args[i].value;
-          wantWord = false;
-        }
-      } else {
-        if (args[i].name === 'DOT') {
-          str += '.';
-          wantWord = true;
-        } else if (args[i].name === 'SLASH') {
-          str += '/';
-          wantWord = true;
-        } else {
-          return null;
-        }
-      }
-    }
-    return str;
-  }
 }
 
 module.exports = Propagator;

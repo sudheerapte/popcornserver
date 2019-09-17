@@ -15,52 +15,6 @@
 */
 
 /**
-   This class represents one state machine tree. When you create an
-   instance, it has only the root path "" and is in edit mode.
-
-   External API:
-
-   interpret(array)
-
-   Takes an array of commands called a "block" and executes them all
-   in sequence as a transaction. On error, it returns an error message.
-   On success it returns null.
-
-   Internal representation:
-
-   A parent state can be either:
-   (a) a variable parent, OR
-   (b) a concurrent parent.
-
-   Leaf states can be either:
-   (a) children of a variable parent, OR
-   (b) children of a concurrent parent having a 'data' member.
-
-   All states are represented with a simple Javascript object with
-   two attributes:
-
-     name: the short string name of this state
-     parent: a pointer to the parent state object.
-             (the parent pointer is not present in the root state)
-
-   Leaf states have only the above two members. Parent states have one
-   additional member:
-
-     cc: an array containing the short names of all child states
-
-   In addition, a variable parent state also has a "curr" member,
-   which has the *index* of the current sub-state.  By default, "curr"
-   is set to zero.
-
-   All the states in the machine are indexed by their full path in the
-   STATE_TREE map. The root state's path is always the empty string
-   "", so you can start a traversal by looking up that key.  The value
-   of the key will be a state object, and if it is a parent state,
-   then it will contain its children's short names in "cc".
-
-   Each child state object can be found by appending either a "." or a
-   "/" to the parent's key, and then the child's short name, to form
-   the child's key in the STATE_TREE map.
 
  */
 
@@ -107,6 +61,7 @@ class Machine {
     return this.STATE_TREE.has(path);
   }
 
+
   /**
      @function(interpretOp)
      interpret one line containing a command.
@@ -117,6 +72,7 @@ class Machine {
      P command
      C command
      D command
+     X command - delete leaf path
    */
 
   interpretOp(str) {
@@ -175,6 +131,20 @@ class Machine {
       if (str !== 'E') { return `interpretOp: E command must be standalone`; }
       this.makeEmpty();
       return null;
+    } else if (str.startsWith('X')) {
+      const cdr = str.slice(1).trim();
+      m = cdr.match(Machine.PATHPAT);
+      if (m) {
+        const path = this.normalizePath(cdr);
+        if (path === null) { return `X: bad path: ${path}`; }
+        if (this.isLeaf(path)) {
+          return this._deleteLeaf(path);
+        } else {
+          return `X: path is not leaf: ${path}`;
+        }
+      } else {
+        return `X: bad path string: ${m.slice(1)}`;
+      }
     } else {
       return `interpretOp: ${str}\nbad command: ${str.slice(0,1)}`;
     }
@@ -501,6 +471,70 @@ class Machine {
       if (pos < slashPos) { pos = slashPos; }
       return this._addSubState(path.slice(0,pos), path[pos], path.slice(pos+1));
     }
+  }
+
+  /**
+     @function(_deleteLeaf)
+     Given path is a leaf. Remove it.
+     If the parent has no other children, then parent becomes
+     a data parent.
+     @return null iff successful, else string with error message
+   */
+
+  _deleteLeaf(path) {
+    path = this.normalizePath(path);
+    if (! this.exists(path)) { return null; }
+    let dotPos = path.lastIndexOf(".");
+    let slashPos = path.lastIndexOf("/");
+    if (dotPos < 0 && slashPos < 0) {
+      return `deleteLeaf: bad path: |${path}|`;
+    }
+
+    let pos = dotPos;
+    if (pos < slashPos) { pos = slashPos; }
+    const leafName = path.slice(pos+1);
+    const parent = this.getState(path.slice(0,pos));
+    if (!parent) { return null; }
+
+    // First remove the path from the STATE_TREE map, then modify parent
+    this.STATE_TREE.delete(path);
+
+    // Drop the leaf name from parent
+    const cpos = parent.cc.findIndex(c => c === leafName);
+    parent.cc.splice(cpos, 1);
+
+    // Special case for parent becoming empty
+    if (parent.hasOwnProperty("cc") && parent.cc.length === 0) {
+      delete parent.cc;
+      if (parent.hasOwnProperty("curr")) { delete parent.curr;}
+    }
+    return null;
+  }
+
+  _addLeaf(parent, sep, child) {
+    let p = this.STATE_TREE.get(parent);
+    if (!p) { return `no such path: ${parent}`; }
+    if (! child) { return `empty child`; }
+    child = child.trim().toLowerCase();
+    const fullPath = `${parent}${sep}${child}`;
+    if (this.STATE_TREE.exists(fullPath)) {
+      return `child path already exists: ${fullPath}`;
+    }
+    if (! p["cc"]) { // convert leaf to a parent
+      if (p.hasOwnProperty("data")){
+        if (p[data] && p.data.length > 0) {
+          return `parent has data: ${parent}`;
+        } else {
+          delete p.data;
+        }
+      }
+      p.cc = [ child ];
+      if (sep === '/') { p.curr = 0; }
+    } else { // already a parent -- just add the child
+      p.cc.push(child);
+    }
+    this.STATE_TREE.set(fullPath, {name: child, parent: p});
+    return null;
   }
 
   _addSubState(parentPath, separator, name) {

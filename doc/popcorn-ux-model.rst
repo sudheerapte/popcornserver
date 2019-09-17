@@ -1,3 +1,4 @@
+.. _ux-model:
 
 The Popcorn UX Model
 ====================

@@ -18,6 +18,18 @@ let clauses, sArr, sArr1, sArr2, withClause;
 
 let blocks, temp;
 
+machine = new Machine();
+result = machine.interpret(['P .board']); err(result);
+input = "{{DEF CON PARENT .board CHILDREN a b c d e f g h}}";
+propagator = new Propagator(machine, t, s => log(s));
+result = propagator.process(input);
+log(result);
+
+log(machine);
+
+process.exit(0);
+
+
 initScript = [
   'P .board.a/none',
   'P .board.b/none',
@@ -315,9 +327,9 @@ propagator.runRenderScript(renderScript);
 // log(`DATA .img.fly1 = ${machine.getData(".img.fly1")}`);
 
 checkProcess("{{CURRENT .turn}}", "spider");
-checkProcess("{{DATA .img.fly1}}", "fly");
-checkProcess("{{DATA .img.fly2}}", "fly");
-checkProcess("{{DATA .img.spider}}", "spider-selected");
+checkProcess("{{DATAW .img.fly1}}", "fly");
+checkProcess("{{DATAW .img.fly2}}", "fly");
+checkProcess("{{DATAW .img.spider}}", "spider-selected");
 checkProcess("{{CURRENT .tomove}}", "spider");
 
 log(`---- check for bad path syntax`);
@@ -332,9 +344,10 @@ propagator.runRenderScript(renderScript);
 
 checkProcess("{{CURRENT .turn}}", "flies");
 checkProcess("{{CURRENT .selectedfly}}", "fly1");
-checkProcess("{{DATA .img.fly1}}", "fly-selected");
-checkProcess("{{DATA .img.fly2}}", "fly");
-checkProcess("{{DATA .img.spider}}", "spider");
+checkProcess("{{DATAW .img.fly1}}", "fly-selected");
+checkProcess("{{DATA .img.fly1}}", '"fly-selected"');
+checkProcess("{{DATAW .img.fly2}}", "fly");
+checkProcess("{{DATAW .img.spider}}", "spider");
 checkProcess("{{CURRENT .tomove}}", "fly1");
 
 log(`---- evalBlockVars`);
@@ -348,7 +361,7 @@ propagator = new Propagator(machine, t, (s) => log(s));
   err(result);
 });
 
-checkProcess("{{EXISTS .board.b}}", "1");
+//checkProcess("{{EXISTS .board.b}}", "1");
 checkProcess("{{CURRENT .fly1.position}}", "a");
 checkProcess("{{CURRENT .fly2.position}}", "a");
 

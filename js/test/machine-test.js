@@ -22,6 +22,9 @@ let machine = new Machine();
 let log, err, errDiff;
 [log, err, errDiff] = require('./logerr.js');
 
+let result;
+let delta;
+
 let list = [
   '.boot',
   '.boot/failed',
@@ -46,6 +49,7 @@ let list = [
 
 // --------------------------------------------------------------
 // Section 1:  Direct calls to _addState() - no events generated
+log(`---- addState`);
 list.forEach( path => {
   const result = machine._addState(path);
   err(result);
@@ -90,9 +94,71 @@ if (s.parent.name !== 'booting') {
   err(`bad parent for robot: ${JSON.stringify(s.parent)}`);
 }
 
+// Try deleting a leaf.
+
+log(`---- deleteLeaf`);
+//console.log(s);
+//log(`--- deleting discoveringjcbs`);
+result = machine.interpret(['X .boot/booting.robot/discoveringjcbs']);
+err(result);
+s = machine.getState('.boot/booting.robot');
+//console.log(s);
+errDiff(s.cc.length, 6);
+//log(`--- deleting ready`);
+result = machine.interpret(['X .boot/booting.robot/ready']);
+err(result);
+s = machine.getState('.boot/booting.robot');
+//console.log(s);
+errDiff(s.cc.length, 5);
+
+s = machine.getState('.net.ipv4assign');
+//log(s);
+log(`---- converting alt parent to leaf`);
+result = machine.interpret([
+  'X .net.ipv4assign/static',
+  'X .net.ipv4assign/dhcp',
+]);
+//log(s);
+//log(`---- deleting zeroconf`);
+result = machine.interpret([
+  'X .net.ipv4assign/zeroconf',
+]);
+// log(s);
+//log(`---- setting data to ipv4assign`);
+result = machine.interpret([
+  'D .net.ipv4assign foo',
+]);
+err(result);
+// log(s);
+
+// --------------------------------------------------------------
+log(`---- createLeafDelta`);
+machine = new Machine();
+delta = {delta: [], undo: []};
+result = machine.createChildDelta("", ".", "a", delta);
+err(result);
+//log(JSON.stringify(delta));
+result = machine.createChildDelta(".a", ".", "b", delta);
+err(result);
+result = machine.createChildDelta(".a", "/", "foo", delta);
+log(`tried adding /foo and failed: result`);
+const m = result.match(/^not/);
+log(m);
+if (m === null) { err(result); }
+log(`--- done with adding`);
+errDiff(delta.delta.length, 1);
+errDiff(delta.delta.length, 2);
+result = machine.interpret(delta.delta);
+err(result);
+errDiff(machine.getAllPaths().length, 2);
+
+process.exit(0);
+
+
 // --------------------------------------------------------------
 // interpret()
 
+log(`---- interpreting`);
 // interpret once
 machine = new Machine();
 let gotNewMachineEvent = false;
@@ -306,6 +372,7 @@ err(dataValues[2] === '');
 err(dataValues[3] === 'baz');
 
 // getSerialization - serialization must preserve paths
+log(`---- getSerialization`);
 checkSerialTransfer(machine);
 r9 = machine.interpret(['P .j/l', 'C .j l']); err(r9);
 checkSerialTransfer(machine);

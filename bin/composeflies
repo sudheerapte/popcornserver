@@ -199,38 +199,38 @@ s/^[[:space:]]\+height\=.\+$/   height=\"150\"\n   x=\"-105\"\n   y=\"-75\"/' as
         <path d="M 200 300 V 700 H 800 V 300" />
       </g>
       <g id="drawspots">
-        <use data-href="#{{DATA .img.{{CURRENT .board.a}}}}"
+        <use data-href="#{{DATAW .img.{{CURRENT .board.a}}}}"
              data-cmdclick="move {{CURRENT .tomove}} a"
              data-chgclick="C .selectedfly {{CURRENT .board.a}}"
-             data-x="{{DATA .loc.a.x}}" data-y="{{DATA .loc.a.y}}"/>
-        <use data-href="#{{DATA .img.{{CURRENT .board.b}}}}"
+             data-x="{{DATAW .loc.a.x}}" data-y="{{DATAW .loc.a.y}}"/>
+        <use data-href="#{{DATAW .img.{{CURRENT .board.b}}}}"
              data-cmdclick="move {{CURRENT .tomove}} b"
              data-chgclick="C .selectedfly {{CURRENT .board.b}}"
-             data-x="{{DATA .loc.b.x}}" data-y="{{DATA .loc.b.y}}"/>
-        <use data-href="#{{DATA .img.{{CURRENT .board.c}}}}"
+             data-x="{{DATAW .loc.b.x}}" data-y="{{DATAW .loc.b.y}}"/>
+        <use data-href="#{{DATAW .img.{{CURRENT .board.c}}}}"
              data-cmdclick="move {{CURRENT .tomove}} c"
              data-chgclick="C .selectedfly {{CURRENT .board.c}}"
-             data-x="{{DATA .loc.c.x}}" data-y="{{DATA .loc.c.y}}"/>
-        <use data-href="#{{DATA .img.{{CURRENT .board.d}}}}"
+             data-x="{{DATAW .loc.c.x}}" data-y="{{DATAW .loc.c.y}}"/>
+        <use data-href="#{{DATAW .img.{{CURRENT .board.d}}}}"
              data-cmdclick="move {{CURRENT .tomove}} d"
              data-chgclick="C .selectedfly {{CURRENT .board.d}}"
-             data-x="{{DATA .loc.d.x}}" data-y="{{DATA .loc.d.y}}"/>
-        <use data-href="#{{DATA .img.{{CURRENT .board.e}}}}"
+             data-x="{{DATAW .loc.d.x}}" data-y="{{DATAW .loc.d.y}}"/>
+        <use data-href="#{{DATAW .img.{{CURRENT .board.e}}}}"
              data-cmdclick="move {{CURRENT .tomove}} e"
              data-chgclick="C .selectedfly {{CURRENT .board.e}}"
-             data-x="{{DATA .loc.e.x}}" data-y="{{DATA .loc.e.y}}"/>
-        <use data-href="#{{DATA .img.{{CURRENT .board.f}}}}"
+             data-x="{{DATAW .loc.e.x}}" data-y="{{DATAW .loc.e.y}}"/>
+        <use data-href="#{{DATAW .img.{{CURRENT .board.f}}}}"
              data-cmdclick="move {{CURRENT .tomove}} f"
              data-chgclick="C .selectedfly {{CURRENT .board.f}}"
-             data-x="{{DATA .loc.f.x}}" data-y="{{DATA .loc.f.y}}"/>
-        <use data-href="#{{DATA .img.{{CURRENT .board.g}}}}"
+             data-x="{{DATAW .loc.f.x}}" data-y="{{DATAW .loc.f.y}}"/>
+        <use data-href="#{{DATAW .img.{{CURRENT .board.g}}}}"
              data-cmdclick="move {{CURRENT .tomove}} g"
              data-chgclick="C .selectedfly {{CURRENT .board.g}}"
-             data-x="{{DATA .loc.g.x}}" data-y="{{DATA .loc.g.y}}"/>
-        <use data-href="#{{DATA .img.{{CURRENT .board.h}}}}"
+             data-x="{{DATAW .loc.g.x}}" data-y="{{DATAW .loc.g.y}}"/>
+        <use data-href="#{{DATAW .img.{{CURRENT .board.h}}}}"
              data-cmdclick="move {{CURRENT .tomove}} h"
              data-chgclick="C .selectedfly {{CURRENT .board.h}}"
-             data-x="{{DATA .loc.h.x}}" data-y="{{DATA .loc.h.y}}"/>
+             data-x="{{DATAW .loc.h.x}}" data-y="{{DATAW .loc.h.y}}"/>
       </g>
     </svg>
     </div>
