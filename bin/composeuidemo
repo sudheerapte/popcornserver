@@ -9,34 +9,9 @@ grep -q uidemo ~/.popcorn/options.json ||
 htmlfile=~/.popcorn/uidemo/uidemo-index.html
 mkdir -p ~/.popcorn/uidemo &&
     rm -f ${htmlfile}
-<< 'EOF' cat > ${htmlfile} && echo Created uidemo-index.html
-<html>
-  <meta charset='utf-8'>
-  <head><title>UI Demo</title>
-  <link rel="stylesheet" href="allstyles.css">
-</head>
-  <body>
-    <script id="provide" type="text/plain">
-      P .board.a/fly2
-    </script>
-    <script id="init" type="text/plain">
-      P .loc.a.x
-    </script>
-    <script id="render" type="text/plain">
-    </script>
-    <section>
-    <article>
-    Hello! This is a UI demo.
-    </article>
-    <article>
-    Hello! This is a UI demo.
-    </article>
-    <article>
-    Hello! This is a UI demo.
-    </article>
-    </section>
-  </body>
-</html>
-EOF
-cp ${here}/../assets/uidemo-allstyles.css ~/.popcorn/uidemo/allstyles.css &&
+assets=$(readlink -f ${here}/../assets )
+machine=$(readlink -f ~/.popcorn/uidemo)
+cp ${assets}/uidemo-index.html ${machine} &&
+    echo Created uidemo-index.html
+cp ${assets}/uidemo-allstyles.css ${machine}/allstyles.css &&
     echo Copied uidemo CSS
