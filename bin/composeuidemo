@@ -6,12 +6,6 @@ die() { echo $@ ; exit 1; }
 [ -d ~/.popcorn ] || die No popcorn dir ~/.popcorn
 grep -q uidemo ~/.popcorn/options.json ||
     die "options.json does not contain uidemo"
-htmlfile=~/.popcorn/uidemo/uidemo-index.html
-mkdir -p ~/.popcorn/uidemo &&
-    rm -f ${htmlfile}
 assets=$(readlink -f ${here}/../assets )
-machine=$(readlink -f ~/.popcorn/uidemo)
-cp ${assets}/uidemo-index.html ${machine} &&
-    echo Created uidemo-index.html
-cp ${assets}/uidemo-allstyles.css ${machine}/allstyles.css &&
-    echo Copied uidemo CSS
+cp -r ${assets}/uidemo ~/.popcorn &&
+    echo copied uidemo assets
