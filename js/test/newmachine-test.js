@@ -15,18 +15,22 @@ machine = new Machine();
 undos = [];
 machine.addLeaf("", ".", "a");
 list = [
-  { data: `.a`,             result: null },
-  { data: `.a abc-1 abc-2`, result: null },
-  { data: `.a 123 456`,     result: null },
-  { data: `.a 123a 456`,    result: "setData: bad value: |123a 456|"},
-  { data: `.a 122`,            result: null },
-  { data: `.a word`,           result: null },
+  { data: "",            result: null, undo: undefined },
+  { data: "",            result: null, undo: undefined },
+  { data: `abc-1 abc-2`, result: null, undo: "setData .a" },
+  { data: ``,            result: null, undo: "setData .a abc-1 abc-2" },
+  { data: `123 456`,     result: null, undo: "setData .a" },
+  { data: `123a 456`,    result: "setData: bad value: |123a 456|", undo: undefined},
+  { data: `122`,         result: null, undo: "setData .a 123 456" },
+  { data: `word`,        result: null, undo: "setData .a 122" },
 ];
 
 for (let i=0; i<list.length; i++) {
   const entry = list[i];
-  result = machine.doCommand("setData " + entry.data);
+  const undos = [];
+  result = machine.doCommand("setData .a " + entry.data, undos);
   errDiff(result, entry.result);
+  errDiff(undos[0], entry.undo);
 }
 
 

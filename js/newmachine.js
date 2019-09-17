@@ -214,23 +214,41 @@ class Machine {
     undos.unshift(`setCurrent ${p} ${node.cc[oldCurr]}`);
     return null;
   }
+  /**
+     setData
+   */
   setData(p, d, undos) {
     if (! undos) { undos = []; }
     if (! this.isLeaf(p)) { return `not a leaf: ${p}`; }
-    if (typeof d !== 'string') { return `not a string: ${d}`; }
     const node = this.getState(p);
-    if (node.hasOwnProperty("data") && node.data.length > 0) {
-      if (node.data === d) {
-        return null;
-      } else {
+    if (! d || d === "") {
+      if (node.hasOwnProperty("data")) {
         undos.unshift(`setData ${p} ${node.data}`);
-        node.data = d;
+        delete node.data;
       }
-    } else {
-      node.data = d;
-      undos.unshift(`setData ${p}`);
+      return null;
     }
-    return null;
+    if (typeof d !== 'string') { return `not a string: ${d}`; }
+    // the node data member, if defined, must have one of the
+    // three forms MULTINUMPAT, MULTIWORDPAT, or DATAPAT.
+    if (d.match(this.MULTIWORDPAT) ||
+        d.match(this.MULTINUMPAT) ||
+        d.match(this.DATAPAT)) {
+      if (node.hasOwnProperty("data")) {
+        if (node.data === d) {
+          return null;
+        } else {
+          undos.unshift(`setData ${p} ${node.data}`);
+          node.data = d;
+        }
+      } else {
+        node.data = d;
+        undos.unshift(`setData ${p}`);
+      }
+      return null;
+    } else {
+      return `bad data format: |${d}|`;
+    }
   }
 
   // --------------------- queries: getAllPaths, getCurrentPaths
