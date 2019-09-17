@@ -120,6 +120,7 @@ class Server extends EventEmitter {
 	  res.write(chunk);
 	});
 	str.on('end', () => {
+          log(`sent ${filePath}`);
 	  res.end();
 	});
 	str.on('error', msg => {
@@ -231,8 +232,8 @@ function isOneWord(urlPath) {
 
 function getIndexHtml(req, res, machine) {
   sendIndexWithReplacement(req, res, machine)
-    .then( () => log(`sent index.html`) )
-    .catch( errMsg => log(`failed sending index.html: ${errMsg}`) );
+    .then( () => log(`sent machine ${machine}`) )
+    .catch( errMsg => log(`failed sending machine ${machine}: ${errMsg}`) );
 }
 
 function sendIndexWithReplacement(req, res, machine) {
