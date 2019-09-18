@@ -23,11 +23,10 @@ result = machine.interpret(['P .board']); err(result);
 input = "{{DEF CON PARENT .board CHILDREN a b c d e f g h}}";
 propagator = new Propagator(machine, t, s => log(s));
 result = propagator.process(input);
-log(result);
+err(result);
+//log(result);
 
-log(machine);
-
-process.exit(0);
+//log(machine);
 
 
 initScript = [

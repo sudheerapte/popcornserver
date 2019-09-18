@@ -29,10 +29,18 @@ class Propagator {
     blocks.forEach( block => {
       const lines = this.unrollBlock(block);
       if (Array.isArray(lines)) {
-        const result = this.mc.interpret(lines);
-        if (result) {
-          if (errMsg.length > 0) { errMsg += '\n'; }
-          errMsg += `${block.header}: interpret error: ${result}`;
+        for (let i=0; i<lines.length; i++) {
+          const result = this.process(lines[i]);
+          if (result[0]) {
+            errMsg += `|${lines[i]}| => ${result[0]}\n`;
+          } else {
+            if (result[1] && result[1].length > 0) {
+              const iResult = this.mc.interpret([ result[1] ]);
+              if (iResult) {
+                errMsg += `|${lines[i]}| => |${result[1]}| => ${iResult}\n`;
+              }
+            }
+          }
         }
       } else {
         if (errMsg.length > 0) { errMsg += '\n'; }
