@@ -8,15 +8,17 @@ header {
     background: lightblue;
     text-align: center;
 }
-h1 {
+.button {
     text-align: center;
     line-height: 20px;
     margin: 0;
 }
+.radioset {
+}
 article {
     padding: 10px;
     margin: 5px;
-    background: lightblue;
+    background: khaki;
 }
 
 /*

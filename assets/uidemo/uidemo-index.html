@@ -17,13 +17,31 @@
       </header>
     <section>
         <article>
-          <h1>Button 1</h1>
+          <label for="text">Text 4-8 characters:</label>
+          <input name="text" type="text" id="text"
+                 class="text"
+                 minlength="4" maxlength="8" size="10">
+          </input>
         </article>
         <article>
-          <h1>Button 2</h1>
+          <fieldset class="radioset"><legend>Choose a radio:</legend>
+          <input type="radio" name="radio1" class="radio1" id="radio1"
+                 value="radio1">
+          <label for="radio1">Radio1</label>
+          <input type="radio" name="radio2" class="radio2" id="radio2"
+                 value="radio2">
+          <label for="radio2">Radio2</label>
+          <input type="radio" name="radio3" class="radio3" id="radio3"
+                 value="radio3">
+          <label for="radio3">Radio3</label>
+          </fieldset>
         </article>
         <article>
-          <h1>Button 3</h1>
+          <button name="button" type="button"
+                  class="button"
+                  data-handle-click="">
+                  <b>Button</b>
+          </button>
         </article>
     </section>
   </body>
