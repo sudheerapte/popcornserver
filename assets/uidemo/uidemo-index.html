@@ -5,18 +5,34 @@
 </head>
   <body>
     <script id="provide" type="text/plain">
-      P .board.a/fly2
     </script>
     <script id="init" type="text/plain">
-      P .loc.a.x
+      P .tab/t1/radio1
+      P .tab/t1/radio2
+      P .tab/t1/radio3
+      P .tab/t2.text2
+      P .tab/t3.text3
     </script>
     <script id="render" type="text/plain">
+      ATTACH TYPE click HANDLER tab-pressed SELECT "#t1"
+      ATTACH TYPE click HANDLER tab-pressed SELECT "#t2"
+      ATTACH TYPE click HANDLER tab-pressed SELECT "#t3"
+      ATTACH TYPE click HANDLER radio-pressed SELECT "#radioset"
+      WITH CURRENT .tab/t1 BEGIN
+        
+      END
+    </script>
+    <script id="mode" type="text/plain">
+      [tab-pressed]
+      SET CURRENT .tab {{TARGET}}
+      [radio-pressed]
+      SET CURRENT .tab/t1 {{TARGET}}
     </script>
       <header>
         Hello! This is a UI demo.
       </header>
     <section>
-        <article>
+        <article hidden="">
           <label for="text">Text 4-8 characters:</label>
           <input name="text" type="text" id="text"
                  class="text"
@@ -24,14 +40,23 @@
           </input>
         </article>
         <article>
-          <fieldset class="radioset"><legend>Choose a radio:</legend>
-          <input type="radio" name="radio1" class="radio1" id="radio1"
+          <button name="tab1" type="button" id="tab1button">
+            <b>Tab 1</b></button>
+          <button name="tab2" type="button" id="tab1button">
+            <b>Tab 2</b></button>
+          <button name="tab3" type="button" id="tab1button">
+            <b>Tab 3</b></button>
+        </article>
+        <article>
+          <fieldset class="radioset" id="radioset">
+            <legend>Choose a radio:</legend>
+          <input type="radio" name="radiog" class="radio1" id="radio1"
                  value="radio1">
           <label for="radio1">Radio1</label>
-          <input type="radio" name="radio2" class="radio2" id="radio2"
+          <input type="radio" name="radiog" class="radio2" id="radio2"
                  value="radio2">
           <label for="radio2">Radio2</label>
-          <input type="radio" name="radio3" class="radio3" id="radio3"
+          <input type="radio" name="radiog" class="radio3" id="radio3"
                  value="radio3">
           <label for="radio3">Radio3</label>
           </fieldset>

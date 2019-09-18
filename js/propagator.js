@@ -616,6 +616,8 @@ class Propagator {
       {cmd: 'DATA', fn: args => this.dataCmd(args)},
       {cmd: 'DEF', fn: args => this.defCmd(args)},
       {cmd: 'DEL', fn: args => this.delCmd(args)},
+
+      {cmd: 'ATTACH', fn: args => this.attachCmd(args)},
     ];
     this.addCommands(records);
   }
@@ -731,6 +733,25 @@ class Propagator {
       return [ `DATA: no such path: ${mPath}`, null ];
     }
   }
+
+  attachCmd(args) {
+    if (args.length < 1) {
+      return [`ATTACH needs at least 1 arg`, null];
+    }
+    return null;
+  }
+
+  /*
+    TODO: use this kidn of logic to build ATTACH command
+
+    if (this.t.ifNextCommand(args, 0, "CON") ||
+        this.t.ifNextCommand(args, 0, "ALT")) {
+      const type = args[0].value;
+      const sep = type === 'CON' ? '.' : '/';
+      let options = {PARENT: "PATH", CHILDREN: "WORDS"};
+      let result = this.t.parseRequiredTokens(args.slice(1), options);
+      if (result[0]) { return [ `DEF ${type}: ${result[0]}`, args ]; }
+  */
 
 }
 

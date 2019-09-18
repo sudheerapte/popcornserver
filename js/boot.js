@@ -72,6 +72,7 @@ function runScript(name) {
     const lines = str.split(/\n|\r\n/)
           .filter(line => ! line.match(/^\s*$/))
           .map(line => line.trim());
+    // console.log(`script ${name}: ${lines.length} lines`);
     result = P.propagator.runRenderScript(lines);
     if (result) {
       console.log(`script ${name} error:\n${result}`);
