@@ -30,16 +30,11 @@ class Propagator {
       const lines = this.unrollBlock(block);
       if (Array.isArray(lines)) {
         for (let i=0; i<lines.length; i++) {
-          const result = this.process(lines[i]);
+          const result = this.process(`{{${lines[i]}}}`);
           if (result[0]) {
-            errMsg += `|${lines[i]}| => ${result[0]}\n`;
+            errMsg += `ERROR: |${lines[i]}| => ${result[0]}\n`;
           } else {
-            if (result[1] && result[1].length > 0) {
-              const iResult = this.mc.interpret([ result[1] ]);
-              if (iResult) {
-                errMsg += `|${lines[i]}| => |${result[1]}| => ${iResult}\n`;
-              }
-            }
+            // errMsg += `OK: |${lines[i]}| => |${result[1]}|\n`;
           }
         }
       } else {
@@ -623,6 +618,7 @@ class Propagator {
       {cmd: 'DATAW', fn: args => this.datawCmd(args)},
       {cmd: 'DATA', fn: args => this.dataCmd(args)},
       {cmd: 'DEF', fn: args => this.defCmd(args)},
+      {cmd: 'SET', fn: args => this.setCmd(args)},
       {cmd: 'DEL', fn: args => this.delCmd(args)},
 
       {cmd: 'ATTACH', fn: args => this.attachCmd(args)},
@@ -659,6 +655,42 @@ class Propagator {
       }
     } else {
       return [`DEF: must be either CON or ALT`, args];
+    }
+  }
+
+  setCmd(args) {
+    if (this.t.ifNextCommand(args, 0, "DATAW")) {
+      let options = {PATH: "PATH", DATA: "WORD"};
+      let result = this.t.parseRequiredTokens(args.slice(1), options);
+      if (result[0]) { return [ `SET DATAW: ${result[0]}`, args ]; }
+      const struct = result[1];
+      if (! this.mc.isLeaf(struct.PATH)) {
+        return [`SET DATAW ${struct.PATH}: not a leaf`, args];
+      } else if (! this.mc.isDataLeaf(struct.PATH)) {
+        return [`SET DATAW ${struct.PATH}: not a data leaf`, args];
+      }
+      result = this.mc.interpretOp(`D ${struct.PATH} ${struct.DATA}`);
+      if (result) {
+        return [`SET DATAW ${struct.PATH}: ${result}`, args];
+      } else {
+        return [null, null];
+      }
+    } else if (this.t.ifNextCommand(args, 0, "CURRENT")) {
+      let options = {PARENT: "PATH", CHILD: "WORD"};
+      let result = this.t.parseRequiredTokens(args.slice(1), options);
+      if (result[0]) { return [ `SET CURRENT: ${result[0]}`, args ]; }
+      const struct = result[1];
+      if (this.mc.isConcurrentParent(struct.PARENT)) {
+        return [`SET CURRENT ${struct.PARENT} is con parent`, args];
+      }
+      const word = struct.WORD;
+      result = this.mc.interpretOp(`C ${struct.PARENT} ${struct.CHILD}`);
+      if (result) {
+        return [`SET CURRENT ${struct.PARENT}: ${result}`, args];
+      } else {
+        return [null, null];
+      }
+      return [`SET: must be DATAW or CURRENT`, args];
     }
   }
 

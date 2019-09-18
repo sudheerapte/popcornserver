@@ -63,7 +63,6 @@ function sendProvide() {
   }
 }
 
-
 function runScript(name) {
   let result = null;
   const script = document.querySelector(`script#${name}`);

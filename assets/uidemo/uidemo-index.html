@@ -7,11 +7,9 @@
     <script id="provide" type="text/plain">
     </script>
     <script id="init" type="text/plain">
-      P .tab/t1/radio1
-      P .tab/t1/radio2
-      P .tab/t1/radio3
-      P .tab/t2.text2
-      P .tab/t3.text3
+      DEF ALT PARENT .tab CHILDREN t1 t2 t3
+      DEF ALT PARENT .tab/t1 CHILDREN radio1 radio2 radio3
+      DEF ALT PARENT .tab/t2 CHILDREN text2 text3
     </script>
     <script id="render" type="text/plain">
       ATTACH TYPE click HANDLER tab-pressed SELECT "#t1"

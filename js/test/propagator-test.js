@@ -20,43 +20,38 @@ let blocks, temp;
 
 machine = new Machine();
 result = machine.interpret(['P .board']); err(result);
-input = "{{DEF CON PARENT .board CHILDREN a b c d e f g h}}";
 propagator = new Propagator(machine, t, s => log(s));
+
+input = "{{SET DATAW PATH .board DATA foo}}";
 result = propagator.process(input);
-err(result);
-//log(result);
+err(result[0]);
 
-//log(machine);
-
+machine = new Machine();
+propagator = new Propagator(machine, t, s => log(s));
+result = machine.interpret(['P .board']); err(result);
+input = "{{DEF CON PARENT .board CHILDREN a b c d e f g h}}";
+result = propagator.process(input);
+err(result[0]);
 
 initScript = [
-  'P .board.a/none',
-  'P .board.b/none',
-  'P .board.c/none',
-  'P .board.d/none',
+  "DEF ALT PARENT .board.a CHILDREN none",
+  "DEF ALT PARENT .board.b CHILDREN none",
+  "DEF ALT PARENT .board.c CHILDREN none",
+  "DEF ALT PARENT .board.d CHILDREN none",
 
-  'P .fwd.a.b',
-  'P .fwd.a.c',
-  'P .fwd.b.c',
-  'P .fwd.a.d',
-  'P .fwd.b.d',
-  'P .fwd.c.d',
+  "DEF ALT PARENT .fwd.a CHILDREN b c d",
+  "DEF ALT PARENT .fwd.b CHILDREN c d",
+  "DEF ALT PARENT .fwd.c CHILDREN d",
 
-  'P .player.fly1',
-  'P .player.fly2',
-  'P .player.spider',
-
+  "DEF CON PARENT .player CHILDREN fly1 fly2 spider",
 ];
 
 renderScript = [
   'WITH ALL .board.POS BEGIN',
-  'P .board.{{POS}}/none',
-  'P .board.{{POS}}/fly1',
-  'P .board.{{POS}}/fly2',
-  'P .board.{{POS}}/spider',
+  "DEF ALT PARENT .board.{{POS}} CHILDREN none fly1 fly2 spider",
   'END',
-  'C .board.a fly1',
-  'C .board.b fly2',
+  'SET CURRENT PARENT .board.a CHILD fly1',
+  'SET CURRENT PARENT .board.b CHILD fly1',
 ];
 
 log(`---- parseWithClauses and expandUnification`);
@@ -75,16 +70,15 @@ err(machine.exists('.player.fly1'));
 log(`---- basic ON block`);
 
 initScript = [
-  'P .turn/spider',
-  'P .turn/flies',
+  'DEF ALT PARENT .turn CHILDREN spider flies',
 ];
 
 renderScript = [
   'ON .turn spider BEGIN',
-  'P .do.something',
+  'DEF CON PARENT .do CHILDREN something',
   'END',
   'ON .turn flies BEGIN',
-  'P .do.somethingelse',
+  'DEF CON PARENT .do CHILDREN somethingelse',
   'END',
 ];
 
@@ -104,41 +98,34 @@ machine = new Machine();
 // fly1 is at a, fly2 is at b, set up fly1.loc/a and fly2/loc/b.
 
 boardScript = [
-  "P .piece.none",
-  "P .piece.fly1",
-  "P .piece.fly2",
-  "P .player.fly1",
-  "P .player.fly2",
+  "DEF CON PARENT .piece CHILDREN none fly1 fly2",
+  "DEF CON PARENT .player CHILDREN fly1 fly2",
 
-  "P .board.a",
-  "P .board.b",
-  "P .board.c",
+  "DEF CON PARENT .board CHILDREN a b c",
 
-  "P .fwd.a.b",
-  "P .fwd.a.c",
-  "P .fwd.a.d",
-  "P .fwd.b.c",
+  "DEF CON PARENT .fwd.a CHILDREN b c d",
+  "DEF CON PARENT .fwd.b CHILDREN c",
 ];
 
 const ddScript = [
   "WITH ALL .piece.PIECE BEGIN",
-  "P .board.a/{{PIECE}}",
-  "P .board.b/{{PIECE}}",
-  "P .board.c/{{PIECE}}",
+  "DEF ALT PARENT .board.a CHILDREN {{PIECE}}",
+  "DEF ALT PARENT .board.b CHILDREN {{PIECE}}",
+  "DEF ALT PARENT .board.c CHILDREN {{PIECE}}",
   "END",
 
-  "C .board.a fly1",
-  "C .board.b fly2",
-  "C .board.c none",
+  "SET CURRENT PARENT .board.a CHILD fly1",
+  "SET CURRENT PARENT .board.b CHILD fly2",
+  "SET CURRENT PARENT .board.c CHILD none",
 ];
 
 
-log(`---- growing clauses`);
+log(`---- growing clauses: boardScript, ddScript`);
 
-result = machine.interpret(boardScript);
-err(result);
 propagator = new Propagator(machine, t, (s) => log(s));
-log(`--- running render Script`);
+result = propagator.runRenderScript(boardScript);
+err(result);
+
 errMsg = propagator.runRenderScript(ddScript);
 err(errMsg);
 
@@ -146,41 +133,37 @@ errDiff(propagator.process("{{CURRENT .board.b}}")[1], "fly2");
 
 
 boardScript = [
-  "P .piece.none",
-  "P .piece.fly1",
-  "P .piece.fly2",
-
-  "P .board.a/none",
-  "P .board.b/none",
-  "P .board.c/none",
+  "DEF CON PARENT .piece CHILDREN none fly1 fly2",
+  "DEF ALT PARENT .board.a CHILDREN none",
+  "DEF ALT PARENT .board.b CHILDREN none",
+  "DEF ALT PARENT .board.c CHILDREN none",
 ];
 
 const revScript = [
   "WITH ALL .piece.PIECE BEGIN",
-  "P .board.a/{{PIECE}}",
-  "P .board.b/{{PIECE}}",
-  "P .board.c/{{PIECE}}",
-  "P .{{PIECE}}.loc/a",
-  "P .{{PIECE}}.loc/b",
-  "P .{{PIECE}}.loc/c",
+  "DEF ALT PARENT .board.a CHILDREN {{PIECE}}",
+  "DEF ALT PARENT .board.b CHILDREN {{PIECE}}",
+  "DEF ALT PARENT .board.c CHILDREN {{PIECE}}",
+  "DEF ALT PARENT .{{PIECE}}.loc CHILDREN a b c",
   "END",
 
-  "C .board.a fly1",
-  "C .board.b fly2",
-  "C .board.c none",
+  "SET CURRENT PARENT .board.a CHILD fly1",
+  "SET CURRENT PARENT .board.b CHILD fly2",
+  "SET CURRENT PARENT .board.c CHILD none",
 
   "WITH CURRENT .board.POS/PIECE BEGIN",
-  "C .{{PIECE}}.loc {{POS}}",
+  "SET CURRENT PARENT .{{PIECE}}.loc CHILD {{POS}}",
   "END"
 ];
 
 log(`--- running WITH Script for drag and drop`);
 
 machine = new Machine();
-result = machine.interpret(boardScript);
+propagator = new Propagator(machine, t, (s) => log(s));
+result = propagator.runRenderScript(boardScript);
 err(result);
 
-propagator = new Propagator(machine, t, (s) => log(s));
+log(`--- running revScript...`);
 errMsg = propagator.runRenderScript(revScript);
 err(errMsg);
 
@@ -280,50 +263,42 @@ log(`---- runRenderScript: .turn = spider`);
 // log(`CURRENT .selectedfly = ${machine.getCurrentChildName(".selectedfly")}`);
 
 initScript = [
-  'P .turn/spider',
-  'P .turn/flies',
-  'P .img.fly1',
-  'P .img.fly2',
-  'P .img.fly3',
-  'P .img.spider',
-  'P .tomove/spider',
-  'P .tomove/flies',
+  'DEF ALT PARENT .turn CHILDREN spider flies',
+  'DEF CON PARENT .img CHILDREN fly1 fly2 fly3 spider',
+  'DEF ALT PARENT .tomove CHILDREN spider fly1 fly2 fly3 spider',
+  'DEF ALT PARENT .selectedfly CHILDREN fly1 fly2 fly3',
 
-  'WITH ALL .img.PLAYER BEGIN',
-  'P .tomove/{{PLAYER}}',
-  'P .selectedfly/{{PLAYER}}',
-  'END',
+  'SET CURRENT PARENT .tomove CHILD fly1',
+  'SET CURRENT PARENT .selectedfly CHILD fly1',
 
-  'C .selectedfly fly1',
+  'SET CURRENT PARENT .selectedfly CHILD fly1',
 ];
 
 renderScript = [
-  "D .img.fly1 fly",
-  "D .img.fly2 fly",
-  "D .img.fly3 fly",
-  "D .img.spider",
+  "SET DATAW PATH .img.fly1 DATA fly",
+  "SET DATAW PATH .img.fly2 DATA fly",
+  "SET DATAW PATH .img.fly3 DATA fly",
+  "SET DATAW PATH .img.spider DATA spider-selected",
 
   "ON .turn spider BEGIN",
-  "D .img.fly1 fly",
-  "D .img.fly2 fly",
-  "D .img.fly3 fly",
-  "D .img.spider spider-selected",
-  "C .tomove spider",
+  "SET DATAW PATH .img.fly1 DATA fly",
+  "SET DATAW PATH .img.fly2 DATA fly",
+  "SET DATAW PATH .img.fly3 DATA fly",
+  "SET DATAW PATH .img.spider DATA spider-selected",
+  "SET CURRENT PARENT .tomove CHILD spider",
   "END",
 
   "ON .turn flies BEGIN",
-  "D .img.{{CURRENT .selectedfly}} fly-selected",
-  "D .img.spider spider",
-  "C .tomove {{CURRENT .selectedfly}}",
+  "SET DATAW PATH .img.{{CURRENT .selectedfly}} DATA fly-selected",
+  "SET DATAW PATH .img.spider DATA spider",
+  "SET CURRENT PARENT .tomove CHILD {{CURRENT .selectedfly}}",
   "END",
 ];
 
 machine = new Machine;
 propagator = new Propagator(machine, t, (s) => log(s));
-propagator.runRenderScript(initScript);
-propagator.runRenderScript(renderScript);
-
-// log(`DATA .img.fly1 = ${machine.getData(".img.fly1")}`);
+result = propagator.runRenderScript(initScript); err(result);
+result = propagator.runRenderScript(renderScript); err(result);
 
 checkProcess("{{CURRENT .turn}}", "spider");
 checkProcess("{{DATAW .img.fly1}}", "fly");
@@ -337,9 +312,10 @@ errDiff(result[0], "CURRENT: bad syntax for path: tomove");
 log(`   OK`);
 
 log(`---- runRenderScript: .turn = flies`);
-machine.interpret([ 'C .turn flies' ]);
+result = propagator.process('{{SET CURRENT PARENT .turn CHILD flies}}');
+err(result);
 
-propagator.runRenderScript(renderScript);
+result = propagator.runRenderScript(renderScript);
 
 checkProcess("{{CURRENT .turn}}", "flies");
 checkProcess("{{CURRENT .selectedfly}}", "fly1");
