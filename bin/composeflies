@@ -17,115 +17,58 @@ mkdir -p ~/.popcorn/fliesdemo &&
 </head>
   <body>
     <script id="provide" type="text/plain">
-      P .board.a/fly2
-      P .board.a/fly1
-      P .board.a/fly3
-      P .board.a/spider
-      P .board.a/empty
-
-      P .board.b/fly1
-      P .board.b/fly2
-      P .board.b/fly3
-      P .board.b/spider
-      P .board.b/empty
-
-      P .board.c/fly3
-      P .board.c/fly1
-      P .board.c/fly2
-      P .board.c/spider
-      P .board.c/empty
-
-      P .board.d/empty
-      P .board.d/fly1
-      P .board.d/fly2
-      P .board.d/fly3
-      P .board.d/spider
-
-      P .board.e/empty
-      P .board.e/fly1
-      P .board.e/fly2
-      P .board.e/fly3
-      P .board.e/spider
-
-      P .board.f/empty
-      P .board.f/fly1
-      P .board.f/fly2
-      P .board.f/fly3
-      P .board.f/spider
-
-      P .board.g/empty
-      P .board.g/fly1
-      P .board.g/fly2
-      P .board.g/fly3
-      P .board.g/spider
-
-      P .board.h/spider
-      P .board.h/fly1
-      P .board.h/fly2
-      P .board.h/fly3
-      P .board.h/empty
-
-      P .turn/spider
-      P .turn/flies
-      P .turn/win-spider
-      P .turn/win-flies
-
+      DEF TOP CHILDREN board turn
+      DEF ALT PARENT .board.a CHILDREN fly2 fly1 fly3 spider empty
+      DEF ALT PARENT .board.b CHILDREN fly1 fly2 fly3 spider empty
+      DEF ALT PARENT .board.c CHILDREN fly3 fly1 fly2 spider empty
+      DEF ALT PARENT .board.d CHILDREN empty fly3 fly1 fly2 spider
+      DEF ALT PARENT .board.e CHILDREN empty fly3 fly1 fly2 spider
+      DEF ALT PARENT .board.f CHILDREN empty fly3 fly1 fly2 spider
+      DEF ALT PARENT .board.g CHILDREN empty fly3 fly1 fly2 spider
+      DEF ALT PARENT .board.h CHILDREN empty fly3 fly1 fly2 spider
+      DEF ALT PARENT .turn CHILDREN spider flies win-spider win-flies
     </script>
     <script id="init" type="text/plain">
-      P .loc.a.x
-      P .loc.a.y
-      P .loc.b.x
-      P .loc.b.y
-      P .loc.c.x
-      P .loc.c.y
-      P .loc.d.x
-      P .loc.d.y
-      P .loc.e.x
-      P .loc.e.y
-      P .loc.f.x
-      P .loc.f.y
-      P .loc.g.x
-      P .loc.g.y
-      P .loc.h.x
-      P .loc.h.y
+      WITH ALL .board.POS BEGIN
+      DEF CON PARENT .loc.{{POS}} CHILDREN x y
+      END
 
-      D .loc.a.x 500
-      D .loc.a.y 100
-      D .loc.b.x 200
-      D .loc.b.y 300
-      D .loc.c.x 800
-      D .loc.c.y 300
-      D .loc.d.x 500
-      D .loc.d.y 500
-      D .loc.e.x 200
-      D .loc.e.y 700
-      D .loc.f.x 500
-      D .loc.f.y 700
-      D .loc.g.x 800
-      D .loc.g.y 700
-      D .loc.h.x 500
-      D .loc.h.y 900
+      DEF CON PARENT .loc.a CHILDREN x y
+      DEF CON PARENT .loc.b CHILDREN x y
+      DEF CON PARENT .loc.c CHILDREN x y
+      DEF CON PARENT .loc.d CHILDREN x y
+      DEF CON PARENT .loc.e CHILDREN x y
+      DEF CON PARENT .loc.f CHILDREN x y
+      DEF CON PARENT .loc.g CHILDREN x y
+      DEF CON PARENT .loc.h CHILDREN x y
 
-      P .selectedfly/fly1
-      P .selectedfly/fly2
-      P .selectedfly/fly3
+      SET DATAW PATH .loc.a.x DATA 500
+      SET DATAW PATH .loc.a.y DATA 100
+      SET DATAW PATH .loc.b.x DATA 200
+      SET DATAW PATH .loc.b.y DATA 300
+      SET DATAW PATH .loc.c.x DATA 800
+      SET DATAW PATH .loc.c.y DATA 300
+      SET DATAW PATH .loc.d.x DATA 500
+      SET DATAW PATH .loc.d.y DATA 500
+      SET DATAW PATH .loc.e.x DATA 200
+      SET DATAW PATH .loc.e.y DATA 700
+      SET DATAW PATH .loc.f.x DATA 500
+      SET DATAW PATH .loc.f.y DATA 700
+      SET DATAW PATH .loc.g.x DATA 800
+      SET DATAW PATH .loc.g.y DATA 700
+      SET DATAW PATH .loc.h.x DATA 500
+      SET DATAW PATH .loc.h.y DATA 900
 
-      P .img.fly1
-      P .img.fly2
-      P .img.fly3
-      P .img.spider
-      P .img.empty
+      DEF ALT PARENT .selectedfly CHILDREN fly1 fly2 fly3
+      DEF CON PARENT .img CHILDREN fly1 fly2 fly3 spider empty
+      DEF ALT PARENT .tomove CHILDREN spider fly1 fly2 fly3
+      
+      SET DATAW PATH .img.fly1 DATA fly
+      SET DATAW PATH .img.fly2 DATA fly
+      SET DATAW PATH .img.fly3 DATA fly
+      SET DATAW PATH .img.spider DATA spider
+      SET DATAW PATH .img.empty DATA emptyspot
 
-      P .tomove/spider
-      P .tomove/fly1
-      P .tomove/fly2
-      P .tomove/fly3
-
-      D .img.fly1 fly
-      D .img.fly2 fly
-      D .img.fly3 fly
-      D .img.spider spider
-      D .img.empty emptyspot
     </script>
     <script id="render" type="text/plain">
     ON .turn spider BEGIN
