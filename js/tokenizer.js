@@ -1,30 +1,7 @@
 "use strict";
 
 /**
-   Tokens are either one of these six types:
-
-            BEGIN END COMMAND WORD STRING
-
-   or one-character types for each of the special characters below.
-     
-   They are represented as objects: {name: 'COMMAND', value: 'CURRENT'}
-
-   The STRING token is treated specially. If the input string
-   contains any character not recognized as a token, then the entire
-   input string from that character on is put into a STRING token.
-   
-   WORD is a popcorn machine path segment, [a-z][a-z0-9-]*.
-   COMMAND is any all-capitals word. Their value fields have the
-   actual string value.
-
-   Spaces are always ignored and can be used to separate adjacent
-   tokens that might otherwise be merged (really, only WORD WORD or
-   COMMAND COMMAND).
-
-   BEGIN and END are {{ and }} respectively. (You can escape them
-   with a backslash if you want to hide them).
-
-   DOT and SLASH are the single-character path components.
+   See tokenizer-design in ddoc.
 */
 
 class Tokenizer {

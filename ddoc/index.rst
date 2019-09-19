@@ -11,6 +11,7 @@ Welcome to popcorn-design's documentation!
    :caption: Contents:
 
    machine-design
+   tokenizer-design
 
 Indices and tables
 ==================
