@@ -1,5 +1,7 @@
 "use strict";
 
+process.exit(0);
+
 const Machine = require("../newmachine.js");
 let machine = new Machine();
 

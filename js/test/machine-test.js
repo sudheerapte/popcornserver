@@ -132,6 +132,7 @@ err(result);
 // log(s);
 
 // --------------------------------------------------------------
+/*
 log(`---- createLeafDelta`);
 machine = new Machine();
 delta = {delta: [], undo: []};
@@ -153,7 +154,7 @@ err(result);
 errDiff(machine.getAllPaths().length, 2);
 
 process.exit(0);
-
+*/
 
 // --------------------------------------------------------------
 // interpret()

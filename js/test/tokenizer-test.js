@@ -198,10 +198,10 @@ checkScan("#fo {{bar\"}}", [ 4, 10 ]);
 
 
 
-log(`---- test 10: process suite`);
+log(`---- expand suite`);
 function checkProcess(input, output) {
   //log(`${' '.repeat(30-input.length)}|${input}| |${JSON.stringify(output)}|`);
-  let result = t.processOnce(input);
+  let result = t.expandOnce(input);
   if (result[0] !== output[0]) {
     err(`expected ${output[0]}, got ${result[0]}`);
   }

@@ -83,7 +83,7 @@ class Tokenizer {
   }
 
   /**
-     process - process the given string, expanding macros inside-first.
+     expand - process the given string, expanding macros inside-first.
      Returns [errMsg, newString].
 
      The function "f" should take an array of tokens and produce
@@ -97,7 +97,7 @@ class Tokenizer {
     let loopsDone = 10; // catch infinite recursion
     while (more) {
       const str = tResult[1];
-      tResult = this.processOnce(str, f);
+      tResult = this.expandOnce(str, f);
       if (tResult[0]) {
         return [ tResult[0], str ];
       }
@@ -112,7 +112,7 @@ class Tokenizer {
   }
 
   /**
-     processOnce - process the tokens in the string, respecting BEGIN/END
+     expandOnce - expand the first macro enclosed by BEGIN/END
 
      Given "blah {{foo bar}} blah", we compute "blah xyz blah",
      where "xyz" is the evaluation of "foo bar".
@@ -135,11 +135,11 @@ class Tokenizer {
      we return a third array element as "true".
 
   */
-  processOnce(str, f) {
+  expandOnce(str, f) {
     let result;
     if (! str || str.length <= 0) { return [null, str]; }
     let [ b, e ] = this.scanString(str);
-    //console.log(`        processOnce |${str}| b=${b} e=${e}`);
+    //console.log(`        expandOnce |${str}| b=${b} e=${e}`);
     if (b < 0) {  // Simple case -- return original string
       return [null, str];
     }
