@@ -653,8 +653,21 @@ class Propagator {
       } else {
         return [null, null];
       }
+    } else if (this.t.ifNextCommand(args, 0, "TOP")) {
+      let options = {CHILDREN: "WORDS"};
+      let result = this.t.parseRequiredTokens(args.slice(1), options);
+      if (result[0]) { return [ `DEF TOP: ${result[0]}`, args ]; }
+      const struct = result[1];
+      const children = struct.CHILDREN;
+      let arr =  children.map(child => `P .${child}`);
+      result = this.mc.interpret(arr);
+      if (result) {
+        return [`DEF TOP CHILDREN: ${result}`, args];
+      } else {
+        return [null, null];
+      }
     } else {
-      return [`DEF: must be either CON or ALT`, args];
+      return [`DEF: must be CON or ALT or TOP`, args];
     }
   }
 
@@ -664,6 +677,9 @@ class Propagator {
       let result = this.t.parseRequiredTokens(args.slice(1), options);
       if (result[0]) { return [ `SET DATAW: ${result[0]}`, args ]; }
       const struct = result[1];
+      if (! this.mc.exists(struct.PATH)) {
+        return [`SET DATAW ${struct.PATH}: no such path`, args];
+      }
       if (! this.mc.isLeaf(struct.PATH)) {
         return [`SET DATAW ${struct.PATH}: not a leaf`, args];
       } else if (! this.mc.isDataLeaf(struct.PATH)) {

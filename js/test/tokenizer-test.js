@@ -21,6 +21,8 @@ checkToken('a-word-4', 8, {name: 'WORD', value: 'a-word-4'});
 checkToken('ACOMMAND', 8, {name: 'COMMAND', value: 'ACOMMAND'});
 checkToken('A-COMMAND', 1, {name: 'COMMAND', value: 'A'});
 checkToken('  FOUR', 6, {name: 'COMMAND', value: 'FOUR'});
+checkToken('42', 2, {name: 'WORD', value: '42'});
+checkToken('-42', 3, {name: 'WORD', value: '-42'});
 
 function checkToken(input, wantNum, wantTok) {
   //log(`${' '.repeat(50-input.length)}|${input}| - `);

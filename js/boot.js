@@ -40,7 +40,8 @@ function sendProvide() {
     const lines = str.split(/\n|\r\n/)
           .filter(line => ! line.match(/^\s*$/))
           .map(line => line.trim());
-    const result = temp.interpret(lines);
+    const propagator = new Propagator(temp, P.tokenizer, P.logger);
+    const result = propagator.runRenderScript(lines);
     if (result) {
       console.log(`provide script: ${result}`);
       console.log(`sending an empty machine.`);
@@ -159,19 +160,19 @@ function doFirstMessage() {
       if (data.match(/^provide\s+(\w+)/)) {
 	const m = data.match(/^provide\s+(\w+)/);
 	if (P.machine === m[1]) {
-	console.log(`got provide ${P.machine}`);
-	const arr = data.split('\n');
-	if (! arr) {
-          const msg = `bad machine payload for ${P.machine}`;
-          return reject(msg);
-	}
-        P.mc = new Machine;
-        P.propagator = new Propagator(P.mc, P.tokenizer, P.logger)
-	const result = P.mc.interpret(arr.slice(1));
-	if (result) {
-          console.log(`failed to interpret provided machine: ${result}`);
-        }
-        return proceedPastFirstMessage(resolve);
+	  console.log(`got provide ${P.machine}`);
+	  const arr = data.split('\n');
+	  if (! arr) {
+            const msg = `bad machine payload for ${P.machine}`;
+            return reject(msg);
+	  }
+          P.mc = new Machine;
+          P.propagator = new Propagator(P.mc, P.tokenizer, P.logger)
+	  const result = P.mc.interpret(arr.slice(1));
+	  if (result) {
+            console.log(`failed to interpret provided machine: ${result}`);
+          }
+          return proceedPastFirstMessage(resolve);
         } else {
           console.log(`ignoring unknown machine ${m[1]}`);
           // we cannot resolve until we get provide cmd

@@ -22,6 +22,7 @@ machine = new Machine();
 result = machine.interpret(['P .board']); err(result);
 propagator = new Propagator(machine, t, s => log(s));
 
+result = propagator.process("{{DEF TOP CHILDREN board}}"); err(result[0]);
 input = "{{SET DATAW PATH .board DATA foo}}";
 result = propagator.process(input);
 err(result[0]);

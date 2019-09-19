@@ -230,8 +230,9 @@ class Tokenizer {
     const RULES = [
       { re: /^{{/,   type: 'BEGIN', useValue: false },
       { re: /^}}/,   type: 'END', useValue: false },
-      { re: /^[A-Z]+/, type: 'COMMAND', useValue: true },
+      { re: /^[A-Z]+[A-Z0-9_]*/, type: 'COMMAND', useValue: true },
       { re: /^[a-z]+[a-z0-9-]*/,type: 'WORD', useValue: true },
+      { re: /^[+-]?[0-9]+/, type: 'WORD', useValue: true },
       { re: this.specialsRegex, type: 'SPECIAL', useValue: false },
     ];
 
@@ -258,7 +259,7 @@ class Tokenizer {
       const rec = RULES[j];
       const m = str.match(rec.re);
       if (m) {
-        //console.log(`matched ${rec.re}. length = ${m[0].length}`);
+        // console.log(`matched ${rec.re}. length = ${m[0].length}`);
         num += m[0].length;
         let toktype = rec.type;
         if (rec.type === 'SPECIAL') {
