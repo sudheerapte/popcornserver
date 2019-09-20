@@ -462,9 +462,7 @@ class Propagator {
   // evalBlock - take a list of strings and evaluate them,
   // returning a corresponding list of strings.
   // Optionally takes an evalFunc (see tokenizer.expand()).
-  // If none is passed in, then use my machine's evalFunc.
   evalBlock(todo, anEvalFunc) {
-    if (! anEvalFunc) { anEvalFunc = this.evalFunc; }
     return todo.map( formula => {
       if (!formula) {
         this.log(`evalBlock: formula is empty`);
@@ -483,26 +481,6 @@ class Propagator {
       }
     });
   }
-
-  // substituteBlockVars - Not used -- TODO remove
-  // substituteBlockVars - take a list of strings and generate
-  // new ones where a set of capitalized variables are substituted
-  // with their values.
-  // Example: input:
-  //   [ 'board.POS/PLAYER' ], [ {POS: 'a', PLAYER: 'fly1'},
-  //                             {POS: 'b', PLAYER: 'fly2'}, ]
-  // output:
-  //   [ 'board.a/fly1', 'board.b/fly2' ]
-  substituteBlockVars(todo, substList) {
-    const tokenized = todo.map( line => this.getVarLitTokens(line) );
-    let result = [];
-    for (let i=0; i<substList.length; i++) {
-      tokenized.map(tokList => this.renderVarLitTokens(tokList, substList[i]))
-        .forEach( s => result.push(s) );
-    }
-    return result;
-  }
-
 
   // getEvalFunc - return a function suitable to pass in to
   // this.t.expand().

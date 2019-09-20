@@ -4,12 +4,23 @@ const [log, err, errDiff] = require('./logerr.js');
 const t = require('../tokenizer.js');
 
 let tokens;
-let result, lines, input;
-let options, args;
+let result, result2, lines, input;
+let options, args, num, errMsg;
 
 log(`---- renderToken`);
+result = t.tokenize("foo foo");
+err(result[0]);
+result2 = t.renderTokens(result[1]);
+
+result = t.renderTokens([{name: 'WORD', value: "foo"},
+                         {name: 'WORD', value: "foo"}]);
+errDiff(result, 'foo foo');
+
 result = t.renderTokens({name: 'STRING', value: "foobar"});
 errDiff(result, '"foobar"');
+result = t.renderTokens({name: 'VARIABLE', value: "T_SERIES"});
+errDiff(result, '{T_SERIES}');
+
 
 log(`---- basic parsing of one token`);
 
@@ -19,6 +30,7 @@ checkToken('"a \\"string"', 12, {name: 'STRING', value: 'a "string'});
 checkToken('a-word', 6, {name: 'WORD', value: 'a-word'});
 checkToken('a-word-4', 8, {name: 'WORD', value: 'a-word-4'});
 checkToken('ACOMMAND', 8, {name: 'COMMAND', value: 'ACOMMAND'});
+checkToken('{VAR}', 5, {name: 'VARIABLE', value: 'VAR'});
 checkToken('A-COMMAND', 1, {name: 'COMMAND', value: 'A'});
 checkToken('  FOUR', 6, {name: 'COMMAND', value: 'FOUR'});
 checkToken('42', 2, {name: 'WORD', value: '42'});
@@ -55,11 +67,16 @@ checkTokenize('ID someword VALUE "some string"',
                {name: 'COMMAND', value: 'VALUE'},
                {name: 'STRING', value: 'some string'}]);
 
-checkTokenize('A-COMMAND', [
-  {name: 'COMMAND', value: 'A'},
-  {name: 'HYPHEN', value: null},
-  {name: 'COMMAND', value: 'COMMAND'},
-]);
+checkTokenize('{VAR}IDsomeword"some string"',
+              [{name: 'VARIABLE', value:'VAR'},
+               {name: 'COMMAND', value:'ID'},
+               {name: 'WORD', value: 'someword'},
+               {name: 'STRING', value: 'some string'}]);
+
+checkTokenize('A-COMMAND',
+              [{name: 'COMMAND', value: 'A'},
+               {name: 'HYPHEN', value: null},
+               {name: 'COMMAND', value: 'COMMAND'},]);
 
 ['.a.b.c/d', ' .a . b .c/  d ', '. a . b. c /  d '].forEach( line => {
   checkTokenize(line, [
@@ -148,7 +165,7 @@ if (! result.match(/^splitSections/)) {
 log(`--------- full process -------------`);
 checkFull("foo bar", [null, "foo bar"]);
 checkFull("#fo bar", [null, "#fo bar"]);
-checkFull("{{foo bar}}", [null, "foobar"]);
+checkFull("{{foo bar}}", [null, "foo bar"]);
 checkFull("{{foo {{bar}}", ['No END found', "{{foo bar"]);
 checkFull("foo {{bar}}}}", [null, "foo bar}}"]);
 log('--');
@@ -211,7 +228,7 @@ function checkExpand(input, output) {
 }
 checkExpand("foo bar", [null, "foo bar"]);
 checkExpand("#fo bar", [null, "#fo bar"]);
-checkExpand("{{foo bar}}", [null, "foobar"]);
+checkExpand("{{foo bar}}", [null, "foo bar"]);
 checkExpand("{{foo {{bar}}", [null, "{{foo bar"]);
 checkExpand("foo {{bar}}}}", [null, "foo bar}}"]);
 checkExpand("foo {{\"bar}}}}", ["bad token at index 0", null]);
@@ -273,4 +290,17 @@ errDiff(args.VALUE[0], "some");
 errDiff(args.VALUE[1], "words");
 errDiff(args.ID, "TAGNAME");
 errDiff(args.NAME[0], "click");
+
+log(`---- expandVars`);
+function varLookup(str) {
+  const varDict = { FOO: "foo", BAR: "bar" };
+  return varDict[str];
+}
+[errMsg, result, num] = t.expandVars("foo{FOO}.word", varLookup);
+errDiff(num, 1);
+err(errMsg); errDiff(result, "foo foo.word");
+
+[errMsg, result2, num] = t.expandVars(result, varLookup);
+errDiff(num, 0);
+err(errMsg); errDiff(result2, "foo foo.word");
 

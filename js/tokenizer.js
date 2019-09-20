@@ -112,6 +112,61 @@ class Tokenizer {
   }
 
   /**
+     expandVars - expand any {VAR} occurrences in input string
+
+     The function f() should take the "VAR" portion and return
+     a string. If it does not have an expansion, it should return
+     null; the expandVars function will keep the {VAR} string
+     intact in the result.
+
+     Returns [errMsg, outputStr, num], where:
+        - errMsg is null iff no errors in parsing
+        - outputStr is the expanded version of the input string
+        - num is the number of variables expanded successfully.
+
+     The caller might want to call this function again if there
+     is a possibility that the expansion might contain more {VAR}
+     occurrences, i.e., if num > 0.
+   */
+
+  expandVars(input, f) {
+    if (! f) { return [null, input, 0]; }
+    if (! input) { return [`expandVars - null input`, null, 0]; }
+    const result = this.tokenize(input);
+    if (result[0]) { return [result[0], input, 0]; }
+    let num = 0; // number of variables successfully looked up
+    let outString = "";
+    let lastTok = 'NONE';
+    for (let i=0; i< result[1].length; i++) {
+      const tok = result[1][i];
+      if (tok.name === 'VARIABLE') {
+        const lookup = f(tok.value);
+        if (lookup) {
+          let errMsg, list;
+          [errMsg, list] = this.tokenize(lookup);
+          if (errMsg) {
+            outString += this.renderTok(tok);
+            lastTok = tok.name;
+          } else {
+            for (let j=0; j<list.length; j++) {
+              outString += this.renderTok(list[j], lastTok);
+              lastTok = list[j].name;
+            }
+            num++;
+          }
+        } else {
+          outString += this.renderTok(tok, lastTok);
+          lastTok = tok.name;
+        }
+      } else {
+        outString += this.renderTok(tok, lastTok);
+        lastTok = tok.name;
+      }
+    }
+    return [null, outString, num];
+  }
+
+  /**
      expandOnce - expand the first macro enclosed by BEGIN/END
 
      Given "blah {{foo bar}} blah", we compute "blah xyz blah",
@@ -210,6 +265,7 @@ class Tokenizer {
       { re: /^[A-Z]+[A-Z0-9_]*/, type: 'COMMAND', useValue: true },
       { re: /^[a-z]+[a-z0-9-]*/,type: 'WORD', useValue: true },
       { re: /^[+-]?[0-9]+/, type: 'WORD', useValue: true },
+      { re: /^{\s*[A-Z]+[A-Z0-9_]*\s*}/, type: 'VARIABLE', useValue: true },
       { re: this.specialsRegex, type: 'SPECIAL', useValue: false },
     ];
 
@@ -241,6 +297,10 @@ class Tokenizer {
         let toktype = rec.type;
         if (rec.type === 'SPECIAL') {
           toktype = this.specialsMap.get(m[0]);
+          return [num, {name: toktype, value: null}];
+        } else if (rec.type === 'VARIABLE') {
+          const varName = m[0].match(/[A-Z]+[A-Z0-9_]*/)[0];
+          return [num, {name: 'VARIABLE', value: varName}];
         }
         return [num, {name: toktype, value: (rec.useValue ? m[0] : null)}];
       }
@@ -290,27 +350,48 @@ class Tokenizer {
     const me = this;
     if (arr.hasOwnProperty('length')) {
       let str = '';
+      let lastTok = 'NONE';
       arr.forEach( (tok,i) => {
-        str += renderTok(tok);
+        str += this.renderTok(tok, lastTok);
+        lastTok = tok.name;
       });
       return str;
     } else {
-      return renderTok(arr);
+      return this.renderTok(arr, 'NONE');
     }
+  }
 
-    function renderTok(tok) {
-      if (tok) {
-        if (tok.name === 'STRING') {
-          return '"' + renderString(tok.value) + '"';
-        } else if (tok.name.match(/WORD|COMMAND|NUMBER/)) {
-          return tok.value;
-        } else if (me.specials[tok.name]) {
-          return me.specials[tok.name];
+  renderTok(tok, lastTok) {
+    if (tok) {
+      if (tok.name === 'STRING') {
+        return '"' + renderString(tok.value) + '"';
+      } else if (tok.name === 'NUMBER') {
+        if (lastTok && lastTok.match(/WORD|COMMAND/)) {
+          return " " + tok.value;
         } else {
-          return ` (${tok.name})`;
+          return tok.value;
         }
+      } else if (tok.name === 'VARIABLE') {
+        return "{" + tok.value + "}";
+      } else if (tok.name === 'WORD') {
+        if (lastTok && lastTok === 'WORD') {
+          return " " + tok.value;
+        } else {
+          return tok.value;
+        }
+      } else if (tok.name === 'COMMAND') {
+        if (lastTok && lastTok === 'COMMAND') {
+          return " " + tok.value;
+        } else {
+          return tok.value;
+        }
+      } else if (this.specials[tok.name]) {
+        return this.specials[tok.name];
+      } else {
+        return ` (${tok.name})`;
       }
     }
+
     function renderString(s) {
       let buf = "";
       for (let i=0; i<s.length; i++) {
