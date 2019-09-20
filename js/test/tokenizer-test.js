@@ -291,16 +291,33 @@ errDiff(args.VALUE[1], "words");
 errDiff(args.ID, "TAGNAME");
 errDiff(args.NAME[0], "click");
 
-log(`---- expandVars`);
+
+log(`---- substVars`);
 function varLookup(str) {
   const varDict = { FOO: "foo", BAR: "bar" };
-  return varDict[str];
+  if (varDict.hasOwnProperty(str)) {
+    return {name: 'WORD', value: varDict[str]};
+  } else {
+    return null;
+  }
 }
-[errMsg, result, num] = t.expandVars("foo{FOO}.word", varLookup);
+result = t.tokenize("foo{FOO}.word"); err(result[0]);
+input = result[1];
+[num, result] = t.substVars(input, varLookup);
 errDiff(num, 1);
-err(errMsg); errDiff(result, "foo foo.word");
+err(errMsg);
+errDiff(result[0].name, "WORD");
+errDiff(result[1].name, "WORD"); errDiff(result[1].value, "foo");
+errDiff(result[2].name, "DOT");
+errDiff(result[3].name, "WORD");
 
-[errMsg, result2, num] = t.expandVars(result, varLookup);
+result = t.tokenize("foo{BADVAR}.word"); err(result[0]);
+input = result[1];
+[num, result] = t.substVars(input, varLookup);
 errDiff(num, 0);
-err(errMsg); errDiff(result2, "foo foo.word");
+err(errMsg);
+errDiff(result[0].name, "WORD");
+errDiff(result[1].name, "VARIABLE"); errDiff(result[1].value, "BADVAR");
+errDiff(result[2].name, "DOT");
+errDiff(result[3].name, "WORD");
 

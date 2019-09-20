@@ -112,58 +112,46 @@ class Tokenizer {
   }
 
   /**
-     expandVars - expand any {VAR} occurrences in input string
+     substVars - take a token array and expand any {VAR}s
+
+     Returns [num, outArray], where:
+        - num is the number of variables expanded successfully.
+        - outArray is the result of the substitution.
 
      The function f() should take the "VAR" portion and return
-     a string. If it does not have an expansion, it should return
-     null; the expandVars function will keep the {VAR} string
-     intact in the result.
-
-     Returns [errMsg, outputStr, num], where:
-        - errMsg is null iff no errors in parsing
-        - outputStr is the expanded version of the input string
-        - num is the number of variables expanded successfully.
+     a token or array of tokens.
+     If it does not have an expansion, it should return
+     null. The expandVars function will keep the {VAR} string
+     intact in the result, and not count that variable as
+     successfully expanded.
 
      The caller might want to call this function again if there
      is a possibility that the expansion might contain more {VAR}
      occurrences, i.e., if num > 0.
    */
 
-  expandVars(input, f) {
-    if (! f) { return [null, input, 0]; }
-    if (! input) { return [`expandVars - null input`, null, 0]; }
-    const result = this.tokenize(input);
-    if (result[0]) { return [result[0], input, 0]; }
+  substVars(inputArray, f) {
     let num = 0; // number of variables successfully looked up
-    let outString = "";
-    let lastTok = 'NONE';
-    for (let i=0; i< result[1].length; i++) {
-      const tok = result[1][i];
+    let outArray = [];
+    for (let inPos = 0; inPos < inputArray.length; inPos++) {
+      const tok = inputArray[inPos];
       if (tok.name === 'VARIABLE') {
         const lookup = f(tok.value);
         if (lookup) {
-          let errMsg, list;
-          [errMsg, list] = this.tokenize(lookup);
-          if (errMsg) {
-            outString += this.renderTok(tok);
-            lastTok = tok.name;
+          num++;
+          if (Array.isArray(lookup)) {
+            lookup.forEach( t => outArray.push(t) );
           } else {
-            for (let j=0; j<list.length; j++) {
-              outString += this.renderTok(list[j], lastTok);
-              lastTok = list[j].name;
-            }
-            num++;
+            outArray.push(lookup);
           }
         } else {
-          outString += this.renderTok(tok, lastTok);
-          lastTok = tok.name;
+          outArray.push(tok);
         }
       } else {
-        outString += this.renderTok(tok, lastTok);
-        lastTok = tok.name;
+        outArray.push(tok);
       }
     }
-    return [null, outString, num];
+    return [num, outArray];
   }
 
   /**
