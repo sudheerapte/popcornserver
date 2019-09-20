@@ -461,7 +461,7 @@ class Propagator {
 
   // evalBlock - take a list of strings and evaluate them,
   // returning a corresponding list of strings.
-  // Optionally takes an evalFunc (see tokenizer.process()).
+  // Optionally takes an evalFunc (see tokenizer.expand()).
   // If none is passed in, then use my machine's evalFunc.
   evalBlock(todo, anEvalFunc) {
     if (! anEvalFunc) { anEvalFunc = this.evalFunc; }
