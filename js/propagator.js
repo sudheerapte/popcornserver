@@ -504,14 +504,6 @@ class Propagator {
   }
 
 
-  // evalBlockVars - take a list of strings and evaluate them
-  // in a context of vars, returning a corresponding list of strings.
-  // This function substitutes that token wherever a COMMAND with that
-  // capitalized name is found, and then evaluates the entire input string.
-  evalBlockVars(todo, varContext) {
-    return this.evalBlock(todo, this.getEvalFuncVarContext(varContext));
-  }
-
   // getEvalFunc - return a function suitable to pass in to
   // this.t.expand().
 

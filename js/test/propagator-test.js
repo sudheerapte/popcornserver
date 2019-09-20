@@ -326,20 +326,6 @@ checkExpand("{{DATAW .img.fly2}}", "fly");
 checkExpand("{{DATAW .img.spider}}", "spider");
 checkExpand("{{CURRENT .tomove}}", "fly1");
 
-log(`---- evalBlockVars`);
-machine = new Machine();
-machine.interpret(["P .board.a", "P .board.b", "P .board.c",]);
-
-propagator = new Propagator(machine, t, (s) => log(s));
-['a', 'b', 'c'].forEach(position => {
-  const lines = propagator.evalBlockVars(["P .fly1.position/{{POS}}", "P .fly2.position/{{POS}}"], {POS: position});
-  const result = machine.interpret(lines);
-  err(result);
-});
-
-//checkExpand("{{EXISTS .board.b}}", "1");
-checkExpand("{{CURRENT .fly1.position}}", "a");
-checkExpand("{{CURRENT .fly2.position}}", "a");
 
 function checkExpand(input, output) {
   let tResult;
