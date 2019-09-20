@@ -86,12 +86,40 @@ class Propagator {
     if (! Array.isArray(unis)) { // error message
       return unis;
     }
+    // unroll the WITH block into "results", then expand macros.
     let results = [];
     for (let i=0; i<unis.length; i++) {
-      let a = this.evalBlock(block.lines, this.getEvalFuncVarContext(unis[i]));
-      a.filter( out => out.length > 0 ).forEach( out => results.push(out) );
+      let mappedLines;
+      mappedLines = block.lines.filter( line => line.trim().length > 0).
+        map( line => {
+          const arr = this.t.tokenize(line);
+          if (arr[0]) { return `ERROR: |${line}|: ${arr[0]}`;} // error case
+          let num, result;
+          [num, result] = this.t.substVars(arr[1], varName => {
+            if (unis[i].hasOwnProperty(varName)) {
+              return {name: 'WORD', value: unis[i][varName]};
+            } else {
+              return null;
+            }
+          });
+          const rendered = this.t.renderTokens(result);
+          return rendered;
+        });
+      mappedLines.forEach( line => results.push(line) );
     }
-    return results;
+    // "results" contains the VARIABLEs substituted. Expand macros.
+    return results.map( formula => {
+      let result = this.process(formula, this.getEvalFunc());
+      if (result[0]) {
+        this.log(`${formula}: ${result[0]}`);
+        return "";
+      } else if (! result[1]) {
+        this.log(`${formula}: falsy result`);
+        return "";
+      } else {
+        return result[1];
+      }
+    }).filter(line => line.trim().length > 0);
       
     function unrolledOrError(pairs) {
       const errPos = pairs.findIndex( pair => pair[0] !== null );
@@ -457,29 +485,6 @@ class Propagator {
       }
     }
     return s;
-  }
-
-  // evalBlock - take a list of strings and evaluate them,
-  // returning a corresponding list of strings.
-  // Optionally takes an evalFunc (see tokenizer.expand()).
-  evalBlock(todo, anEvalFunc) {
-    return todo.map( formula => {
-      if (!formula) {
-        this.log(`evalBlock: formula is empty`);
-        return "";
-      }
-      let result = this.t.expand(formula, anEvalFunc);
-      if (result[0]) {
-        this.log(`evalBlock: ${formula}: ${result[0]}`);
-        return "";
-      } else if (! result[1]) {
-        this.log(`evalBlock: ${formula}: falsy result`);
-        return "";
-      } else {
-        //this.log(`evalBlock: |${formula}| ==> |${result[1]}|`);
-        return result[1];
-      }
-    });
   }
 
   // getEvalFunc - return a function suitable to pass in to

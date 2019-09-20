@@ -49,7 +49,7 @@ initScript = [
 
 renderScript = [
   'WITH ALL .board.POS BEGIN',
-  "DEF ALT PARENT .board.{{POS}} CHILDREN none fly1 fly2 spider",
+  "DEF ALT PARENT .board.{POS} CHILDREN none fly1 fly2 spider",
   'END',
   'SET CURRENT PARENT .board.a CHILD fly1',
   'SET CURRENT PARENT .board.b CHILD fly1',
@@ -110,9 +110,9 @@ boardScript = [
 
 const ddScript = [
   "WITH ALL .piece.PIECE BEGIN",
-  "DEF ALT PARENT .board.a CHILDREN {{PIECE}}",
-  "DEF ALT PARENT .board.b CHILDREN {{PIECE}}",
-  "DEF ALT PARENT .board.c CHILDREN {{PIECE}}",
+  "DEF ALT PARENT .board.a CHILDREN {PIECE}",
+  "DEF ALT PARENT .board.b CHILDREN {PIECE}",
+  "DEF ALT PARENT .board.c CHILDREN {PIECE}",
   "END",
 
   "SET CURRENT PARENT .board.a CHILD fly1",
@@ -142,10 +142,10 @@ boardScript = [
 
 const revScript = [
   "WITH ALL .piece.PIECE BEGIN",
-  "DEF ALT PARENT .board.a CHILDREN {{PIECE}}",
-  "DEF ALT PARENT .board.b CHILDREN {{PIECE}}",
-  "DEF ALT PARENT .board.c CHILDREN {{PIECE}}",
-  "DEF ALT PARENT .{{PIECE}}.loc CHILDREN a b c",
+  "DEF ALT PARENT .board.a CHILDREN {PIECE}",
+  "DEF ALT PARENT .board.b CHILDREN {PIECE}",
+  "DEF ALT PARENT .board.c CHILDREN {PIECE}",
+  "DEF ALT PARENT .{PIECE}.loc CHILDREN a b c",
   "END",
 
   "SET CURRENT PARENT .board.a CHILD fly1",
@@ -153,7 +153,7 @@ const revScript = [
   "SET CURRENT PARENT .board.c CHILD none",
 
   "WITH CURRENT .board.POS/PIECE BEGIN",
-  "SET CURRENT PARENT .{{PIECE}}.loc CHILD {{POS}}",
+  "SET CURRENT PARENT .{PIECE}.loc CHILD {POS}",
   "END"
 ];
 
@@ -189,11 +189,11 @@ const provideScript = [
   'P .board.g',
   'P .board.h',
   'WITH ALL .board.POS BEGIN',
-  'P .board.{{POS}}/empty',
-  'P .board.{{POS}}/fly1',
-  'P .board.{{POS}}/fly2',
-  'P .board.{{POS}}/fly3',
-  'P .board.{{POS}}/spider',
+  'P .board.{POS}/empty',
+  'P .board.{POS}/fly1',
+  'P .board.{POS}/fly2',
+  'P .board.{POS}/fly3',
+  'P .board.{POS}/spider',
   'END',
   'ON .turn spider BEGIN',
   'D .img.fly1 fly',
