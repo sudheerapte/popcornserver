@@ -16,7 +16,7 @@ class Propagator {
 
   process(line, anEvalFunc) {
     if (! anEvalFunc) { anEvalFunc = this.evalFunc; }
-    return this.t.process(line, anEvalFunc);
+    return this.t.expand(line, anEvalFunc);
   }
 
   /**
@@ -470,7 +470,7 @@ class Propagator {
         this.log(`evalBlock: formula is empty`);
         return "";
       }
-      let result = this.t.process(formula, anEvalFunc);
+      let result = this.t.expand(formula, anEvalFunc);
       if (result[0]) {
         this.log(`evalBlock: ${formula}: ${result[0]}`);
         return "";
@@ -513,14 +513,14 @@ class Propagator {
   }
 
   // getEvalFunc - return a function suitable to pass in to
-  // this.t.process().
+  // this.t.expand().
 
   getEvalFunc() {
     return (tokens => this.evaluate(tokens));
   }
 
   // getEvalFuncVarContext - return a function suitable to pass in to
-  // this.t.process(). This version takes a "varContext" that can
+  // this.t.expand(). This version takes a "varContext" that can
   // resolve a set of capitalized names (COMMAND token values) to
   // a different token.
   // The "varContext" provides one token per capitalized name.

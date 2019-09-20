@@ -91,7 +91,7 @@ class Tokenizer {
      where "errMsg" is null if no errors.
 
   */
-  process(input, f) {
+  expand(input, f) {
     let tResult = [ null, input];
     let more = true;
     let loopsDone = 10; // catch infinite recursion

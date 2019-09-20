@@ -168,11 +168,11 @@ log(`--- running revScript...`);
 errMsg = propagator.runRenderScript(revScript);
 err(errMsg);
 
-checkProcess("{{CURRENT .board.a}}", "fly1");
-checkProcess("{{CURRENT .board.b}}", "fly2");
-checkProcess("{{CURRENT .board.c}}", "none");
-checkProcess("{{CURRENT .fly1.loc}}", "a");
-checkProcess("{{CURRENT .fly2.loc}}", "b");
+checkExpand("{{CURRENT .board.a}}", "fly1");
+checkExpand("{{CURRENT .board.b}}", "fly2");
+checkExpand("{{CURRENT .board.c}}", "none");
+checkExpand("{{CURRENT .fly1.loc}}", "a");
+checkExpand("{{CURRENT .fly2.loc}}", "b");
 
 //log("OK");
 
@@ -301,11 +301,11 @@ propagator = new Propagator(machine, t, (s) => log(s));
 result = propagator.runRenderScript(initScript); err(result);
 result = propagator.runRenderScript(renderScript); err(result);
 
-checkProcess("{{CURRENT .turn}}", "spider");
-checkProcess("{{DATAW .img.fly1}}", "fly");
-checkProcess("{{DATAW .img.fly2}}", "fly");
-checkProcess("{{DATAW .img.spider}}", "spider-selected");
-checkProcess("{{CURRENT .tomove}}", "spider");
+checkExpand("{{CURRENT .turn}}", "spider");
+checkExpand("{{DATAW .img.fly1}}", "fly");
+checkExpand("{{DATAW .img.fly2}}", "fly");
+checkExpand("{{DATAW .img.spider}}", "spider-selected");
+checkExpand("{{CURRENT .tomove}}", "spider");
 
 log(`---- check for bad path syntax`);
 result = propagator.process("{{CURRENT tomove}}");
@@ -318,13 +318,13 @@ err(result);
 
 result = propagator.runRenderScript(renderScript);
 
-checkProcess("{{CURRENT .turn}}", "flies");
-checkProcess("{{CURRENT .selectedfly}}", "fly1");
-checkProcess("{{DATAW .img.fly1}}", "fly-selected");
-checkProcess("{{DATA .img.fly1}}", '"fly-selected"');
-checkProcess("{{DATAW .img.fly2}}", "fly");
-checkProcess("{{DATAW .img.spider}}", "spider");
-checkProcess("{{CURRENT .tomove}}", "fly1");
+checkExpand("{{CURRENT .turn}}", "flies");
+checkExpand("{{CURRENT .selectedfly}}", "fly1");
+checkExpand("{{DATAW .img.fly1}}", "fly-selected");
+checkExpand("{{DATA .img.fly1}}", '"fly-selected"');
+checkExpand("{{DATAW .img.fly2}}", "fly");
+checkExpand("{{DATAW .img.spider}}", "spider");
+checkExpand("{{CURRENT .tomove}}", "fly1");
 
 log(`---- evalBlockVars`);
 machine = new Machine();
@@ -337,11 +337,11 @@ propagator = new Propagator(machine, t, (s) => log(s));
   err(result);
 });
 
-//checkProcess("{{EXISTS .board.b}}", "1");
-checkProcess("{{CURRENT .fly1.position}}", "a");
-checkProcess("{{CURRENT .fly2.position}}", "a");
+//checkExpand("{{EXISTS .board.b}}", "1");
+checkExpand("{{CURRENT .fly1.position}}", "a");
+checkExpand("{{CURRENT .fly2.position}}", "a");
 
-function checkProcess(input, output) {
+function checkExpand(input, output) {
   let tResult;
   tResult = propagator.process(input);
   err(tResult[0]);

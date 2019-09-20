@@ -199,7 +199,7 @@ checkScan("#fo {{bar\"}}", [ 4, 10 ]);
 
 
 log(`---- expand suite`);
-function checkProcess(input, output) {
+function checkExpand(input, output) {
   //log(`${' '.repeat(30-input.length)}|${input}| |${JSON.stringify(output)}|`);
   let result = t.expandOnce(input);
   if (result[0] !== output[0]) {
@@ -209,16 +209,16 @@ function checkProcess(input, output) {
     err(`expected |${output[1]}|, got |${result[1]}|`);
   }
 }
-checkProcess("foo bar", [null, "foo bar"]);
-checkProcess("#fo bar", [null, "#fo bar"]);
-checkProcess("{{foo bar}}", [null, "foobar"]);
-checkProcess("{{foo {{bar}}", [null, "{{foo bar"]);
-checkProcess("foo {{bar}}}}", [null, "foo bar}}"]);
-checkProcess("foo {{\"bar}}}}", ["bad token at index 0", null]);
+checkExpand("foo bar", [null, "foo bar"]);
+checkExpand("#fo bar", [null, "#fo bar"]);
+checkExpand("{{foo bar}}", [null, "foobar"]);
+checkExpand("{{foo {{bar}}", [null, "{{foo bar"]);
+checkExpand("foo {{bar}}}}", [null, "foo bar}}"]);
+checkExpand("foo {{\"bar}}}}", ["bad token at index 0", null]);
 
 function checkFull(input, output) {
   //log(`${' '.repeat(30-input.length)}|${input}| |${JSON.stringify(output)}|`);
-  let result = t.process(input);
+  let result = t.expand(input);
   if (result[0] !== output[0]) {
     err(`expected ${output[0]}, got ${result[0]}`);
   }
