@@ -21,6 +21,13 @@ article {
     background: khaki;
 }
 
+.tablabel {
+    text-align: center;
+    line-height: 30px;
+    margin: 0;
+    padding: 10px;
+}
+
 /*
 article:nth-of-type(3) {
     flex: 100px;
