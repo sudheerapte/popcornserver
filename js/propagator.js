@@ -769,7 +769,7 @@ class Propagator {
     if (args.length < 1) {
       return [`ATTACH needs at least 1 arg`, null];
     }
-    return null;
+    return [`ATTACH not yet implemented`, null];
   }
 
   /*
