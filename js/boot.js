@@ -1,15 +1,13 @@
 window.onload = boot;
 
-let P = {          // minimize pollution of global namespace
-  machine: "",     // name of machine
-  mc: new Machine, // filled in by message handlers
-  ws: null,        // websocket assigned by upgradeToWebsocket
-  propagator: null,
-  tokenizer: new Tokenizer, // simply passed in to new Propagator()
-// Turn this on if you want detailed logging for render scripts
-//  logger: console.log,
-  logger: s => {},
-};
+let P = new Runtime( s => console.log(s) );
+console.log(`created Runtime`);
+P.setSingleton("machine", "");
+P.setSingleton("mc",      new Machine);
+P.setSingleton("wc",      null);
+P.setSingleton("propagator", null);
+P.setSingleton("tokenizer", new Tokenizer);
+P.setSingleton("propagatorLogger", s => {});
 
 function boot() {
   upgradeToWebsocket()
@@ -40,7 +38,7 @@ function sendProvide() {
     const lines = str.split(/\n|\r\n/)
           .filter(line => ! line.match(/^\s*$/))
           .map(line => line.trim());
-    const propagator = new Propagator(temp, P.tokenizer, P.logger);
+    const propagator = new Propagator(temp, P.getSingleton("tokenizer"), P.getSingleton("propagatorLogger"));
     const result = propagator.runRenderScript(lines);
     if (result) {
       console.log(`provide script: ${result}`);
@@ -54,8 +52,9 @@ function sendProvide() {
   if (mcname.startsWith('/')) { mcname = mcname.slice(1); }
   console.log(`sending client provide ${mcname}`);
   try {
-    if (P.ws) {
-      P.ws.send(`provide ${mcname}\n${temp.getSerialization().join('\n')}\n`);
+    const ws = P.getSingleton("ws");
+    if (ws) {
+      ws.send(`provide ${mcname}\n${temp.getSerialization().join('\n')}\n`);
     } else {
       console.log(`ERROR: no websocket!`);
     }
@@ -72,8 +71,8 @@ function runScript(name) {
     const lines = str.split(/\n|\r\n/)
           .filter(line => ! line.match(/^\s*$/))
           .map(line => line.trim());
-    // console.log(`script ${name}: ${lines.length} lines`);
-    result = P.propagator.runRenderScript(lines);
+    console.log(`script ${name}: ${lines.length} lines`);
+    result = P.getSingleton("propagator").runRenderScript(lines);
     if (result) {
       console.log(`script ${name} error:\n${result}`);
     }
@@ -91,7 +90,7 @@ function generateXY() {
       const formula = useNode.getAttribute(`data-${coord}`);
       if (formula) {
         numFormulas++;
-        let result = P.propagator.process(formula);
+        let result = P.getSingleton("propagator").process(formula);
         if (result[0]) {
           console.log(`use formula ${numFormulas}:
      ${formula}:
@@ -117,18 +116,19 @@ function upgradeToWebsocket() {
     // replace http: with ws:
     const wsref = href.replace(/^[^:]+/, "ws");
     console.log(`upgrading to ${wsref}`);
-    P.ws = new WebSocket(wsref);
-    if (! P.ws) {
+    P.setSingleton("ws", new WebSocket(wsref));
+    const ws = P.getSingleton("ws");
+    if (! ws) {
       return reject(`failed to create WebSocket(${wsref})`);
     }
-    P.ws.addEventListener('open', function(ev) {
+    ws.addEventListener('open', function(ev) {
       console.log(`websocket is open`);
       return resolve();
     });
-    P.ws.addEventListener('close', function(ev) {
+    ws.addEventListener('close', function(ev) {
       console.log('websocket closed by server');
     });
-    P.ws.addEventListener('error', function(ev) {
+    ws.addEventListener('error', function(ev) {
       console.log(`websocket error: ${JSON.stringify(ev)}`);
     });
   });
@@ -140,15 +140,16 @@ function upgradeToWebsocket() {
 
 function doFirstMessage() {
   return new Promise( (resolve, reject) => {
-    P.ws.addEventListener('message', handleFirstMessage);
+    P.getSingleton("ws").addEventListener('message', handleFirstMessage);
 
     // Send the subscribe command for our URL machine
     let mcname = window.location.pathname;
     if (mcname.startsWith('/')) { mcname = mcname.slice(1); }
     console.log(`subscribing to machine ${mcname}`);
-    P.machine = mcname;
+    P.setSingleton("machine", mcname);
+    const ws = P.getSingleton("ws");
     try {
-      if (P.ws) { P.ws.send(`subscribe ${mcname}`); }
+      if (ws) { ws.send(`subscribe ${mcname}`); }
       else { return reject(`ERROR: no websocket!`); }
     } catch (e) {
       return reject(`websocket send failed: ${e.code}`);
@@ -159,16 +160,20 @@ function doFirstMessage() {
       const data = ev.data;
       if (data.match(/^provide\s+(\w+)/)) {
 	const m = data.match(/^provide\s+(\w+)/);
-	if (P.machine === m[1]) {
-	  console.log(`got provide ${P.machine}`);
+	if (P.getSingleton("machine") === m[1]) {
+	  console.log(`got provide ${P.getSingleton("machine")}`);
 	  const arr = data.split('\n');
 	  if (! arr) {
-            const msg = `bad machine payload for ${P.machine}`;
+            const msg = `bad machine payload for ${P.getSingleton("machine")}`;
             return reject(msg);
 	  }
-          P.mc = new Machine;
-          P.propagator = new Propagator(P.mc, P.tokenizer, P.logger)
-	  const result = P.mc.interpret(arr.slice(1));
+          P.setSingleton("mc", new Machine);
+          const propagator =
+                new Propagator(P.getSingleton("mc"),
+                               P.getSingleton("tokenizer"),
+                               P.getSingleton("propagatorLogger"));
+          P.setSingleton("propagator", propagator);
+	  const result = P.getSingleton("mc").interpret(arr.slice(1));
 	  if (result) {
             console.log(`failed to interpret provided machine: ${result}`);
           }
@@ -191,8 +196,9 @@ function doFirstMessage() {
       reflectMachine();
       addClickChgHandlers();
       addClickCmdHandlers();
-      P.ws.removeEventListener('message', handleFirstMessage);
-      P.ws.addEventListener('message', handleMessage);
+      const ws = P.getSingleton("ws");
+      ws.removeEventListener('message', handleFirstMessage);
+      ws.addEventListener('message', handleMessage);
       unhideBody();
       return resolve();
     }
@@ -206,14 +212,14 @@ function handleMessage(ev) { // handle subsequent messages
     const m = data.match(/^update\s+(\w+)/);
     if (!m) {
       console.log(`ignoring bad update command: |${trunc(data)}|`);
-    } else if (P.machine !== m[1]) {
+    } else if (P.getSingleton("machine") !== m[1]) {
       console.log(`|update ${m[1]}|: ignoring unknown machine`);
     } else {
       const arr = data.split('\n');
       if (!arr) {
 	console.log(`bad payload for |${trunc(data)}|`);
       } else {
-	const result = P.mc.interpret(arr.slice(1));
+	const result = P.getSingleton("mc").interpret(arr.slice(1));
 	if (result) {
 	  console.log(`update failed: ${result}`);
 	} else {
@@ -225,22 +231,25 @@ function handleMessage(ev) { // handle subsequent messages
     const m = data.match(/^provide\s+(\w+)/);
     if (!m) {
       console.log(`ignoring bad provide command: |${trunc(data)}|`);
-    } else if (P.machine !== m[1]) {
+    } else if (P.getSingleton("machine") !== m[1]) {
       console.log(`|provide ${m[1]}|: ignoring unknown machine`);
     } else {
       const arr = data.split('\n');
       if (! arr) {
-        const msg = `bad machine payload for ${P.machine}`;
+        const msg = `bad machine payload for ${P.getSignleton("machine")}`;
         return;
       } else {
-        P.mc = new Machine;
-        P.propagator = new Propagator(P.mc, P.tokenizer, console.log)
-	const result = P.mc.interpret(arr.slice(1));
+        P.setSingleton("mc", new Machine);
+        const mc = P.getSingleton("mc");
+        const propagator = new Propagator(mc, P.getSingleton("tokenizer"),
+                                      console.log)
+        P.setSingleton("propagator", propagator);
+	const result = P.getSingleton("mc").interpret(arr.slice(1));
 	if (result) {
           console.log(`failed to interpret provided machine: ${result}`);
           return;
         }
-        console.log(`new machine ${P.machine} provided`);
+        console.log(`new machine ${P.getSingleton("machine")} provided`);
         runScript('init');
         reflectMachine();
         return;
@@ -257,7 +266,8 @@ function handleMessage(ev) { // handle subsequent messages
 let unknownPaths = new Map(); // suppress repeated "no such path" errors
 
 function reflectMachine() {
-  if (! P.mc) { return; }
+  const mc = P.getSingleton("mc");
+  if (! mc) { return; }
   runScript('render');
   generateXY();
   const DM = "data-alt";
@@ -270,7 +280,7 @@ function reflectMachine() {
   function hideUnhide(e) {
     const mPath = e.getAttribute(DM);
     if (mPath) {
-      if (! P.mc.exists(mPath) && ! unknownPaths.has(mPath)) {
+      if (! mc.exists(mPath) && ! unknownPaths.has(mPath)) {
         console.log(`no such path: ${mPath}`);
         unknownPaths.set(mPath, true);
         return;
@@ -303,7 +313,7 @@ function reflectMachine() {
 */
 
 function isNonCurrAlt(mPath) {
-  const state = P.mc.getState(mPath);
+  const state = P.getSingleton("mc").getState(mPath);
   if (state) { // check if state is a non-current alternative child
     const parent = state.parent;
     if (parent.hasOwnProperty("curr") && parent.hasOwnProperty("cc")) {
@@ -321,8 +331,9 @@ function isNonCurrAlt(mPath) {
    @function(addClickChgHandlers) - set up data-chgclick handlers
 */
 function addClickChgHandlers() {
-  if (! P.mc) { return; }
-  const mcCopy = P.mc.clone(); // create a copy to try the transactions on
+  const mc = P.getSingleton("mc");
+  if (! mc) { return; }
+  const mcCopy = mc.clone(); // create a copy to try the transactions on
   if (typeof mcCopy === 'string') {
     console.log(`failed to clone: ${mcCopy}`);
     return;
@@ -333,12 +344,13 @@ function addClickChgHandlers() {
     const chStr = e.getAttribute(DO);
     if (chStr) {
       e.addEventListener('click', ev => {
-        const result = P.propagator.process(chStr.trim());
+        const propagator = P.getSingleton("propagator");
+        const result = propagator.process(chStr.trim());
         if (result[0]) {
           console.log(`chgclick failed for ${chStr}: ${result[0]}`);
         } else {
           console.log(`click result: ${result[1]}`);
-          const iresult = P.mc.interpret(result[1].split(','));
+          const iresult = mc.interpret(result[1].split(','));
           if (iresult) {
             console.log(`interpret result: ${iresult}`);
           } else {
@@ -356,8 +368,10 @@ function addClickChgHandlers() {
    @function(addClickCmdHandlers) - set up data-cmdclick handlers
 */
 function addClickCmdHandlers() {
-  if (! P.mc) { return; }
-  const mcCopy = P.mc.clone(); // create a copy to try the transactions on
+  const mc = P.getSingleton("mc");
+  const machine = P.getSingleton("machine");
+  if (! mc) { return; }
+  const mcCopy = mc.clone(); // create a copy to try the transactions on
   if (typeof mcCopy === 'string') {
     console.log(`failed to clone: ${mcCopy}`);
     return;
@@ -368,14 +382,16 @@ function addClickCmdHandlers() {
     const chStr = e.getAttribute(DC);
     if (chStr) {
       e.addEventListener('click', ev => {
-        const result = P.propagator.process(chStr.trim());
+        const propagator = P.getSingleton("propagator");
+        const result = propagator.process(chStr.trim());
         if (result[0]) {
           console.log(`cmdclick failed for ${chStr}: ${result[0]}`);
           return;
         }
         console.log(`clicked: sending ${result[1]}`);
         try {
-          if (P.ws) { P.ws.send(`command ${P.machine}\n${result[1]}`); }
+          const ws = P.getSingleton("ws");
+          if (ws) { ws.send(`command ${machine}\n${result[1]}`); }
         } catch (e) {
           console.log(`websocket send failed: ${e.code}`);
         }

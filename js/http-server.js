@@ -143,6 +143,9 @@ class Server extends EventEmitter {
     res.write("'use strict';\nvar module = {};\n");
     fileUtils.streamJsModuleFP('machine.js', res)
       .then( () => {
+        return fileUtils.streamJsModuleFP('runtime.js', res);
+      })
+      .then( () => {
         return fileUtils.streamJsModuleFP('tokenizer.js', res);
       })
       .then( () => {
