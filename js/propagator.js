@@ -596,6 +596,7 @@ class Propagator {
       {cmd: 'SET', fn: args => this.setCmd(args)},
       {cmd: 'DEL', fn: args => this.delCmd(args)},
 
+      {cmd: 'MAP', fn: args => this.mapCmd(args)},
       {cmd: 'ATTACH', fn: args => this.attachCmd(args)},
     ];
     this.addCommands(records);
@@ -763,6 +764,51 @@ class Propagator {
     } else {
       return [ `DATA: no such path: ${mPath}`, null ];
     }
+  }
+
+  mapCmd(args) {
+    if (args.length < 1) {
+      return [`MAP needs at least 1 arg`, null];
+    }
+    if (! this.t.ifNextCommand(args, 0, "ALT0")) {
+      return ["MAP requires ALT0", null];
+    }
+    const options = {PARENT: "PATH", ELEMENTID: "STRING"};
+    const result = this.t.parseRequiredTokens(args.slice(1), options);
+    if (result[0]) { return [ `MAP ALT0: ${result[0]}`, args ]; }
+    const struct = result[1];
+    const p = struct.PARENT;
+    if (! this.mc.isVariableParent(p)) {
+      return [`MAP ALT0 PATH: bad path: |${p}|`, args];
+    }
+    const elem = document.getElementById(struct.ELEMENTID);
+    if (! elem) {
+      return [`MAP: ELEMENTID: no such element: ${struct.ELEMENTID}`, null];
+    }
+    // If the parent path is not current, just turn off the element.
+    if (this.mc.getCurrentPaths().indexOf(p) < 0) {
+      elem.setAttribute("hidden", "");
+      return [null, null];
+    }
+    // Make sure the element has twice as many children as the path.
+    // Each sub-state has two corresponding child elements.
+    // We will turn on the right child for each sub-state.
+    const children = this.mc.getState(p).cc;
+    const num = elem.children.length;
+    if (num !== 2*(children.length)) {
+      return [`MAP: element ${struct.ELEMENTID} has ${num} children`, null];
+    }
+    // Use child elem 0 if sub-state 0 is current, else use child elem 1.
+    for (let i=0; i<children.length; i++) {
+      if (i === this.mc.getState(p).curr) {
+        elem.children[i*2].removeAttribute("hidden");
+        elem.children[i*2+1].setAttribute("hidden", "");
+      } else {
+        elem.children[i*2].setAttribute("hidden", "");
+        elem.children[i*2+1].removeAttribute("hidden");
+      }
+    }
+    return [null, null];
   }
 
   attachCmd(args) {

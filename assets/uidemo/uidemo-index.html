@@ -8,14 +8,12 @@
     </script>
     <script id="init" type="text/plain">
       DEF ALT PARENT .tab CHILDREN t1 t2 t3
+      SET CURRENT PARENT .tab CHILD t2
       DEF ALT PARENT .tab/t1 CHILDREN radio1 radio2 radio3
       DEF ALT PARENT .tab/t2 CHILDREN text2 text3
+      MAP ALT0 PARENT .tab ELEMENTID "tabs"
     </script>
     <script id="render" type="text/plain">
-      ATTACH TYPE click HANDLER tab-pressed SELECT "#t1"
-      ATTACH TYPE click HANDLER tab-pressed SELECT "#t2"
-      ATTACH TYPE click HANDLER tab-pressed SELECT "#t3"
-      ATTACH TYPE click HANDLER radio-pressed SELECT "#radioset"
       WITH CURRENT .tab/t1 BEGIN
         
       END
@@ -37,22 +35,16 @@
                  minlength="4" maxlength="8" size="10">
           </input>
         </article>
-        <article>
-          <div id="tab1div">
-            <label class="tablabel"><b>Tab 1</b></label>
-            <button hidden="" name="tab1" type="button" id="tab1button">
-              <b>Tab 1</b></button>
-          </div>
-          <div id="tab2div">
-            <label class="tablabel" hidden=""><b>Tab 2</b></label>
-            <button name="tab2" type="button" id="tab1button">
-              <b>Tab 2</b></button>
-          </div>
-          <div id="tab3div">
-            <label class="tablabel" hidden=""><b>Tab 3</b></label>
-            <button name="tab3" type="button" id="tab1button">
-              <b>Tab 3</b></button>
-          </div>
+        <article id="tabs">
+          <label class="tablabel"><b>Tab 1</b></label>
+          <button name="tab1" type="button" id="tab1button">
+            <b>Tab 1</b></button>
+          <label class="tablabel"><b>Tab 2</b></label>
+          <button name="tab2" type="button" id="tab1button">
+            <b>Tab 2</b></button>
+          <label class="tablabel"><b>Tab 3</b></label>
+          <button name="tab3" type="button" id="tab1button">
+            <b>Tab 3</b></button>
         </article>
         <article>
           <fieldset class="radioset" id="radioset">
