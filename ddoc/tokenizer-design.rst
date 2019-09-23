@@ -22,16 +22,18 @@ for all meaningful tokens:
   string          Sequence of printable ASCII characters
                   enclosed in double-quotes: ``"some string"``.
 
+  number          Sequence of digits, possibly preceded by a
+                  ``+`` or ``-`` sign.
+
   variable        Keyword-like variable name enclosed in single
                   braces: ``{QUEENS_GAMBIT}``.
 
   special char    Any of the printable ASCII characters that are
                   not letters or digits, appearing by itself.
 
-  ``{{``          Begin macro
+  ``{{``          Macro open
 
-  ``}}``          End macro. The tokenizer tries to expand the
-                  macro using query keywords.
+  ``}}``          Macro close
 
   ==============  ==============================================
  
@@ -39,8 +41,37 @@ Note that a variable is a single token that starts and ends with
 braces, whereas the begin- and end-macro symbols enclose other
 tokens::
 
-  MARY had a {ADJECTIVE} lamb whose fleece was {{
+  MARY had a {ADJECTIVE} lamb whose fleece was {{SIMILE}}
 
+If the above string were passed to ``tokenize()``, it would return:
+
+  ==============  =====================================================
+  Tokens          Values
+  ==============  =====================================================
+  keyword         ``MARY``
+  word, word      ``had``, ``a``
+  variable        ``ADJECTIVE``
+  word (4)        ``lamb``, ``whose``, ``fleece``, ``was``
+  macro-open      (no value)
+  keyword         ``SIMILE``
+  macro-close     (no value)
+  ==============  =====================================================
+
+
+The tokenizer class
+^^^^^^^^^^^^^^^^^^^^
+
+The ``tokenize()`` method takes a string and produces a list of
+tokens. It returns an array of two items: an error message and the
+list of tokens. The error message is ``null`` if all goes well.
+
+The ``tokenize()`` method can also take an array of strings and
+produce a corresponding array of lists of tokens (
+
+
+
+Structures used in PSL
+^^^^^^^^^^^^^^^^^^^^^^^^
 
 PSL uses lists of the above tokens to build structures:
 

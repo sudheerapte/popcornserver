@@ -12,8 +12,15 @@ class Tokenizer {
       DOLLAR: '$', HASH: '#', AT: '@', BANG: '!', TILDE: '~',
       COLON: ':', SEMICOLON: ';', COMMA: ',', OPENBRACKET: '[',
       CLOSEBRACKET: ']', CIRCUMFLEX: '^', OPENCURLY: '{',
-      CLOSECURLY: '}'
+      CLOSECURLY: '}', QUOTE: "'",
     };
+    this.MACRO_OPEN_RE = /^{{/;
+    this.MACRO_CLOSE_RE = /^}}/;
+    this.KEYWORD_RE = /^[A-Z]+[A-Z0-9_]*/;
+    this.WORD_RE = /^[a-z]+[a-z0-9-]*/;
+    this.NUMBER_RE = /^[+-]?[0-9]+/;
+    this.VARIABLE_RE = /^{\s*[A-Z]+[A-Z0-9_]*\s*}/;
+
     const names = Object.getOwnPropertyNames(this.specials);
     this.specialsMap = new Map();
     for (let i=0; i<names.length; i++) {
@@ -112,49 +119,6 @@ class Tokenizer {
   }
 
   /**
-     substVars - take a token array and expand any {VAR}s
-
-     Returns [num, outArray], where:
-        - num is the number of variables expanded successfully.
-        - outArray is the result of the substitution.
-
-     The function f() should take the "VAR" portion and return
-     a token or array of tokens.
-     If it does not have an expansion, it should return
-     null. The expandVars function will keep the {VAR} string
-     intact in the result, and not count that variable as
-     successfully expanded.
-
-     The caller might want to call this function again if there
-     is a possibility that the expansion might contain more {VAR}
-     occurrences, i.e., if num > 0.
-   */
-
-  substVars(inputArray, f) {
-    let num = 0; // number of variables successfully looked up
-    let outArray = [];
-    for (let inPos = 0; inPos < inputArray.length; inPos++) {
-      const tok = inputArray[inPos];
-      if (tok.name === 'VARIABLE') {
-        const lookup = f(tok.value);
-        if (lookup) {
-          num++;
-          if (Array.isArray(lookup)) {
-            lookup.forEach( t => outArray.push(t) );
-          } else {
-            outArray.push(lookup);
-          }
-        } else {
-          outArray.push(tok);
-        }
-      } else {
-        outArray.push(tok);
-      }
-    }
-    return [num, outArray];
-  }
-
-  /**
      expandOnce - expand the first macro enclosed by BEGIN/END
 
      Given "blah {{foo bar}} blah", we compute "blah xyz blah",
@@ -221,6 +185,26 @@ class Tokenizer {
      forms the original array.
    */
   tokenize(str) {
+    if (Array.isArray(str)) {
+      if (str.length === 0) { return []; }
+      let errMsg = "";
+      const tla = str.map( line => {
+        if (typeof line !== 'string') {
+          errMsg += "\nnot a string";
+          return [];
+        }
+        const pair = this.tokenize(line);
+        if (pair[0]) {
+          errMsg += `\n${pair[0]}`;
+          return [];
+        } else {
+          return pair[1];
+        }
+      });
+      if (errMsg.length <= 0) { errMsg = null;}
+      return [errMsg, tla];
+    }
+
     let arr = [];
     let s = str;
     let num = 0;
@@ -248,13 +232,13 @@ class Tokenizer {
   consumeOneToken(str) { // return [num, tok] or [num, null]
     // RULES - parsing rules for different types of tokens
     const RULES = [
-      { re: /^{{/,   type: 'BEGIN', useValue: false },
-      { re: /^}}/,   type: 'END', useValue: false },
-      { re: /^[A-Z]+[A-Z0-9_]*/, type: 'COMMAND', useValue: true },
-      { re: /^[a-z]+[a-z0-9-]*/,type: 'WORD', useValue: true },
-      { re: /^[+-]?[0-9]+/, type: 'WORD', useValue: true },
-      { re: /^{\s*[A-Z]+[A-Z0-9_]*\s*}/, type: 'VARIABLE', useValue: true },
-      { re: this.specialsRegex, type: 'SPECIAL', useValue: false },
+      { re: this.MACRO_OPEN_RE,  type: 'MACRO_OPEN', useValue: false },
+      { re: this.MACRO_CLOSE_RE, type: 'MACRO_CLOSE', useValue: false },
+      { re: this.KEYWORD_RE,     type: 'KEYWORD',   useValue: true },
+      { re: this.WORD_RE,        type: 'WORD',      useValue: true },
+      { re: this.NUMBER_RE,      type: 'NUMBER',    useValue: true },
+      { re: this.VARIABLE_RE,    type: 'VARIABLE',  useValue: true },
+      { re: this.specialsRegex,  type: 'SPECIAL',   useValue: false },
     ];
 
     let num = 0;
@@ -287,9 +271,10 @@ class Tokenizer {
           toktype = this.specialsMap.get(m[0]);
           return [num, {name: toktype, value: null}];
         } else if (rec.type === 'VARIABLE') {
-          const varName = m[0].match(/[A-Z]+[A-Z0-9_]*/)[0];
+          const varName = m[0].slice(1).match(this.KEYWORD_RE)[0];
           return [num, {name: 'VARIABLE', value: varName}];
         }
+        
         return [num, {name: toktype, value: (rec.useValue ? m[0] : null)}];
       }
     }
@@ -354,7 +339,7 @@ class Tokenizer {
       if (tok.name === 'STRING') {
         return '"' + renderString(tok.value) + '"';
       } else if (tok.name === 'NUMBER') {
-        if (lastTok && lastTok.match(/WORD|COMMAND/)) {
+        if (lastTok && lastTok.match(/WORD|KEYWORD/)) {
           return " " + tok.value;
         } else {
           return tok.value;
@@ -367,8 +352,8 @@ class Tokenizer {
         } else {
           return tok.value;
         }
-      } else if (tok.name === 'COMMAND') {
-        if (lastTok && lastTok === 'COMMAND') {
+      } else if (tok.name === 'KEYWORD') {
+        if (lastTok && lastTok === 'KEYWORD') {
           return " " + tok.value;
         } else {
           return tok.value;
@@ -417,289 +402,6 @@ class Tokenizer {
     } else {
       return false;
     }
-  }
-
-  /**
-     splitSections() - take a script and return sections based on
-     percent signs or [square brackets] like a Microsoft INI file.
-
-     Based on this input, showing one example of each type:
-
-       % SECTIONONE
-       ...lines...
-       ...lines...
-       [ SECTIONTWO ]
-       ...lines...
-       ...lines...
-
-     Return this output:
-     [
-         {section: "SECTIONONE", lines: [...] },
-         {section: "SECTIONTWO", lines: [...] },
-     ]
-     
-     Section name must be single contiguous string of non-whitespace.
-
-     If the first line is not a section line, then we return null.
-     If the last line looks like a section, then we return an error message.
-  */
-  splitSections(lines) {
-    let arr = [];
-    let i=0;
-    for (; i<lines.length; i++) {
-      if (lines[i].trim().length <= 0) { continue; }
-      const result = matchSection(lines[i]);
-      if (result) {
-        let section = {section: result, lines: [] };
-        if (i=== lines.length-1) {
-          return `splitSections: last line has %`;
-        }
-        const sectionLines = accumulateSection(section, lines.slice(i+1));
-        arr.push(section);
-        i+= sectionLines;
-      } else {
-        return null;
-      }
-    }
-    return arr;
-
-    function matchSection(line) { // return null or section name
-      let m;
-      m = line.trim().match(/^\%\s*(\S+)$/);
-      if (!m) {
-        m = line.trim().match(/^\[\s*(\S+)\s*\]$/);
-      }
-      if (m) {
-        return m[1];
-      } else {
-        return null;
-      }
-    }
-
-    function accumulateSection(section, lines) {
-      let j=0;
-      for (; j<lines.length && ! matchSection(lines[j]); j++) {
-        section.lines.push(lines[j]);
-      }
-      return j;
-    }
-  }
-
-  // --------- utilities for parsing command arguments ---------------
-
-  ifNextCommand(tokList, index, cmd) {
-    if (tokList.length < index+1) { return false; }
-    if (tokList[index].name !== 'COMMAND') { return false; }
-    return cmd === tokList[index].value;
-  }
-  ifNext2Commands(tokList, index, cmd1, cmd2) {
-    if (tokList.length < index+2) { return false; }
-    return this.ifNextCommand(tokList, index, cmd1) &&
-      this.ifNextCommand(tokList, index+1, cmd2);
-  }
-  getNextArg(tokList, index, argname, options) {
-    if (options[argname].match(tokList[index].name)) {
-      return tokList[index];
-    } else if (options[argname] === 'PATH') {
-      return null;
-    }
-  }
-  findNextCommand(tokList, index, commandNames) {
-    if (tokList.length < index) { return null; }
-    if (tokList[index].name !== 'COMMAND') {
-      return null;
-    }
-    for (let j=0; j<commandNames.length; j++) {
-      if (tokList[index].value === commandNames[j]) {
-        return commandNames[j];
-      }
-    }
-    return null;
-  }
-  ifNextPair(tokList, index, cmd, tok) {
-    if (ifNextCommand(tokList, index, cmd)) {
-      if (tokList.length < index+2) { return false; }
-      return this.equal(tokList[index+2], tok);
-    } else {
-      return false;
-    }
-  }
-
-  /**
-     parseRequiredTokens() - return [ null, args] on success
-
-     The returned object "args" contains attributes whose names are
-     the COMMANDS in the token list, and values are the subsequent
-     next token.
-
-     For example, if you define "options" like this:
-
-         { ID: "WORD", NAME: "WORD", VALUE: "STRING or WORD" }
-
-     And you tokenize the following string:
-
-         ID foo NAME bar VALUE "some string baz"
-
-     Then the token list can be parsed with with the above options.
-     We return an "args" object like this:
-
-     {
-       ID: {name: WORD, value: "foo"},
-       NAME: {name: WORD, value: "bar"},
-       VALUE: {name: STRING, value: '"some string baz"'},
-     }
-     
-     Moreover, every key in the "options" object must be
-     represented once in the token list, otherwise we get an error.
-
-     ==============   ====================================  =============
-     option value     meaning                               value
-     ==============   ====================================  =============
-     WORD             a single word, [a-z][a-z0-9-]*        string
-     COMMAND          a single COMMAND, [A-Z]+              string
-     WORDS            a series of words                     array of str.
-     PATH             a path, DOT WORD DOT/SLASH WORD ...   string
-     COMMAND or WORD  either a COMMAND or a word            string
-     ==============   ====================================  =============
-
-   */
-
-  parseRequiredTokens(tokList, options) {
-    if (! tokList || tokList.length <= 0) {
-      return ['empty token list', null];
-    }
-    let args = {};
-    const keys = Object.keys(options);
-    for (let i=0; i< tokList.length; i++) {
-      let found = false;
-      const cmd = this.findNextCommand(tokList, i, keys);
-      if (cmd) {
-        let [ num, value] = this.consumeArgs(tokList, i+1, cmd, options);
-        if (num > 0) {
-          found = true;
-          args[cmd] = value;
-          i += num;
-          continue;
-        } else {
-          return [`bad arg for ${cmd}`, args];
-        }
-      } else {
-        return [ `bad option: ${this.renderTokens(tokList[i])}`, args ];
-      }
-    }
-    const opts = Object.keys(args);
-    for (let i=0; i<keys.length; i++) {
-      if (! args.hasOwnProperty(keys[i])) {
-        return [`required option ${keys[i]} missing`, args];
-      }
-    }
-    return [null, args];
-  }
-
-  // consumeArgs: consume as many tokens as possible; return [num, value]
-  // "index" points to the first token after the COMMAND argname.
-  consumeArgs(tokList, index, argname, options) {
-    const opt = options[argname];
-    const tok = tokList[index];
-    if (opt === 'COMMAND') {
-      return tok.name === 'COMMAND' ? [1, tok.value] : [0, 'not COMMAND'];
-    } else if (opt === 'WORD') {
-      return tok.name === 'WORD' ? [1, tok.value] : [0, 'not WORD'];
-    } else if (opt === 'STRING') {
-      return tok.name === 'STRING' ? [1, tok.value] : [0, 'not STRING'];
-    } else if (opt === 'WORDS') {
-      let num = 0;
-      let arr = [];
-      for (let i=index; i<tokList.length; i++) {
-        const tok = tokList[i];
-        if (tok.name === 'WORD') {
-          num++;
-          arr.push(tok.value);
-        } else {
-          return [num, arr];
-        }
-      }
-      return [num, arr];
-    } else if (opt === 'PATH') {
-      const num = this.consumePath(tokList.slice(index));
-      if (num <= 1) {
-        return [0, 'not PATH'];
-      } else {
-        return [num, this.composePath(tokList.slice(index, index+num))];
-      }
-    } else if (opt.match(/WORD/) && opt.match(/STRING/)) {
-      return tok.name.match(/WORD|STRING/) ? [1, tok.value] : [0, 'not found'];
-    }
-    console.log(`consumeArgs: bad option: ${opt}`);
-    return 0;
-  }
-
-  // composePath - return a string. Input must be valid path sequence
-
-  composePath(args) {
-    if (args.length === 0) {
-      return '';
-    }
-    if (args[0].name !== 'DOT') {
-      return null;
-    }
-    let str = '.';
-    let wantWord = true;
-    for (let i = 1; i< args.length; i++) {
-      if (wantWord) {
-        if (args[i].name !== 'WORD') {
-          return null;
-        } else {
-          str += args[i].value;
-          wantWord = false;
-        }
-      } else {
-        if (args[i].name === 'DOT') {
-          str += '.';
-          wantWord = true;
-        } else if (args[i].name === 'SLASH') {
-          str += '/';
-          wantWord = true;
-        } else {
-          return null;
-        }
-      }
-    }
-    return str;
-  }
-
-  // consumePath - return number of tokens consumed from front.
-  // Consumes as many tokens as possible to form a legal path.
-  consumePath(args) {
-    if (args.length === 0) {
-      return 0;
-    }
-    if (args[0].name !== 'DOT') {
-      return 0;
-    }
-    let wantWord = true;
-    let numConsumed = 1;
-    for (let i = 1; i< args.length; i++) {
-      if (wantWord) {
-        if (args[i].name !== 'WORD') {
-          return numConsumed - 1;
-        } else {
-          numConsumed ++;
-          wantWord = false;
-        }
-      } else {
-        if (args[i].name === 'DOT') {
-          numConsumed ++;
-          wantWord = true;
-        } else if (args[i].name === 'SLASH') {
-          numConsumed ++;
-          wantWord = true;
-        } else {
-          return numConsumed;
-        }
-      }
-    }
-    return numConsumed;
   }
 
 }

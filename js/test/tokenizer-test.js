@@ -4,7 +4,7 @@ const [log, err, errDiff] = require('./logerr.js');
 const t = require('../tokenizer.js');
 
 let tokens;
-let result, result2, lines, input;
+let result, result2, lines, input, tla;
 let options, args, num, errMsg;
 
 log(`---- renderToken`);
@@ -29,12 +29,12 @@ checkToken(' "a string"', 11, {name: 'STRING', value: 'a string'});
 checkToken('"a \\"string"', 12, {name: 'STRING', value: 'a "string'});
 checkToken('a-word', 6, {name: 'WORD', value: 'a-word'});
 checkToken('a-word-4', 8, {name: 'WORD', value: 'a-word-4'});
-checkToken('ACOMMAND', 8, {name: 'COMMAND', value: 'ACOMMAND'});
+checkToken('ACOMMAND', 8, {name: 'KEYWORD', value: 'ACOMMAND'});
 checkToken('{VAR}', 5, {name: 'VARIABLE', value: 'VAR'});
-checkToken('A-COMMAND', 1, {name: 'COMMAND', value: 'A'});
-checkToken('  FOUR', 6, {name: 'COMMAND', value: 'FOUR'});
-checkToken('42', 2, {name: 'WORD', value: '42'});
-checkToken('-42', 3, {name: 'WORD', value: '-42'});
+checkToken('A-COMMAND', 1, {name: 'KEYWORD', value: 'A'});
+checkToken('  FOUR', 6, {name: 'KEYWORD', value: 'FOUR'});
+checkToken('42', 2, {name: 'NUMBER', value: '42'});
+checkToken('-42', 3, {name: 'NUMBER', value: '-42'});
 
 function checkToken(input, wantNum, wantTok) {
   //log(`${' '.repeat(50-input.length)}|${input}| - `);
@@ -50,33 +50,35 @@ function checkToken(input, wantNum, wantTok) {
 log(`---- tokenize strings`);
 checkTokenize('"some string" ID',
               [{name: 'STRING', value: 'some string'},
-               {name: 'COMMAND', value:'ID'},]);
+               {name: 'KEYWORD', value:'ID'},]);
 checkTokenize('"some \\"string" ID',
               [{name: 'STRING', value: 'some "string'},
-               {name: 'COMMAND', value:'ID'},]);
+               {name: 'KEYWORD', value:'ID'},]);
 
 checkTokenize('VALUE "some string" ID someword ',
-              [{name: 'COMMAND', value: 'VALUE'},
+              [{name: 'KEYWORD', value: 'VALUE'},
                {name: 'STRING', value: 'some string'},
-              {name: 'COMMAND', value:'ID'},
+              {name: 'KEYWORD', value:'ID'},
                {name: 'WORD', value: 'someword'},]);
 
 checkTokenize('ID someword VALUE "some string"',
-              [{name: 'COMMAND', value:'ID'},
+              [{name: 'KEYWORD', value:'ID'},
                {name: 'WORD', value: 'someword'},
-               {name: 'COMMAND', value: 'VALUE'},
+               {name: 'KEYWORD', value: 'VALUE'},
                {name: 'STRING', value: 'some string'}]);
 
 checkTokenize('{VAR}IDsomeword"some string"',
               [{name: 'VARIABLE', value:'VAR'},
-               {name: 'COMMAND', value:'ID'},
+               {name: 'KEYWORD', value:'ID'},
                {name: 'WORD', value: 'someword'},
                {name: 'STRING', value: 'some string'}]);
 
 checkTokenize('A-COMMAND',
-              [{name: 'COMMAND', value: 'A'},
+              [{name: 'KEYWORD', value: 'A'},
                {name: 'HYPHEN', value: null},
-               {name: 'COMMAND', value: 'COMMAND'},]);
+               {name: 'KEYWORD', value: 'COMMAND'},]);
+
+log(`--- paths`);
 
 ['.a.b.c/d', ' .a . b .c/  d ', '. a . b. c /  d '].forEach( line => {
   checkTokenize(line, [
@@ -110,56 +112,6 @@ function checkTokenizeFailure(input, index) {
   //log(`${' '.repeat(50-input.length)}|${input}| - should fail at ${index}`);
   let result = t.tokenize(input);
   errDiff(result[0], `bad token at index ${index}`);
-}
-
-log(`---- splitSections: easy version`);
-lines = [
-  "% abc",
-  "foo",
-  "bar",
-  "",
-  "% def",
-  "foo",
-  "bar",
-];
-result = t.splitSections(lines);
-errDiff(result.length, 2);
-errDiff(result[0].section, "abc");
-errDiff(result[0].lines.length, 3);
-errDiff(result[1].section, "def");
-errDiff(result[1].lines.length, 2);
-
-log(`---- splitSections: hard versions`);
-lines = [
-  "",
-  "% abc",
-  "% def",
-  "foo",
-  "bar",
-  "foo",
-  "bar",
-];
-result = t.splitSections(lines);
-errDiff(result.length, 2);
-errDiff(result[0].section, "abc");
-errDiff(result[0].lines.length, 0);
-errDiff(result[1].section, "def");
-errDiff(result[1].lines.length, 4);
-
-lines = [
-  "% abc",
-  "foo",
-  "bar",
-  "foo",
-  "bar",
-  "% def",
-];
-result = t.splitSections(lines);
-if (Array.isArray(result)) {
-  err(`expecting a string, got an array: ${JSON.stringify(result)}`);
-}
-if (! result.match(/^splitSections/)) {
-  err(`expecting error string, got: ${result}`);
 }
 
 log(`--------- full process -------------`);
@@ -244,80 +196,29 @@ function checkFull(input, output) {
   }
 }
 
-log(`---- consumePath`);
-[
-  {input: '  ', numConsumed: 0},
-  {input: '.a.b.c/d foo', numConsumed: 8},
-  {input: '.a.b.c.d',     numConsumed: 8},
-  {input: 'a.b.c.d foo',  numConsumed: 0},
-  {input: '  a. foo',     numConsumed: 0},
-  {input: '   FOO a. foo',  numConsumed: 0},
-]
-  .forEach( rec => {
-    result = t.tokenize(rec.input);
-    err(result[0]);
-    tokens = result[1];
-    errDiff(t.consumePath(tokens), rec.numConsumed);
-  });
+log(`---- tokenize array to produce tla`);
+lines = [
+  "fooBAR./5+6",
+  '"foobar "+5',
+  'word5 5word',
+];
+result = t.tokenize(lines); err(result[0]);
+tla = result[1];
+errDiff(tla.length, lines.length);
+errDiff(tla[0].length, 6);
+errDiff(tla[1].length, 2);
+errDiff(tla[2].length, 3);
 
-log(`---- parseRequiredTokens`);
+lines = [
+  "  ",
+  '"foobar "+5',
+  'word5 5word',
+];
+result = t.tokenize(lines); err(result[0]);
+tla = result[1];
+errDiff(tla.length, lines.length);
+errDiff(tla[0].length, 0);
+errDiff(tla[1].length, 2);
+errDiff(tla[2].length, 3);
 
-input = 'VALUE "some command" ID tagname NAME click ';
-options = { ID: 'WORD', NAME: 'WORD', VALUE: 'STRING or WORD',};
-//log(`|${input}|`);
-result = t.tokenize(input);
-err(result[0]);
-tokens = result[1];
-result = t.parseRequiredTokens(tokens, options);
-err(result[0]);
-args = result[1];
-//log(args);
-errDiff(args.VALUE, "some command");
-errDiff(args.ID, "tagname");
-errDiff(args.NAME, "click");
-
-input = 'VALUE some words ID "TAGNAME" NAME click ';
-options = { VALUE: 'WORDS', NAME: 'WORDS', ID: 'STRING or WORD',};
-//log(`|${input}|`);
-result = t.tokenize(input);
-err(result[0]);
-tokens = result[1];
-result = t.parseRequiredTokens(tokens, options);
-err(result[0]);
-args = result[1];
-//log(args);
-errDiff(args.VALUE[0], "some");
-errDiff(args.VALUE[1], "words");
-errDiff(args.ID, "TAGNAME");
-errDiff(args.NAME[0], "click");
-
-
-log(`---- substVars`);
-function varLookup(str) {
-  const varDict = { FOO: "foo", BAR: "bar" };
-  if (varDict.hasOwnProperty(str)) {
-    return {name: 'WORD', value: varDict[str]};
-  } else {
-    return null;
-  }
-}
-result = t.tokenize("foo{FOO}.word"); err(result[0]);
-input = result[1];
-[num, result] = t.substVars(input, varLookup);
-errDiff(num, 1);
-err(errMsg);
-errDiff(result[0].name, "WORD");
-errDiff(result[1].name, "WORD"); errDiff(result[1].value, "foo");
-errDiff(result[2].name, "DOT");
-errDiff(result[3].name, "WORD");
-
-result = t.tokenize("foo{BADVAR}.word"); err(result[0]);
-input = result[1];
-[num, result] = t.substVars(input, varLookup);
-errDiff(num, 0);
-err(errMsg);
-errDiff(result[0].name, "WORD");
-errDiff(result[1].name, "VARIABLE"); errDiff(result[1].value, "BADVAR");
-errDiff(result[2].name, "DOT");
-errDiff(result[3].name, "WORD");
 
