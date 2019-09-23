@@ -22,6 +22,9 @@ for all meaningful tokens:
   string          Sequence of printable ASCII characters
                   enclosed in double-quotes: ``"some string"``.
 
+  variable        Keyword-like variable name enclosed in single
+                  braces: ``{QUEENS_GAMBIT}``.
+
   special char    Any of the printable ASCII characters that are
                   not letters or digits, appearing by itself.
 
@@ -32,6 +35,13 @@ for all meaningful tokens:
 
   ==============  ==============================================
  
+Note that a variable is a single token that starts and ends with
+braces, whereas the begin- and end-macro symbols enclose other
+tokens::
+
+  MARY had a {ADJECTIVE} lamb whose fleece was {{
+
+
 PSL uses lists of the above tokens to build structures:
 
   ==============  =====================================================
