@@ -6,7 +6,30 @@ class Parser {
   }
 
   /**
-     parseScript - return [null, dict].
+     buildProcs - create and return a map of procedures.
+     Returns error message if it fails.
+   */
+  buildProcs(tokenListArray) {
+    const sections = this.splitSections(tokenListArray);
+    if (! sections) {
+      return new Map();
+    } else if (typeof sections === 'string') { // error message
+      return sections;
+    } else {
+      let procedures = new Map();
+      for (let i=0; i< sections.length; i++) {
+        if (procedures.has(sections[i].section)) {
+          return `duplicate section name: ${sections[i].section}`;
+        } else {
+          procedures.set(sections[i].section, sections[i].tla);
+        }
+      }
+      return procedures;
+    }
+  }
+
+  /**
+     parseProc - return [null, dict].
 
      If successful, "struct" will contain the following. Else, the
      first element will be an error message instead of null.
@@ -21,14 +44,12 @@ class Parser {
      'WITH': header is array of with clauses.
 
    */
-  parseScript(tokenListArray) {
-    this.t = tokenListArray;
-    this.dict = new Map();
+  parseProc(tokenListArray) {
     const blocks = this.buildBlocks(tokenListArray);
     if (blocks.length <= 0) { return [null, []]; }
     let errCount = 0;
     let arr = blocks.map( block => {
-      const tokListArr = this.unrollBlock(block);
+      const tokListArr = block.tla;
       if (typeof tokListArr === 'string') { // error case
         errCount ++;
         return tokListArr;
@@ -37,77 +58,6 @@ class Parser {
       }
     });
     return errCount <= 0 ? [null, arr] : [`ERRORS: ${errCount}`, arr];
-  }
-
-  /**
-     unrollBlock - return unrolled lines or error message
-   */
-  unrollBlock(block) {
-    const me = this;
-    if (block && ! block.header) {
-      let pairs = block.lines.map(line => this.t.tokenize(line) );
-      return unrolledOrError(pairs);
-    } 
-    let m;
-    block.header = block.header.trim();
-    m = block.header.match(/^ON\s+(\S+)\s+(\S+)$/);
-    if (m) {
-      if (this.mc.isVariableParent(m[1])) {
-        if (this.mc.getCurrentChildName(m[1]) !== m[2]) {
-          // this.log(`ON: ${m[1]} is not ${m[2]}. Skipping.`);
-          return [];
-        } else {
-          let pairs = block.lines.map(line => this.t.tokenize(line) );
-          return unrolledOrError(pairs);
-        }
-      } else {
-        return `ON: not a variable parent: ${m[1]}`;
-      }
-    }
-    m = block.header.match(/^WITH\s+(.+)$/);
-    if (! m) {
-      return `bad block header: ${block.header}`;
-    }
-    let clauses = [];
-    const errMsg = this.parseWithClauses(m[1], clauses);
-    if (errMsg) { return errMsg; }
-    const unis = this.getAllUnifications(clauses);
-    if (! Array.isArray(unis)) { // error message
-      return unis;
-    }
-    // unroll the WITH block into "results"
-    let results = [];
-    for (let i=0; i<unis.length; i++) {
-      let mappedLines;
-      mappedLines = block.lines.filter( line => line.trim().length > 0).
-        map( line => {
-          const arr = this.t.tokenize(line);
-          if (arr[0]) { return `ERROR: |${line}|: ${arr[0]}`;} // error case
-          let num, result;
-          [num, result] = this.t.substVars(arr[1], varName => {
-            if (unis[i].hasOwnProperty(varName)) {
-              return {name: 'WORD', value: unis[i][varName]};
-            } else {
-              return null;
-            }
-          });
-          return result;
-        });
-      mappedLines.forEach( line => results.push(line) );
-    }
-    return results;
-      
-    function unrolledOrError(pairs) {
-      const errPos = pairs.findIndex( pair => pair[0] !== null );
-      if (errPos < 0) {
-        return pairs.map( pair => pair[1] );
-      } else {
-        me.log(`returning error instead of unrolled lines`);
-        me.log(`line ${errPos}: ${pairs[errPos]}`);
-        return `line ${errPos}: ${pairs[errPos][0]}`;
-      }
-    }
-
   }
 
   parseWithClauses(clauseStr, arr) { // return null only when fully parsed
@@ -126,342 +76,165 @@ class Parser {
   }
 
   /**
-     buildBlocks - take an array of lines, and return an array of blocks.
+     buildBlocks - take a TLA, and return an array of blocks.
      Each block has a "header", which is null if the lines are plain,
      but otherwise an ON/WITH/ALL clause.
+
+     Each block has a type:
+
+     'PLAIN': header is null.
+     'ON': header is array of conditions.
+     'WITH': header is array of with clauses.
+
    */
-  buildBlocks(lines) {
+  buildBlocks(tla) {
     let blocks = [];
     let block;
-    let numLines = 0;
+    let num = 0; // lists read so far
     do {
-      block = this.getScriptBlock(lines.slice(numLines));
-      if (block && block.numLines > 0) {
+      block = this.getScriptBlock(tla.slice(num));
+      if (block && block.numLists > 0) {
         blocks.push(block);
-        numLines += block.numLines;
+        num += block.numLists;
         // this.log(`getScriptBlock: valid block: ${block.header}`);
       } else {
         // this.log(`null block`);
       }
-    } while (block && block.numLines > 0);
+    } while (block && block.numLists > 0);
     return blocks;
   }
 
-  // getScriptBlock - return an array of lines forming a block.
-  // Recognizes ON, WITH, and ALL blocks and expands them.
-  //     Returns { error, numLines, header, lines array }.
-  // numLines is the number of lines consumed from the input array.
+  // getScriptBlock - return an array of lists forming a block.
+  // Recognizes ON, WITH, and ALL blocks.
+  //     Returns { error, numLists, header, tla }.
+  //  type = 
+  //     'PLAIN': header is null.
+  //     'ON': header is array of conditions.
+  //     'WITH': header is array of with clauses.
+
+  // numLists is the number of lists consumed from the input array.
   // header is the portion before the BEGIN, and linesConsumed is
   // the block of lines before the corresponding END.
-  // If "error" is set, it is an error string corresponding to line numLines.
-  // Otherwise numLines is the number of lines consumed total and
+  // If "error" is set, it is an error string corresponding to line numLists.
+  // Otherwise numLists is the number of lines consumed total and
   // "header" and "lines" contain the content of the block.
-  getScriptBlock(lines) {
-    let block = {numLines: 0, header: null, lines: []};
-    if (! lines || lines.length <= 0) { return block; }
-    const specialPat = /^(ON|WITH|ALL)(.+)BEGIN$/;
-    const endPat = /^END$/;
+  getScriptBlock(tla) {
+    let block = {numLists: 0, type: 'PLAIN', header: null, tla: []};
+    if (! tla || tla.length <= 0) {
+      return block;
+    }
     const me = this;
     consumeBlankLines(block);
-    if (block.numLines >= lines.length) {
+    if (block.numLists >= tla.length) {
       return block;
     }
     consumePlainLines(block);
     if (block.error) {
       return block;
     }
-    if (! block.error && block.lines.length > 0) {
+    if (! block.error && block.tla.length > 0) {
       return block;
     }
-    consumeBlockLines(block);
+    console.log(`calling consumeBlockHeader; numLists = ${block.numLists}`);
+    consumeBlockHeader(block);
     return block;
     
     function consumeBlankLines(block) {
-      for (let i=0; i< lines.length; i++) {
-        const s = lines[i] ? lines[i].trim() : "";
-        if (s.length <= 0) { continue; }
+      for (let i=0; i< tla.length; i++) {
+        if (tla[i].length <= 0) { continue; }
         else {
-          block.numLines = i;
+          block.numLists = i;
           return;
         };
       }
-      block.numLines = lines.length;
+      block.numLists = tla.length;
       return;
     }
 
     function consumePlainLines(block) {
-      const firstLine = block.numLines;
-      for (let i=block.numLines; i< lines.length; i++) {
-        const s = lines[i] ? lines[i].trim() : "";
-        if (s.length ===0) {
-          block.numLines++;
+      const firstList = block.numLists;
+      for (let i=block.numLists; i< tla.length; i++) {
+        if (tla[i].length ===0) {
+          block.numLists++;
           continue;
         }
-        let m;
-        m = s.match(specialPat);
-        if (m) { return i-firstLine; }
-        m = s.match(endPat);
-        if (m) {
-          block.error = "found END in plain block";
-          return i-firstLine;
+        if (me.ifFirstKeyword(tla[i], "ON") ||
+            me.ifFirstKeyword(tla[i], "WITH") ||
+            me.ifFirstKeyword(tla[i], "ALL")) {
+          return;
         }
-        block.numLines++;
-        block.lines.push(s);
+        if (me.ifNextCommand(tla[i], 0, "END") ||
+            me.ifNextCommand(tla[i], 0, "BEGIN")) {
+          block.error = `found ${tla[i][0].value} in plain block`;
+          return i-firstList;
+        }
+        block.numLists++;
+        block.tla.push(tla[i]);
       }
-      return lines.length - firstLine;
+      return tla.length - firstList;
     }
 
-    function consumeBlockLines(block) {
-      const firstLine = block.numLines;
-      let readingBlock = false;
-      for (let i=block.numLines; i< lines.length; i++) {
-        const s = lines[i] ? lines[i].trim() : "";
-        if (s.length ===0) {
-          block.numLines++;
-          continue;
-        }
-        let m;
-        m = s.match(specialPat);
-        if (m) {
-          block.numLines ++;
-          readingBlock = true;
-          block.header = m[1]+m[2];
-          continue;
-        }
-        m = s.match(endPat);
-        if (m && readingBlock) {
-          block.numLines ++;
-          return lines.length;
-        } else if (m) {
-          block.error = "found END in block";
-          return i-firstLine;
-        }
-        if (! readingBlock) {
-          return 0;
-        }
-        block.numLines++;
-        block.lines.push(s);
+    function consumeBlockHeader(block) {
+      const firstList = block.numLists;
+      let i=firstList;
+      if (tla[i].length <= 0) {
+        block.error = `blank list found in block header`;
+        return;
       }
-      return lines.length - firstLine;
-    }
-  }
-
-  /*
-    getAllUnifications - given a sequence of clauses, return an array
-    of all the substitutions that will satisfy them.
-   */
-  getAllUnifications(clauses) {
-    let sArr = [{}];
-    for (let i=0; i<clauses.length; i++) {
-      let tempArr = [];
-      for (let j=0; j<sArr.length; j++) {
-        const result = this.expandUnification(sArr[j], tempArr, clauses[i]);
-        if (result) {
-          return(`ERROR expanding |${clauses[i]}|: ${result}`);
-        }
-      }
-      sArr = tempArr;
-    }
-    return sArr;
-  }
-
-  /**
-     expandUnification - take existing substitution and a clause.
-     Add all unique expanded unifications to the given array.
-     return null on success, or error message
-   */
-  expandUnification(subst, arr, clause) {
-    const me = this;
-    const m = clause.match(/^(ALL|CURRENT|NONCURRENT)\s+(.+)$/);
-    if (!m) { return `bad WITH clause: ${clause}`; }
-    const partials = this.computeUnification(subst, m[1], m[2]);
-    if (! Array.isArray(partials)) { // error message
-      return partials;
-    }
-    for (let i=0; i<partials.length; i++) {
-      let p = partials[i];
-      for (let k of Object.keys(subst)) {
-        p[k] = subst[k];
-      }
-      addIfUnique(arr, p);
-    }
-    return null;
-
-    function addIfUnique(list, item) {
-      const pos = list.findIndex( e => isEqual(e, item) );
-      // me.log(`addIfUnique: ${JSON.stringify(list)}, ${JSON.stringify(item)}: pos = ${pos}`);
-      if (pos < 0) {
-        list.push(item);
-        return true;
+      let j=0; // index within the list
+      if (me.ifFirstKeyword(tla[i], "ON") ||
+          me.ifFirstKeyword(tla[i], "WITH") ||
+          me.ifFirstKeyword(tla[i], "ALL")) {
+        block.type = tla[i][0].value;
+        block.header = [];
+        j=1;
       } else {
-        return false;
+        block.error = `did not see ON/WITH/ALL`;
+        return;
       }
-    }
-
-    function isEqual(a, b) {
-      const keys = Object.keys(a);
-      for (let i=0; i< keys.length; i++) {
-        const k = keys[i];
-        if (! b.hasOwnProperty(k)) {
-          return false;
-        }
-        const equal = a[k] === b[k];
-        if (! equal) {
-          return false;
+      for (; j<tla[i].length; j++) {
+        // special case for BEGIN on same line as ON/WITH/ALL
+        if (j === tla[i].length-1 &&
+            tla[i][j].name === 'KEYWORD' &&
+            tla[i][j].value === 'BEGIN') {
+          block.numLists++;
+          return;
+        } else {
+          block.header.push(tla[i][j]);
         }
       }
-      return true;
-    }
-  }
-
-  /**
-     computeUnification - take existing substitution, allOrCurrent,
-     and a path string as typed by the user.  Return array of new
-     substitution fragments or error
-   */
-  computeUnification(subst, allOrCurrent, pathString) {
-    const varLits = this.getVarLitTokens(pathString);
-    let varLitsCopy = []; // copy with substitutions.
-    for (let i=0; i<varLits.length; i++) {
-      const tok = varLits[i];
-      if (tok.hasOwnProperty('VAR')) {
-        const vname = tok.VAR;
-        if (subst.hasOwnProperty(vname)) { // existing name: copy value
-          varLitsCopy.push({LIT: subst[vname]});
-        } else {   // new name: good.
-          varLitsCopy.push(tok);
+      block.numLists++;
+      i++;
+      // consume lines until BEGIN line
+      for (; i<tla.length; i++) {
+        if (me.ifFirstKeyword(tla[i], "BEGIN")) {
+          block.numLists++;
+          return;
+        } else {
+          for (let j=0; j<tla[i].length; j++) {
+            // special case for BEGIN on same line as ON/WITH/ALL
+            if (j === tla[i].length-1 &&
+                tla[i][j].name === 'KEYWORD' &&
+                tla[i][j].value === 'BEGIN') {
+              block.numLists++;
+              return;
+            } else {
+              block.header.push(tla[i][j]);
+            }
+          }
+          block.numLists++;
         }
-      } else {
-        varLitsCopy.push(tok);
       }
-    }
-    // any vars in this clause are new.
-    return this.unify(varLitsCopy, allOrCurrent);
-  }
-
-  // unify(varLitTokens, allOrCurrent) -- return substitution list
-  unify(varLitTokens, allOrCurrent) {
-    if (!allOrCurrent || !allOrCurrent.match(/^ALL|CURRENT|NONCURRENT$/)) {
-      this.log(`expecting ALL or (NON)CURRENT: got ${allOrCurrent}`);
+      // Error if we reached here without returning
+      block.error = `no BEGIN found`;
       return;
     }
-    let testPaths;
-    if (allOrCurrent === "ALL") {
-      testPaths = this.mc.getAllPaths();
-    } else if (allOrCurrent === "CURRENT") {
-      testPaths = this.mc.getCurrentPaths();
-    } else { // NONCURRENT
-      const temp = this.mc.getCurrentPaths();
-      testPaths = this.mc.getAllPaths()
-        .filter(p => ! temp.includes(p) );
+
+    function consumeBlockBody(block) {
     }
 
-    let outArr = [];
-    testPaths.forEach( p => {
-      const obj = unifyExpression(varLitTokens, p);
-      if (obj) {
-        outArr.push(obj);
-      }
-    });
-    return outArr;
-
-    function unifyExpression(arr, aPath) {
-      let subst = {};
-      let p = aPath;
-      for (let i=0; i<arr.length; i++) {
-        if (arr[i].hasOwnProperty("LIT")) {
-          if (! p.startsWith(arr[i].LIT)) {
-            return null;
-          } else {
-            p = p.slice(arr[i].LIT.length);
-          }
-        } else if (arr[i].hasOwnProperty("VAR")) {
-          const m = p.match(/^[a-z0-9-]+/);
-          if (m) {
-            subst[arr[i].VAR] = m[0];
-            p = p.slice(m[0].length);
-          } else {
-            return null;
-          }
-        } else if (arr[i].hasOwnProperty("WILDCARD")) {
-          const m = p.match(/^[a-z0-9-]+/);
-          if (m) {
-            p = p.slice(m[0].length);
-          } else {
-            return null;
-          }
-        } else {
-          return null;
-        }
-      }
-      return subst;
-    }
   }
 
-  /**
-     getVarLitTokens() - split a path expression into VAR and LIT tokens
-
-     VAR token = a variable name that will be used to match a word
-     WILDCARD token = will be used to match a word to be ignored
-     LIT token = a series of words-and-separators that must match exactly.
-   */
-  getVarLitTokens(pathExpr) {
-    const me = this;
-    let arr = [];
-    if (! pathExpr) { return arr; }
-    pathExpr = pathExpr.trim();
-    if (pathExpr.length <= 0) { return arr; }
-
-    let s = pathExpr;
-    do {
-      s = splitExpression(s, arr);
-    } while(s && s.length > 0);
-    return arr;
-
-    function splitExpression(pathExpr, arr) {
-      pathExpr = pathExpr.trim();
-      let m;
-      m = pathExpr.match(/^\*/);
-      if (m) {
-        arr.push({WILDCARD: pathExpr.slice(0,m[0].length)});
-        return pathExpr.slice(m[0].length);
-      }
-      m = pathExpr.match(/^[A-Z]+/);
-      if (m) {
-        arr.push({VAR: pathExpr.slice(0,m[0].length)});
-        return pathExpr.slice(m[0].length);
-      }
-      m = pathExpr.match(/^([a-z0-9-.\/]+)(.*)/);
-      if (m) {
-        arr.push({LIT: m[1]});
-        return m[2];
-      } else {
-        me.log(`unify: bad prefix: |${pathExpr}|`);
-        return "";
-      }
-    }
-  }
-
-  // renderVarLitTokens - NOT USED - TODO delete
-  renderVarLitTokens(arr, subst) {
-    let s = "";
-    for (let i=0; i<arr.length; i++) {
-      if (arr[i].hasOwnProperty("LIT")) {
-        s += arr[i].LIT;
-      } else if (arr[i].hasOwnProperty("VAR")) {
-        if (subst.hasOwnProperty(arr[i].VAR)) {
-          s += subst[arr[i].VAR];
-        } else {
-          s += arr[i].VAR + " ";
-        }
-      } else if (arr[i].hasOwnProperty("WILDCARD")) {
-        s += '*';
-      } else { // error -- should never happen
-        s += "(" + JSON.stringify(arr[i]) + ")";
-      }
-    }
-    return s;
-  }
 
   // getEvalFunc - return a function suitable to pass in to
   // this.t.expand().
@@ -814,6 +587,7 @@ class Parser {
   substVars(inputArray, f) {
     let num = 0; // number of variables successfully looked up
     let outArray = [];
+    const me = this;
     for (let inPos = 0; inPos < inputArray.length; inPos++) {
       const tok = inputArray[inPos];
       if (tok.name === 'VARIABLE') {
@@ -839,7 +613,7 @@ class Parser {
      splitSections() - take a script and return sections based on
      percent signs or [square brackets] like a Microsoft INI file.
 
-     Based on this input, showing one example of each type:
+     Example: given this input as a TLA:
 
        % SECTIONONE
        ...lines...
@@ -859,18 +633,19 @@ class Parser {
      If the first line is not a section line, then we return null.
      If the last line looks like a section, then we return an error message.
   */
-  splitSections(lines) {
+  splitSections(tla) {
     let arr = [];
     let i=0;
-    for (; i<lines.length; i++) {
-      if (lines[i].trim().length <= 0) { continue; }
-      const result = matchSection(lines[i]);
-      if (result) {
-        let section = {section: result, lines: [] };
-        if (i=== lines.length-1) {
+    const me = this;
+    for (; i<tla.length; i++) {
+      if (tla[i].length <= 0) { continue; }
+      const tok = matchSection(tla[i]);
+      if (tok) {
+        let section = {section: tok.value, tla: [] };
+        if (i=== tla.length-1) {
           return `splitSections: last line has %`;
         }
-        const sectionLines = accumulateSection(section, lines.slice(i+1));
+        const sectionLines = accumulateSection(section, tla.slice(i+1));
         arr.push(section);
         i+= sectionLines;
       } else {
@@ -879,33 +654,41 @@ class Parser {
     }
     return arr;
 
-    function matchSection(line) { // return null or section name
-      let m;
-      m = line.trim().match(/^\%\s*(\S+)$/);
-      if (!m) {
-        m = line.trim().match(/^\[\s*(\S+)\s*\]$/);
-      }
-      if (m) {
-        return m[1];
+    function matchSection(list) { // return null or section name
+      if (me.ifNextThree(list, "OPENBRACKET", "KEYWORD", "CLOSEBRACKET")) {
+        return list[1];
+      } else if (me.ifNextThree(list, "OPENBRACKET", "WORD", "CLOSEBRACKET")) {
+        return list[1];
+      } else if (me.ifNextTwo(list, "PERCENT", "KEYWORD")) {
+        return list[1];
+      } else if (me.ifNextTwo(list, "PERCENT", "WORD")) {
+        return list[1];
       } else {
         return null;
       }
     }
 
-    function accumulateSection(section, lines) {
+    function accumulateSection(section, tla) {
       let j=0;
-      for (; j<lines.length && ! matchSection(lines[j]); j++) {
-        section.lines.push(lines[j]);
+      for (; j<tla.length && ! matchSection(tla[j]); j++) {
+        section.tla.push(tla[j]);
       }
       return j;
     }
+
   }
 
   // --------- utilities for parsing command arguments ---------------
 
+  ifFirstKeyword(tokList, value) {
+    if (tokList.length <= 0) { return false; }
+    if (tokList[0].name !== 'KEYWORD') { return false; }
+    return tokList[0].value === value;
+  }
+
   ifNextCommand(tokList, index, cmd) {
     if (tokList.length < index+1) { return false; }
-    if (tokList[index].name !== 'COMMAND') { return false; }
+    if (tokList[index].name !== 'KEYWORD') { return false; }
     return cmd === tokList[index].value;
   }
   ifNext2Commands(tokList, index, cmd1, cmd2) {
@@ -913,6 +696,20 @@ class Parser {
     return this.ifNextCommand(tokList, index, cmd1) &&
       this.ifNextCommand(tokList, index+1, cmd2);
   }
+
+  ifNextThree(tokList, name1, name2, name3) {
+    if (tokList.length < 3) { return false; }
+    return tokList[0].name === name1 &&
+      tokList[1].name === name2 &&
+      tokList[2].name === name3;
+  }
+  ifNextTwo(tokList, name1, name2) {
+    if (tokList.length < 2) { return false; }
+    return tokList[0].name === name1 &&
+      tokList[1].name === name2;
+  }
+  
+
   getNextArg(tokList, index, argname, options) {
     if (options[argname].match(tokList[index].name)) {
       return tokList[index];
@@ -922,7 +719,7 @@ class Parser {
   }
   findNextCommand(tokList, index, commandNames) {
     if (tokList.length < index) { return null; }
-    if (tokList[index].name !== 'COMMAND') {
+    if (tokList[index].name !== 'KEYWORD') {
       return null;
     }
     for (let j=0; j<commandNames.length; j++) {

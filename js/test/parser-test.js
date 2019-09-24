@@ -17,30 +17,95 @@ let initScript, renderScript, arr;
 let boardScript, errMsg;
 let clauses, sArr, sArr1, sArr2, withClause;
 
-let blocks, temp;
+let blocks, temp, proc, procs;
 
-log(`---- splitSections: easy version`);
+log(`---- splitSections, buildProcs`);
 lines = [
   "% abc",
   "foo",
   "bar",
   "",
-  "% def",
+  "[ DEF]",
   "foo",
   "bar",
 ];
 p = new Parser();
 result = t.tokenize(lines); err(result[0]);
 tla = result[1];
-result = p.splitSections(tla);
-errDiff(result.length, 2);
+
+result = p.splitSections(tla); // get array of sections
+errDiff(typeof result, "object");
 errDiff(result[0].section, "abc");
-errDiff(result[0].lines.length, 3);
-errDiff(result[1].section, "def");
-errDiff(result[1].lines.length, 2);
+errDiff(result[0].tla.length, 3);
+errDiff(result[1].section, "DEF");
+errDiff(result[1].tla.length, 2);
+
+result = p.buildProcs(tla); // get Map of tla
+errDiff(result.get("abc").length, 3);
+errDiff(result.get("DEF").length, 2);
+
+
+log(`---- buildBlocks`);
+lines = [
+  "% abc",
+  "COMMAND1 foo",
+  "COMMAND2 bar ++",
+  "",
+  "[ def]",
+  "COMMAND3",
+  "COMMAND4 some 123",
+];
+p = new Parser();
+result = t.tokenize(lines); err(result[0]);
+tla = result[1];
+
+procs = p.buildProcs(tla);
+proc = procs.get("abc");
+errDiff(proc.length, 3);
+result = p.buildBlocks(proc);
+errDiff(result.length, 1);
+errDiff(result[0].tla.length, 2);
+
+proc = procs.get("def");
+errDiff(proc.length, 2);
+result = p.buildBlocks(proc);
+errDiff(result.length, 1);
+errDiff(result[0].tla.length, 2);
+
+log(`---- buildBlocks`);
+
+lines = [
+  "% abc",
+  "WITH foo bar",
+  "BEGIN",
+  "",
+  "[ def]",
+  "WITH foo bar BEGIN",
+  "[ ghi ]",
+  "WITH foo bar",
+  "baz",
+];
+
+log(lines);
+
+p = new Parser();
+result = t.tokenize(lines); err(result[0]);
+tla = result[1];
+
+procs = p.buildProcs(tla);
+proc = procs.get("abc");
+result = p.getScriptBlock(proc);
+log(result);
+proc = procs.get("def");
+result = p.getScriptBlock(proc);
+log(result);
+proc = procs.get("ghi");
+result = p.getScriptBlock(proc);
+log(result);
 
 
 process.exit(0);
+
 
 log(`---- consumePath`);
 [
