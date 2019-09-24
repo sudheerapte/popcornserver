@@ -135,8 +135,11 @@ class Parser {
     if (! block.error && block.tla.length > 0) {
       return block;
     }
-    console.log(`calling consumeBlockHeader; numLists = ${block.numLists}`);
     consumeBlockHeader(block);
+    if (block.error) {
+      return block;
+    }
+    consumeBlockBody(block);
     return block;
     
     function consumeBlankLines(block) {
@@ -231,8 +234,16 @@ class Parser {
     }
 
     function consumeBlockBody(block) {
+      const firstList = block.numLists;
+      let i=firstList;
+      for (; i<tla.length; i++) {
+        block.numLists++;
+        if (tla[i].length > 0) {
+          block.tla.push(tla[i]);
+        }
+      }
+      return block;
     }
-
   }
 
 

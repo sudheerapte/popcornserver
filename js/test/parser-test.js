@@ -72,12 +72,13 @@ result = p.buildBlocks(proc);
 errDiff(result.length, 1);
 errDiff(result[0].tla.length, 2);
 
-log(`---- buildBlocks`);
+log(`---- getScriptBlock`);
 
 lines = [
   "% abc",
   "WITH foo bar",
   "BEGIN",
+  "baz",
   "",
   "[ def]",
   "WITH foo bar BEGIN",
@@ -86,23 +87,26 @@ lines = [
   "baz",
 ];
 
-log(lines);
-
 p = new Parser();
 result = t.tokenize(lines); err(result[0]);
 tla = result[1];
 
 procs = p.buildProcs(tla);
-proc = procs.get("abc");
-result = p.getScriptBlock(proc);
-log(result);
-proc = procs.get("def");
-result = p.getScriptBlock(proc);
-log(result);
-proc = procs.get("ghi");
-result = p.getScriptBlock(proc);
-log(result);
+result = p.getScriptBlock(procs.get("abc"));
+errDiff(result.error, undefined);
+errDiff(result.numLists, 4);
+errDiff(result.tla.length, 1);
 
+result = p.getScriptBlock(procs.get("def"));
+log(result);
+errDiff(result.error, undefined);
+errDiff(result.numLists, 1);
+errDiff(result.tla.length, 0);
+
+result = p.getScriptBlock(procs.get("ghi"));
+errDiff(result.error, 'no BEGIN found');
+errDiff(result.numLists, 2);
+errDiff(result.tla.length, 0);
 
 process.exit(0);
 
