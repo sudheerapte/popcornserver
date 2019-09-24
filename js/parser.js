@@ -93,7 +93,7 @@ class Parser {
     let num = 0; // lists read so far
     do {
       block = this.getScriptBlock(tla.slice(num));
-      if (block && block.numLists > 0) {
+      if (block && !block.error && block.numLists > 0) {
         blocks.push(block);
         num += block.numLists;
         // this.log(`getScriptBlock: valid block: ${block.header}`);

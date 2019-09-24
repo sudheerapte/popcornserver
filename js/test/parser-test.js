@@ -17,9 +17,8 @@ let initScript, renderScript, arr;
 let boardScript, errMsg;
 let clauses, sArr, sArr1, sArr2, withClause;
 
-let blocks, temp, proc, procs;
+let block, blocks, temp, proc, procs;
 
-log(`---- splitSections, buildProcs`);
 lines = [
   "% abc",
   "foo",
@@ -33,6 +32,7 @@ p = new Parser();
 result = t.tokenize(lines); err(result[0]);
 tla = result[1];
 
+log(`---- splitSections`);
 result = p.splitSections(tla); // get array of sections
 errDiff(typeof result, "object");
 errDiff(result[0].section, "abc");
@@ -40,37 +40,10 @@ errDiff(result[0].tla.length, 3);
 errDiff(result[1].section, "DEF");
 errDiff(result[1].tla.length, 2);
 
+log(`---- buildProcs`);
 result = p.buildProcs(tla); // get Map of tla
 errDiff(result.get("abc").length, 3);
 errDiff(result.get("DEF").length, 2);
-
-
-log(`---- buildBlocks`);
-lines = [
-  "% abc",
-  "COMMAND1 foo",
-  "COMMAND2 bar ++",
-  "",
-  "[ def]",
-  "COMMAND3",
-  "COMMAND4 some 123",
-];
-p = new Parser();
-result = t.tokenize(lines); err(result[0]);
-tla = result[1];
-
-procs = p.buildProcs(tla);
-proc = procs.get("abc");
-errDiff(proc.length, 3);
-result = p.buildBlocks(proc);
-errDiff(result.length, 1);
-errDiff(result[0].tla.length, 2);
-
-proc = procs.get("def");
-errDiff(proc.length, 2);
-result = p.buildBlocks(proc);
-errDiff(result.length, 1);
-errDiff(result[0].tla.length, 2);
 
 log(`---- getScriptBlock`);
 
@@ -98,7 +71,6 @@ errDiff(result.numLists, 4);
 errDiff(result.tla.length, 1);
 
 result = p.getScriptBlock(procs.get("def"));
-log(result);
 errDiff(result.error, undefined);
 errDiff(result.numLists, 1);
 errDiff(result.tla.length, 0);
@@ -107,6 +79,33 @@ result = p.getScriptBlock(procs.get("ghi"));
 errDiff(result.error, 'no BEGIN found');
 errDiff(result.numLists, 2);
 errDiff(result.tla.length, 0);
+
+
+log(`---- buildBlocks`);
+
+lines = [
+  "% abc",
+  "WITH foo bar",
+  "BEGIN",
+  "baz",
+  "",
+  "[ def]",
+  "WITH foo bar BEGIN",
+  "[ ghi ]",
+  "WITH foo bar",
+  "baz",
+];
+
+p = new Parser();
+result = t.tokenize(lines); err(result[0]);
+tla = result[1];
+procs = p.buildProcs(tla);
+result = p.buildBlocks(procs.get("abc")); err(result);
+errDiff(result.length, 1);
+block = result[0];
+errDiff(block.numLists, 4);
+errDiff(block.header.length, 2);
+errDiff(block.tla.length, 1);
 
 process.exit(0);
 
