@@ -19,6 +19,41 @@ let clauses, sArr, sArr1, sArr2, withClause;
 
 let block, blocks, temp, proc, procs;
 
+log(`---- consumePath`);
+input = [
+  {s: ".foo/",   num: 2},
+  {s: "foo",     num: 0},
+  {s: ".foo",    num: 2},
+  {s: "",        num: 0},
+  {s: ".fooBAR", num: 2},
+];
+p = new Parser();
+input.forEach( rec => {
+  result = t.tokenize(rec.s); err(result[0]);
+  const tokList = result[1];
+  errDiff(p.consumePath(tokList), rec.num);
+});
+
+log(`---- consumePathPattern`);
+input = [
+  {s: ".foo/",   num: 2},
+  {s: "foo",     num: 0},
+  {s: ".foo",    num: 2},
+  {s: "E.foo",   num: 0},
+  {s: ".VAR",    num: 2},
+  {s: ".*E",     num: 2},
+  {s: ".VAR/*",  num: 4},
+  {s: "",        num: 0},
+  {s: ".fooBAR", num: 2},
+];
+p = new Parser();
+input.forEach( rec => {
+  result = t.tokenize(rec.s); err(result[0]);
+  const tokList = result[1];
+  errDiff(p.consumePathPattern(tokList), rec.num);
+});
+
+log(`---- splitSections`);
 lines = [
   "% abc",
   "foo",
@@ -32,7 +67,6 @@ p = new Parser();
 result = t.tokenize(lines); err(result[0]);
 tla = result[1];
 
-log(`---- splitSections`);
 result = p.splitSections(tla); // get array of sections
 errDiff(typeof result, "object");
 errDiff(result[0].section, "abc");
@@ -49,14 +83,14 @@ log(`---- getScriptBlock`);
 
 lines = [
   "% abc",
-  "WITH foo bar",
+  "WITH CURRENT .bar",
   "BEGIN",
   "baz",
   "",
   "[ def]",
-  "WITH foo bar BEGIN",
+  "WITH ALL .foo NONCURRENT .bar BEGIN",
   "[ ghi ]",
-  "WITH foo bar",
+  "WITH CURRENT .foo/BAR",
   "baz",
 ];
 
@@ -80,21 +114,7 @@ errDiff(result.error, 'no BEGIN found');
 errDiff(result.numLists, 2);
 errDiff(result.tla.length, 0);
 
-
 log(`---- buildBlocks`);
-
-lines = [
-  "% abc",
-  "WITH foo bar",
-  "BEGIN",
-  "baz",
-  "",
-  "[ def]",
-  "WITH foo bar BEGIN",
-  "[ ghi ]",
-  "WITH foo bar",
-  "baz",
-];
 
 p = new Parser();
 result = t.tokenize(lines); err(result[0]);
@@ -103,11 +123,13 @@ procs = p.buildProcs(tla);
 result = p.buildBlocks(procs.get("abc")); err(result);
 errDiff(result.length, 1);
 block = result[0];
+log(block.header);
 errDiff(block.numLists, 4);
-errDiff(block.header.length, 2);
+errDiff(block.header.length, 1);
 errDiff(block.tla.length, 1);
 
 process.exit(0);
+
 
 
 log(`---- consumePath`);

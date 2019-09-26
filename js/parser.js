@@ -93,14 +93,15 @@ class Parser {
     let num = 0; // lists read so far
     do {
       block = this.getScriptBlock(tla.slice(num));
-      if (block && !block.error && block.numLists > 0) {
+      if (block && (! block.error) && block.numLists > 0) {
         blocks.push(block);
         num += block.numLists;
         // this.log(`getScriptBlock: valid block: ${block.header}`);
       } else {
         // this.log(`null block`);
       }
-    } while (block && block.numLists > 0);
+    } while (block && !block.error && block.numLists > 0);
+    if (block.error) { return block.error; }
     return blocks;
   }
 
@@ -117,7 +118,7 @@ class Parser {
   // the block of lines before the corresponding END.
   // If "error" is set, it is an error string corresponding to line numLists.
   // Otherwise numLists is the number of lines consumed total and
-  // "header" and "lines" contain the content of the block.
+  // "header" and "tla" contain the content of the block.
   getScriptBlock(tla) {
     let block = {numLists: 0, type: 'PLAIN', header: null, tla: []};
     if (! tla || tla.length <= 0) {
@@ -136,6 +137,10 @@ class Parser {
       return block;
     }
     consumeBlockHeader(block);
+    if (block.error) {
+      return block;
+    }
+    parseBlockHeader(block);
     if (block.error) {
       return block;
     }
@@ -233,6 +238,62 @@ class Parser {
       return;
     }
 
+    // parseBlockHeader -- replace tokList with a tla
+    function parseBlockHeader(block) {
+      if (block.type === 'PLAIN') { return; }
+      if (block.type === 'ON') {
+        const num = consumeOnCondition(block.header);
+        if (num < 0) {
+          block.error = `bad ON header`;
+          return;
+        }
+        const cond = block.header.slice(0, num);
+        if (block.header.length > num) {
+          block.error = `block header leftover = ${block.header.length-num}`;
+        } else {
+          block.header = [];
+          block.header.push(cond);
+        }
+        return;
+      }
+      if (block.type === 'WITH') {
+        let patterns = [];
+        while (block.header.length > 1) {
+          const num = consumeWithPattern(block.header);
+          if (num < 0) {
+            block.error = `bad WITH pattern: ${block.header[0].name}`;
+            return;
+          }
+          patterns.push(block.header.slice(0, num));
+          block.header = block.header.slice(num);
+        }
+        block.header = patterns;
+        return;
+      }
+    }
+
+    function consumeOnCondition(tokList) {
+      if (tokList.length < 1) { return -1; }
+      if (tokList[0].name === 'KEYWORD' &&
+          tokList[0].value === 'CURRENT') {
+        const num = me.consumePath(tokList.slice(1));
+        return num+1;
+      } else {
+        return -1;
+      }
+    }
+
+    function consumeWithPattern(tokList) {
+      if (tokList.length < 1) { return -1; }
+      if (tokList[0].name === 'KEYWORD' &&
+          tokList[0].value.match(/^ALL|CURRENT|NONCURRENT$/)) {
+        const num = me.consumePathPattern(tokList.slice(1));
+        return num+1;
+      } else {
+        return -1;
+      }
+    }
+
     function consumeBlockBody(block) {
       const firstList = block.numLists;
       let i=firstList;
@@ -242,9 +303,55 @@ class Parser {
           block.tla.push(tla[i]);
         }
       }
-      return block;
     }
   }
+
+
+  // consumeParens - return total tokens consumed, or error.
+  // tokList[1]..tokList[N-2] are the contents within parens.
+  // tokList[0]..tokList[N-1] are to be skipped.
+  consumeParens(tokList) {
+    if (tokList.length < 2) { return 'expecting parens'; }
+    if (tokList[0].name !== 'OPENPAREN') { return 'expecting parens'; }
+    let num = 1;
+    for (let i=1; i<tokList.length; i++) {
+      num++;
+      if (tokList[i].name === 'CLOSEPAREN') { return num; }
+    }
+    return 'expecting close parens'; 
+  }
+
+  // consumePath - return total tokens consumed, or error string.
+  // Consumes as many (separator, word) pairs as possible
+  consumePath(tokList) {
+    if (tokList.length === 0) { return 0; }
+    for (let i=0; i<tokList.length; i=i+2) { // count by two
+      if (i === tokList.length -1) { return i; } // only one token left
+      if (tokList[i].name === 'DOT' || tokList[i].name === 'SLASH') {
+        if (tokList[i+1].name !== 'WORD') { return i; }
+      } else {
+        return i;
+      }
+    }
+    return tokList.length;
+  }
+
+  // consumePathPattern - like consumePath, but allow VARs, WILDCARD
+  consumePathPattern(tokList) {
+    if (tokList.length === 0) { return 0; }
+    for (let i=0; i<tokList.length; i=i+2) { // count by two
+      if (i === tokList.length -1) { return i; } // only one token left
+      if (tokList[i].name === 'DOT' || tokList[i].name === 'SLASH') {
+        if (tokList[i+1].name !== 'WORD' &&
+            tokList[i+1].name !== 'KEYWORD' &&
+           tokList[i+1].name !== 'ASTERISK') { return i; }
+      } else {
+        return i;
+      }
+    }
+    return tokList.length;
+  }
+
 
 
   // getEvalFunc - return a function suitable to pass in to
@@ -891,41 +998,6 @@ class Parser {
     }
     return str;
   }
-
-  // consumePath - return number of tokens consumed from front.
-  // Consumes as many tokens as possible to form a legal path.
-  consumePath(args) {
-    if (args.length === 0) {
-      return 0;
-    }
-    if (args[0].name !== 'DOT') {
-      return 0;
-    }
-    let wantWord = true;
-    let numConsumed = 1;
-    for (let i = 1; i< args.length; i++) {
-      if (wantWord) {
-        if (args[i].name !== 'WORD') {
-          return numConsumed - 1;
-        } else {
-          numConsumed ++;
-          wantWord = false;
-        }
-      } else {
-        if (args[i].name === 'DOT') {
-          numConsumed ++;
-          wantWord = true;
-        } else if (args[i].name === 'SLASH') {
-          numConsumed ++;
-          wantWord = true;
-        } else {
-          return numConsumed;
-        }
-      }
-    }
-    return numConsumed;
-  }
-
 
 }
 
