@@ -154,20 +154,74 @@ But it will not match longer paths like::
 Parser functions
 =====================
 
+Common abbreviations
+------------------------
+
 The parser often uses the structure "tla", for TLA, token list array,
 which is an array of arrays of tokens.
 
-The parser builds the ``procs`` data structure in the runtime object
-``P``. The ``procs`` data structure is a ``Map`` of name to ``proc``,
-where ``proc`` is a list of ``block``::
+Functions
+-----------------
+
+Function buildProcs
+^^^^^^^^^^^^^^^^^^^^^
+
+Builds a Map of procedure names and their contents, and returns it.
+
+The name is a string and the content is a list of ``block``::
 
   proc = new Map();
   proc.set("IPROPAGATE", []);
   proc.get("IPROPAGATE").push({...});
 
+A ``block`` is described below in the function ``scriptBlock``.
+
+
+Function splitSections
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+Takes a grand TLA for a script and returns an array of section
+records. Each section is the tokenized source for a procedure.
+
+The TLA input to this function is the ``tokenize`` d source of
+an entire input script; see :doc:`tokenizer-design` .
+
+In the script, section names should appear on separate "section
+lines", marked with percent signs ``%`` or ``[`` square brackets ``]``
+like a Microsoft INI file.
+
+Each returned record contains one section name and a TLA for the lines
+following the section name.
+
+Example: given this input as a TLA:
+
+|  ``% SECTIONONE``
+|  ...*lines*...
+|  ...*lines*...
+|  ...*lines*...
+|  ``[ SECTIONTWO ]``
+|  ...lines...
+|  ...lines...
+
+Return this output::
+  
+  [
+    {section: "SECTIONONE", tla: [...] },
+    {section: "SECTIONTWO", tla: [...] },
+  ]
+
+The section name must be single contiguous string of non-whitespace.
+
+If the first line is not a section line, then we return null.  If the
+last line looks like a section line, then we return an error message.
+
+
+Function getScriptBlock
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 Each block is created by the function ``getScriptBlock``, which takes
 a TLA (token list array) that is the tokenized body of the proc, and
-returns a ``block`` structure:
+returns a ``block`` structure read from the beginning of the TLA:
 
 ``numLists``
   is the number of lists consumed by this block.  The purpose of the
@@ -178,13 +232,17 @@ returns a ``block`` structure:
   is one of ``PLAIN``, ``ON``, or ``WITH``
 
 ``header``
-  the type is ``type``-specific:
+  the value of ``header`` is ``type``-specific:
 
   |   ``PLAIN`` - ``undefined``
   |   ``ON`` - TLA, a list of conditions, each starting with
-  |            a keyword
+  |            a keyword, which currently must be ``CURRENT``.
+  |            The rest of the condition is a valid path.
   |   ``WITH`` - TLA, a list of clauses, each starting with
-  |            a keyword
+  |            a keyword, one of ``CURRENT``, ``NONCURRENT``,
+  |            or ``ALL``. The rest of the clause is a valid
+  |            path, except that some words might be replaced
+  |            with a ``{VARIABLE}`` or an ``ASTERISK``.
 
 ``error``
   is ``undefined``, or ``string`` if there is an error.  If the
@@ -198,4 +256,21 @@ returns a ``block`` structure:
   for each substitution, when executing.
 
 
+Function buildBlocks
+^^^^^^^^^^^^^^^^^^^^^^
 
+Calls ``getScriptBlock`` repeatedly and returns an array of all
+the blocks read. If a block had an error parsing, then ``buildBlocks``
+returns an error string instead.
+
+
+Function substVars
+^^^^^^^^^^^^^^^^^^^
+
+Takes a token array and returns another identical one, except that
+any ``{VAR}`` is replaced by the result of a passed-in function ``f``.
+The function ``f`` should take the value of the ``{VAR}`` token, i.e,
+the string ``VAR``, and return an array of tokens.
+
+Returns ``[num, tokArray]``, where ``num`` is the number of
+successful substitutions performed.

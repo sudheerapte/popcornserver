@@ -8,11 +8,11 @@ const Machine = require('../machine.js');
 
 let p, lines, tla;
 let machine;
-let tokens;
+let tokens, num;
 let evalFunc;
 
 let result;
-let input;
+let input, options, args;
 let initScript, renderScript, arr;
 let boardScript, errMsg;
 let clauses, sArr, sArr1, sArr2, withClause;
@@ -108,6 +108,10 @@ result = p.getScriptBlock(procs.get("def"));
 errDiff(result.error, undefined);
 errDiff(result.numLists, 1);
 errDiff(result.tla.length, 0);
+errDiff(result.header.length, 2);
+errDiff(result.header[0].length, 3);
+errDiff(result.header[1].length, 3);
+
 
 result = p.getScriptBlock(procs.get("ghi"));
 errDiff(result.error, 'no BEGIN found');
@@ -123,30 +127,12 @@ procs = p.buildProcs(tla);
 result = p.buildBlocks(procs.get("abc")); err(result);
 errDiff(result.length, 1);
 block = result[0];
-log(block.header);
+errDiff(block.header.length, 1);
+errDiff(block.header[0].length, 3);
 errDiff(block.numLists, 4);
 errDiff(block.header.length, 1);
 errDiff(block.tla.length, 1);
 
-process.exit(0);
-
-
-
-log(`---- consumePath`);
-[
-  {input: '  ', numConsumed: 0},
-  {input: '.a.b.c/d foo', numConsumed: 8},
-  {input: '.a.b.c.d',     numConsumed: 8},
-  {input: 'a.b.c.d foo',  numConsumed: 0},
-  {input: '  a. foo',     numConsumed: 0},
-  {input: '   FOO a. foo',  numConsumed: 0},
-]
-  .forEach( rec => {
-    result = t.tokenize(rec.input);
-    err(result[0]);
-    tokens = result[1];
-    errDiff(t.consumePath(tokens), rec.numConsumed);
-  });
 
 log(`---- parseRequiredTokens`);
 
@@ -156,7 +142,7 @@ options = { ID: 'WORD', NAME: 'WORD', VALUE: 'STRING or WORD',};
 result = t.tokenize(input);
 err(result[0]);
 tokens = result[1];
-result = t.parseRequiredTokens(tokens, options);
+result = p.parseRequiredTokens(tokens, options);
 err(result[0]);
 args = result[1];
 //log(args);
@@ -164,13 +150,14 @@ errDiff(args.VALUE, "some command");
 errDiff(args.ID, "tagname");
 errDiff(args.NAME, "click");
 
+
 input = 'VALUE some words ID "TAGNAME" NAME click ';
 options = { VALUE: 'WORDS', NAME: 'WORDS', ID: 'STRING or WORD',};
 //log(`|${input}|`);
 result = t.tokenize(input);
 err(result[0]);
 tokens = result[1];
-result = t.parseRequiredTokens(tokens, options);
+result = p.parseRequiredTokens(tokens, options);
 err(result[0]);
 args = result[1];
 //log(args);
@@ -191,7 +178,7 @@ function varLookup(str) {
 }
 result = t.tokenize("foo{FOO}.word"); err(result[0]);
 input = result[1];
-[num, result] = t.substVars(input, varLookup);
+[num, result] = p.substVars(input, varLookup);
 errDiff(num, 1);
 err(errMsg);
 errDiff(result[0].name, "WORD");
@@ -201,7 +188,7 @@ errDiff(result[3].name, "WORD");
 
 result = t.tokenize("foo{BADVAR}.word"); err(result[0]);
 input = result[1];
-[num, result] = t.substVars(input, varLookup);
+[num, result] = p.substVars(input, varLookup);
 errDiff(num, 0);
 err(errMsg);
 errDiff(result[0].name, "WORD");
@@ -209,6 +196,8 @@ errDiff(result[1].name, "VARIABLE"); errDiff(result[1].value, "BADVAR");
 errDiff(result[2].name, "DOT");
 errDiff(result[3].name, "WORD");
 
+
+process.exit(0);
 
 
 

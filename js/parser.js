@@ -9,8 +9,8 @@ class Parser {
      buildProcs - create and return a map of procedures.
      Returns error message if it fails.
    */
-  buildProcs(tokenListArray) {
-    const sections = this.splitSections(tokenListArray);
+  buildProcs(tla) {
+    const sections = this.splitSections(tla);
     if (! sections) {
       return new Map();
     } else if (typeof sections === 'string') { // error message
@@ -26,38 +26,6 @@ class Parser {
       }
       return procedures;
     }
-  }
-
-  /**
-     parseProc - return [null, dict].
-
-     If successful, "struct" will contain the following. Else, the
-     first element will be an error message instead of null.
-
-     The dict is a Map of procedures, each containing name and
-     an array of Block: {type, header, tokenListArray}
-
-     Types of Blocks are:
-
-     'PLAIN': header is null.
-     'ON': header is array of conditions.
-     'WITH': header is array of with clauses.
-
-   */
-  parseProc(tokenListArray) {
-    const blocks = this.buildBlocks(tokenListArray);
-    if (blocks.length <= 0) { return [null, []]; }
-    let errCount = 0;
-    let arr = blocks.map( block => {
-      const tokListArr = block.tla;
-      if (typeof tokListArr === 'string') { // error case
-        errCount ++;
-        return tokListArr;
-      } else {
-        return {header: block.header, lines: tokListArr};
-      }
-    });
-    return errCount <= 0 ? [null, arr] : [`ERRORS: ${errCount}`, arr];
   }
 
   parseWithClauses(clauseStr, arr) { // return null only when fully parsed
@@ -479,7 +447,7 @@ class Parser {
       const type = args[0].value;
       const sep = type === 'CON' ? '.' : '/';
       let options = {PARENT: "PATH", CHILDREN: "WORDS"};
-      let result = this.t.parseRequiredTokens(args.slice(1), options);
+      let result = this.parseRequiredTokens(args.slice(1), options);
       if (result[0]) { return [ `DEF ${type}: ${result[0]}`, args ]; }
       const struct = result[1];
       if (type === 'CON' && this.mc.isVariableParent(struct.PARENT)) {
@@ -498,7 +466,7 @@ class Parser {
       }
     } else if (this.t.ifNextCommand(args, 0, "TOP")) {
       let options = {CHILDREN: "WORDS"};
-      let result = this.t.parseRequiredTokens(args.slice(1), options);
+      let result = this.parseRequiredTokens(args.slice(1), options);
       if (result[0]) { return [ `DEF TOP: ${result[0]}`, args ]; }
       const struct = result[1];
       const children = struct.CHILDREN;
@@ -517,7 +485,7 @@ class Parser {
   setCmd(args) {
     if (this.t.ifNextCommand(args, 0, "DATAW")) {
       let options = {PATH: "PATH", DATA: "WORD"};
-      let result = this.t.parseRequiredTokens(args.slice(1), options);
+      let result = this.parseRequiredTokens(args.slice(1), options);
       if (result[0]) { return [ `SET DATAW: ${result[0]}`, args ]; }
       const struct = result[1];
       if (! this.mc.exists(struct.PATH)) {
@@ -536,7 +504,7 @@ class Parser {
       }
     } else if (this.t.ifNextCommand(args, 0, "CURRENT")) {
       let options = {PARENT: "PATH", CHILD: "WORD"};
-      let result = this.t.parseRequiredTokens(args.slice(1), options);
+      let result = this.parseRequiredTokens(args.slice(1), options);
       if (result[0]) { return [ `SET CURRENT: ${result[0]}`, args ]; }
       const struct = result[1];
       if (this.mc.isConcurrentParent(struct.PARENT)) {
@@ -641,7 +609,7 @@ class Parser {
       return ["MAP requires ALT0", null];
     }
     const options = {PARENT: "PATH", ELEMENTID: "STRING"};
-    const result = this.t.parseRequiredTokens(args.slice(1), options);
+    const result = this.parseRequiredTokens(args.slice(1), options);
     if (result[0]) { return [ `MAP ALT0: ${result[0]}`, args ]; }
     const struct = result[1];
     const p = struct.PARENT;
@@ -742,8 +710,8 @@ class Parser {
 
      Return this output:
      [
-         {section: "SECTIONONE", lines: [...] },
-         {section: "SECTIONTWO", lines: [...] },
+         {section: "SECTIONONE", tla: [...] },
+         {section: "SECTIONTWO", tla: [...] },
      ]
      
      Section name must be single contiguous string of non-whitespace.
