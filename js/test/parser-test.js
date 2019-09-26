@@ -53,32 +53,6 @@ input.forEach( rec => {
   errDiff(p.consumePathPattern(tokList), rec.num);
 });
 
-log(`---- splitSections`);
-lines = [
-  "% abc",
-  "foo",
-  "bar",
-  "",
-  "[ DEF]",
-  "foo",
-  "bar",
-];
-p = new Parser();
-result = t.tokenize(lines); err(result[0]);
-tla = result[1];
-
-result = p.splitSections(tla); // get array of sections
-errDiff(typeof result, "object");
-errDiff(result[0].section, "abc");
-errDiff(result[0].tla.length, 3);
-errDiff(result[1].section, "DEF");
-errDiff(result[1].tla.length, 2);
-
-log(`---- buildProcs`);
-result = p.buildProcs(tla); // get Map of tla
-errDiff(result.get("abc").length, 3);
-errDiff(result.get("DEF").length, 2);
-
 log(`---- getScriptBlock`);
 
 lines = [
@@ -112,7 +86,6 @@ errDiff(result.header.length, 2);
 errDiff(result.header[0].length, 3);
 errDiff(result.header[1].length, 3);
 
-
 result = p.getScriptBlock(procs.get("ghi"));
 errDiff(result.error, 'no BEGIN found');
 errDiff(result.numLists, 2);
@@ -132,6 +105,35 @@ errDiff(block.header[0].length, 3);
 errDiff(block.numLists, 4);
 errDiff(block.header.length, 1);
 errDiff(block.tla.length, 1);
+
+log(`---- splitSections`);
+lines = [
+  "% abc",
+  "foo",
+  "bar",
+  "",
+  "[ empty-section ]",
+  "[ DEF]",
+  "foo",
+  "bar",
+];
+p = new Parser();
+result = t.tokenize(lines); err(result[0]);
+tla = result[1];
+
+result = p.splitSections(tla); // get array of sections
+errDiff(typeof result, "object");
+errDiff(result[0].section, "abc");
+errDiff(result[0].tla.length, 3);
+errDiff(result[1].section, "empty-section");
+errDiff(result[1].tla.length, 0);
+errDiff(result[2].section, "DEF");
+errDiff(result[2].tla.length, 2);
+
+log(`---- buildProcs`);
+result = p.buildProcs(tla); // get Map of tla
+errDiff(result.get("abc").length, 3);
+errDiff(result.get("DEF").length, 2);
 
 
 log(`---- parseRequiredTokens`);

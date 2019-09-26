@@ -698,26 +698,6 @@ class Parser {
   /**
      splitSections() - take a script and return sections based on
      percent signs or [square brackets] like a Microsoft INI file.
-
-     Example: given this input as a TLA:
-
-       % SECTIONONE
-       ...lines...
-       ...lines...
-       [ SECTIONTWO ]
-       ...lines...
-       ...lines...
-
-     Return this output:
-     [
-         {section: "SECTIONONE", tla: [...] },
-         {section: "SECTIONTWO", tla: [...] },
-     ]
-     
-     Section name must be single contiguous string of non-whitespace.
-
-     If the first line is not a section line, then we return null.
-     If the last line looks like a section, then we return an error message.
   */
   splitSections(tla) {
     let arr = [];
@@ -728,9 +708,6 @@ class Parser {
       const tok = matchSection(tla[i]);
       if (tok) {
         let section = {section: tok.value, tla: [] };
-        if (i=== tla.length-1) {
-          return `splitSections: last line has %`;
-        }
         const sectionLines = accumulateSection(section, tla.slice(i+1));
         arr.push(section);
         i+= sectionLines;

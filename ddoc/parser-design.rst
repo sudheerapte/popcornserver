@@ -210,10 +210,11 @@ Return this output::
     {section: "SECTIONTWO", tla: [...] },
   ]
 
-The section name must be single contiguous string of non-whitespace.
+The section name must be single *word* or a single *keyword*. The
+output record contains the actual value, as a string.
 
-If the first line is not a section line, then we return null.  If the
-last line looks like a section line, then we return an error message.
+In the input, any content must be inside a section.  If the first
+nonempty line is not a section line, then we return null.
 
 
 Function getScriptBlock
