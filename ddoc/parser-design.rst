@@ -151,6 +151,63 @@ But it will not match longer paths like::
   .board.a/foo.baz
 
 
+Structures used in PSL
+--------------------------
+
+PSL uses lists of tokens to build structures:
+
+  ==============  =====================================================
+  Structure       Meaning
+  ==============  =====================================================
+  path            The ``.`` and ``/`` special characters are used
+                  as prefixes to sub-state names to build
+                  state paths: ``.hinge/open`` is a path where
+                  ``hinge`` is an alt-parent and ``open`` is its
+                  child.
+
+  query           A list of tokens starting with a query keyword. The
+                  query can be expanded to produce a list of
+                  tokens. The parser expands a query if it is enclosed
+                  in MACRO_OPEN and MACRO_CLOSE tokens.  If the list
+                  of tokens contains nested begin-end macro tokens
+                  enclosing queries, then the parser will first
+                  execute the nested queries and use the results in
+                  place of the macro.
+  
+  command         Token list starting with a command keyword.
+                  The command can be executed in a context
+                  to produce a side effect.
+
+  ==============  =====================================================
+
+
+PSL Commands for Machine States
+--------------------------------
+
+
+Machine state building commands
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+  ==============  ==============================================
+  Command         Behavior
+  ==============  ==============================================
+  ``DEF CON``     1. Create parent components if they do not exist.
+                     Add undo for parent components.
+                  2. If parent exists and is not suitable, ERROR.
+                  3. For each child, if it does not exist,
+                     add child to end of list, and add undo.
+  ``DEF ALT``     1. Create parent components if they do not exist.
+                     Add undo for parent components.
+                  2. If parent exists and is not suitable, ERROR.
+                  3. For each child, if it does not exist,
+                     add child to end of list, and add undo.
+  ``DEL``         1. If path does not exist, ERROR.
+                  2. If path has children, ERROR.
+                  3. Remove path from parent. Add undo.
+  ==============  ==============================================
+
+
+
 Parser functions
 =====================
 
@@ -160,21 +217,22 @@ Common abbreviations
 The parser often uses the structure "tla", for TLA, token list array,
 which is an array of arrays of tokens.
 
-Functions
------------------
+Basic Parsing Functions
+-------------------------
 
 Function buildProcs
 ^^^^^^^^^^^^^^^^^^^^^
 
 Builds a Map of procedure names and their contents, and returns it.
 
-The name is a string and the content is a list of ``block``::
+Each entry has the name of the procedure as a string, and the body of
+the procedure as a TLA.
 
-  proc = new Map();
-  proc.set("IPROPAGATE", []);
-  proc.get("IPROPAGATE").push({...});
+The name of each procedure is a string, which is the value of a *word*
+or a *keyword*. The body of the section is a TLA of the contents of that
+section.
 
-A ``block`` is described below in the function ``scriptBlock``.
+These sections are actually parsed by ``splitSections``.
 
 
 Function splitSections
@@ -268,10 +326,11 @@ returns an error string instead.
 Function substVars
 ^^^^^^^^^^^^^^^^^^^
 
-Takes a token array and returns another identical one, except that
-any ``{VAR}`` is replaced by the result of a passed-in function ``f``.
-The function ``f`` should take the value of the ``{VAR}`` token, i.e,
-the string ``VAR``, and return an array of tokens.
+Takes a token array and returns another identical one, except that any
+variable token like ``{VAR}`` is replaced by the result of a passed-in
+function ``f``.  The function ``f`` should take the value of the
+``{VAR}`` token, i.e, the string ``VAR``, and return an array of
+tokens. The tokens are interpolated instead of the original ``{VAR}``.
 
 Returns ``[num, tokArray]``, where ``num`` is the number of
 successful substitutions performed.

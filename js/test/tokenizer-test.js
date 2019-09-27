@@ -78,6 +78,18 @@ checkTokenize('A-COMMAND',
                {name: 'HYPHEN', value: null},
                {name: 'KEYWORD', value: 'COMMAND'},]);
 
+checkTokenize('MARY had a {ADJECTIVE} lamb whose fleece was {{SIMILE}}',
+              [
+                {name: 'KEYWORD', value: 'MARY'},
+                {name: 'WORD', value: 'had'}, {name: 'WORD', value: 'a'},
+                {name: 'VARIABLE', value: 'ADJECTIVE'},
+                {name: 'WORD', value: 'lamb'}, {name: 'WORD', value: 'whose'},
+                {name: 'WORD', value: 'fleece'}, {name: 'WORD', value: 'was'},
+                {name: 'MACRO_OPEN', value: null},
+                {name: 'KEYWORD', value: 'SIMILE'},
+                {name: 'MACRO_CLOSE', value: null},
+              ]);
+
 log(`--- paths`);
 
 ['.a.b.c/d', ' .a . b .c/  d ', '. a . b. c /  d '].forEach( line => {
