@@ -1,5 +1,7 @@
 "use strict";
 
+process.exit(0);
+
 const [log, err, errDiff] = require('./logerr.js');
 const Propagator = require('../propagator.js');
 const t = require('../tokenizer.js');

@@ -68,11 +68,12 @@ lines = [
   "baz",
 ];
 
+
 p = new Parser();
 result = t.tokenize(lines); err(result[0]);
 tla = result[1];
 
-procs = p.buildProcs(tla);
+procs = p.buildProcContentMap(tla);
 result = p.getScriptBlock(procs.get("abc"));
 errDiff(result.error, undefined);
 errDiff(result.numLists, 4);
@@ -96,7 +97,7 @@ log(`---- buildBlocks`);
 p = new Parser();
 result = t.tokenize(lines); err(result[0]);
 tla = result[1];
-procs = p.buildProcs(tla);
+procs = p.buildProcContentMap(tla);
 result = p.buildBlocks(procs.get("abc")); err(result);
 errDiff(result.length, 1);
 block = result[0];
@@ -130,8 +131,8 @@ errDiff(result[1].tla.length, 0);
 errDiff(result[2].section, "DEF");
 errDiff(result[2].tla.length, 2);
 
-log(`---- buildProcs`);
-result = p.buildProcs(tla); // get Map of tla
+log(`---- buildProcContentMap`);
+result = p.buildProcContentMap(tla); // get Map of tla
 errDiff(result.get("abc").length, 3);
 errDiff(result.get("DEF").length, 2);
 
@@ -198,6 +199,44 @@ errDiff(result[1].name, "VARIABLE"); errDiff(result[1].value, "BADVAR");
 errDiff(result[2].name, "DOT");
 errDiff(result[3].name, "WORD");
 
+lines = [
+  "% abc",
+  "WITH CURRENT .bar",
+  "BEGIN",
+  "baz",
+  "",
+  "[ def]",
+  "WITH ALL .FOO NONCURRENT .bar BEGIN",
+  "[ ghi ]",
+  "WITH CURRENT .foo/BAR",
+  "BEGIN",
+  "baz",
+];
+
+log(`---- buildProcs`);
+[errMsg, tla] = t.tokenize(lines); err(errMsg);
+p = new Parser;
+result = p.buildProcs(tla); // get Map of tla
+log(`------     abc`);
+errDiff(result.get("abc")[0].type, "WITH");
+log(`------     def`);
+errDiff(result.get("abc")[0].type, "WITH");
+log(`------     ghi`);
+errDiff(result.get("abc")[0].type, "WITH");
+
+function prettyPrint(proc) {
+  if (typeof proc === 'string') {
+    log(`  ${proc}`);
+    return;
+  }
+  proc.forEach( b => {
+    log(b.type);
+    if (b.type !== 'PLAIN') {
+      b.header.forEach( h => log(t.renderTokens(h)) );
+    }
+    log(b.tla);
+  });
+}
 
 process.exit(0);
 

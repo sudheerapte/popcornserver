@@ -7,9 +7,30 @@ class Parser {
 
   /**
      buildProcs - create and return a map of procedures.
+     The keys of the map are procedure names, and the bodies
+     are procedure contents.
+     Returns a Map. Returns an error message on error.
+   */
+
+  buildProcs(tla) {
+    const map = this.buildProcContentMap(tla);
+    if (typeof map === 'string') { // error message
+      return map;
+    } else {
+      const out = new Map();
+      map.forEach( (v, k) => {
+        const proc = this.buildBlocks(v);
+        out.set(k, proc);
+      });
+      return out;
+    }
+  }
+
+  /**
+     buildProcContentMap - create and return a map of procedures.
      Returns error message if it fails.
    */
-  buildProcs(tla) {
+  buildProcContentMap(tla) {
     const sections = this.splitSections(tla);
     if (! sections) {
       return new Map();
