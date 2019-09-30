@@ -1,7 +1,8 @@
 "use strict";
 
 const [log, err, errDiff] = require('./logerr.js');
-const t = require('../tokenizer.js');
+const Tokenizer = require('../tokenizer.js');
+const t = new Tokenizer;
 
 let tokens;
 let result, result2, lines, input, tla;

@@ -406,4 +406,4 @@ class Tokenizer {
 
 }
 
-module.exports = new Tokenizer;
+module.exports = Tokenizer;
