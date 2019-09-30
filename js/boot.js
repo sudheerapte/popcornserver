@@ -236,7 +236,7 @@ function handleMessage(ev) { // handle subsequent messages
     } else {
       const arr = data.split('\n');
       if (! arr) {
-        const msg = `bad machine payload for ${P.getSignleton("machine")}`;
+        const msg = `bad machine payload for ${P.getSingleton("machine")}`;
         return;
       } else {
         P.setSingleton("mc", new Machine);
