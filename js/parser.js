@@ -762,6 +762,36 @@ class Parser {
 
   }
 
+  /**
+     buildCommand: build an "args" structure as follows:
+     - command: string (space-separated if multiple keywords)
+     - ID: string
+     - PATH: string... (etc., depending on options)
+
+     "command" is a string of space-separated keywords (if multiple keywords)
+     "options" structure is described below in parseRequiredTokens().
+
+     return [errMsg, args]
+   */
+
+  buildCommand(command, tokList, options) {
+    const cArray = command.split(/\s+/);
+    if (tokList.length < cArray.length) {
+      return null;
+    }
+    for (let c=0; c < cArray.length; c++) {
+      if (tokList[c].name !== 'KEYWORD' ||
+          tokList[c].value !== cArray[c]) {
+        return null;
+      }
+    }
+    let errMsg, args;
+    [errMsg, args] = this.parseRequiredTokens(tokList.slice(cArray.length), options);
+    if (errMsg) { return [errMsg, null]; }
+    args.command = cArray.join(' ');
+    return [null, args];
+  }
+
   // --------- utilities for parsing command arguments ---------------
 
   ifFirstKeyword(tokList, value) {
@@ -801,7 +831,7 @@ class Parser {
       return null;
     }
   }
-  findNextCommand(tokList, index, commandNames) {
+  findNextKeyword(tokList, index, commandNames) {
     if (tokList.length < index) { return null; }
     if (tokList[index].name !== 'KEYWORD') {
       return null;
@@ -826,7 +856,7 @@ class Parser {
      parseRequiredTokens() - return [ null, args] on success
 
      The returned object "args" contains attributes whose names are
-     the COMMANDS in the token list, and values are the subsequent
+     the KEYWORDS in the token list, and values are the subsequent
      next token.
 
      For example, if you define "options" like this:
@@ -841,9 +871,9 @@ class Parser {
      We return an "args" object like this:
 
      {
-       ID: {name: WORD, value: "foo"},
-       NAME: {name: WORD, value: "bar"},
-       VALUE: {name: STRING, value: '"some string baz"'},
+       ID: "foo",
+       NAME: "bar",
+       VALUE: "some string baz",
      }
      
      Moreover, every key in the "options" object must be
@@ -853,10 +883,10 @@ class Parser {
      option value     meaning                               value
      ==============   ====================================  =============
      WORD             a single word, [a-z][a-z0-9-]*        string
-     COMMAND          a single COMMAND, [A-Z]+              string
+     KEYWORD          a single KEYWORD, [A-Z]+              string
      WORDS            a series of words                     array of str.
      PATH             a path, DOT WORD DOT/SLASH WORD ...   string
-     COMMAND or WORD  either a COMMAND or a word            string
+     KEYWORD or WORD  either a KEYWORD or a word            string
      ==============   ====================================  =============
 
    */
@@ -869,7 +899,7 @@ class Parser {
     const keys = Object.keys(options);
     for (let i=0; i< tokList.length; i++) {
       let found = false;
-      const cmd = this.findNextCommand(tokList, i, keys);
+      const cmd = this.findNextKeyword(tokList, i, keys);
       if (cmd) {
         let [ num, value] = this.consumeArgs(tokList, i+1, cmd, options);
         if (num > 0) {
@@ -894,14 +924,16 @@ class Parser {
   }
 
   // consumeArgs: consume as many tokens as possible; return [num, value]
-  // "index" points to the first token after the COMMAND argname.
+  // "index" points to the first token after the KEYWORD argname.
   consumeArgs(tokList, index, argname, options) {
     const opt = options[argname];
     const tok = tokList[index];
-    if (opt === 'COMMAND') {
-      return tok.name === 'COMMAND' ? [1, tok.value] : [0, 'not COMMAND'];
+    if (opt === 'KEYWORD') {
+      return tok.name === 'KEYWORD' ? [1, tok.value] : [0, 'not KEYWORD'];
     } else if (opt === 'WORD') {
       return tok.name === 'WORD' ? [1, tok.value] : [0, 'not WORD'];
+    } else if (opt === 'NUMBER') {
+      return tok.name === 'NUMBER' ? [1, tok.value] : [0, 'not NUMBER'];
     } else if (opt === 'STRING') {
       return tok.name === 'STRING' ? [1, tok.value] : [0, 'not STRING'];
     } else if (opt === 'WORDS') {
@@ -919,11 +951,7 @@ class Parser {
       return [num, arr];
     } else if (opt === 'PATH') {
       const num = this.consumePath(tokList.slice(index));
-      if (num <= 1) {
-        return [0, 'not PATH'];
-      } else {
-        return [num, this.composePath(tokList.slice(index, index+num))];
-      }
+      return [num, this.composePath(tokList.slice(index, index+num))];
     } else if (opt.match(/WORD/) && opt.match(/STRING/)) {
       return tok.name.match(/WORD|STRING/) ? [1, tok.value] : [0, 'not found'];
     }
@@ -932,7 +960,7 @@ class Parser {
   }
 
   // composePath - return a string. Input must be valid path sequence
-
+  // return null on error
   composePath(args) {
     if (args.length === 0) {
       return '';

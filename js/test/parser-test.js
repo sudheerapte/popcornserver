@@ -238,6 +238,38 @@ function prettyPrint(proc) {
   });
 }
 
+log(`---- buildCommand`);
+
+lines = [
+  { line: "DEF ALT PARENT .fwd.a CHILDREN b c d",
+    options: {'PARENT': 'PATH', 'CHILDREN': 'WORDS' },
+    checkFunc: args => {
+      errDiff((args.CHILDREN)[1], "c");
+    },
+  },
+];
+
+p = new Parser();
+
+lines.forEach( rec => {
+  const result = t.tokenize(rec.line); err(result[0]);
+  const tokList = result[1];
+  let errMsg, args;
+  [errMsg, args] = p.buildCommand("DEF ALT", tokList, rec.options);
+  err(errMsg);
+  rec.checkFunc(args);
+});
+
+function checkExpand(input, output) {
+  let tResult;
+  tResult = propagator.process(input);
+  err(tResult[0]);
+  // log(' '.repeat(40 - input.length)+`${input}| ==> |${tResult[1]}|`);
+  if (tResult[1] !== output) {
+    err(`expected |${output}|, but got |${JSON.stringify(tResult[1])}|`);
+  }
+}
+
 process.exit(0);
 
 
@@ -550,13 +582,3 @@ checkExpand("{{DATAW .img.fly2}}", "fly");
 checkExpand("{{DATAW .img.spider}}", "spider");
 checkExpand("{{CURRENT .tomove}}", "fly1");
 
-
-function checkExpand(input, output) {
-  let tResult;
-  tResult = propagator.process(input);
-  err(tResult[0]);
-  // log(' '.repeat(40 - input.length)+`${input}| ==> |${tResult[1]}|`);
-  if (tResult[1] !== output) {
-    err(`expected |${output}|, but got |${JSON.stringify(tResult[1])}|`);
-  }
-}
