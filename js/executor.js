@@ -23,18 +23,25 @@ class Executor {
     const result = this.t.tokenize(lines);
     if (result[0]) {
       this.log(`buildProcsMap failed: ${result[0]}`);
-      return new Map();
+      this.procs = new Map;
+    } else {
+      const tla = result[1];
+      this.procs = this.p.buildProcs(tla);
+      // complain about any parsing errors
+      this.procs.forEach( (v, k) => {
+        if ( typeof v === 'string' ) {
+          this.log(`ERROR: ${k}: ${v}`);
+        }
+      });
     }
-    const tla = result[1];
-    this.procs = this.p.buildProcs(tla);
   }
 
   execProc(name) {
     const proc = this.procs.get(name);
     if (! proc) {
-      this.log(`proc ${name} not found`);
+      this.log(`ERROR executing ${name}: proc not found`);
     } else if (typeof proc === 'string') { // error message
-      this.log(`ERROR: ${proc}`);
+      this.log(`ERROR executing ${name}: ${proc}`);
     } else {
       proc.forEach( block => {
         const errMsg = this.execBlock(block);
@@ -81,9 +88,7 @@ class Executor {
                 return null;
               }
             });
-            const rendered = this.t.renderTokens(result);
-            this.log(rendered);
-            return rendered;
+            return result;
           });
         mappedTla.forEach( tla => results.push(tla) );
       }
