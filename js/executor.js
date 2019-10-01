@@ -33,6 +33,8 @@ class Executor {
     const proc = this.procs.get(name);
     if (! proc) {
       this.log(`proc ${name} not found`);
+    } else if (typeof proc === 'string') { // error message
+      this.log(proc);
     } else {
       proc.forEach( block => {
         const errMsg = this.execBlock(block);
@@ -61,6 +63,39 @@ class Executor {
       });
     } else if (block.type === 'WITH') {
       const clauses = this.parseWithClauses(block.header);
+      const unis = this.getAllUnifications(clauses);
+      if (! Array.isArray(unis)) { // error message
+        return unis;
+      }
+      // unroll the WITH block into "results", then expand macros.
+      let results = [];
+      for (let i=0; i<unis.length; i++) {
+        let mappedTla;
+        mappedTla = block.tla.filter( list => list.length > 0).
+          map( list => {
+            let num, result;
+            [num, result] = this.p.substVars(list, varName => {
+              if (unis[i].hasOwnProperty(varName)) {
+                return {name: 'WORD', value: unis[i][varName]};
+              } else {
+                return null;
+              }
+            });
+            const rendered = this.t.renderTokens(result);
+            this.log(rendered);
+            return rendered;
+          });
+        mappedTla.forEach( tla => results.push(tla) );
+      }
+      results.forEach( tokArray => {
+        let errMsg, result;
+        [errMsg, result] = this.evaluate(tokArray);
+        if (errMsg) {
+          return errMsg;
+        } else {
+          return null;
+        }
+      });
     } else if (block.type === 'ON') {
       return `ON not implemented`;
     } else {
@@ -82,6 +117,209 @@ class Executor {
     });
     return arr;
   }
+
+  // getPathPattern - return string form of path pattern
+  getPathPattern(tokList) {
+    // TODO not written - maybe renderTokens should do it
+    return this.t.renderTokens(tokList);
+  }
+
+
+  /*
+    getAllUnifications - given a sequence of clauses, return an array
+    of all the substitutions that will satisfy them.
+   */
+  getAllUnifications(clauses) {
+    let sArr = [{}];
+    for (let i=0; i<clauses.length; i++) {
+      let tempArr = [];
+      for (let j=0; j<sArr.length; j++) {
+        const result = this.expandUnification(sArr[j], tempArr, clauses[i]);
+        if (result) {
+          return(`ERROR expanding |${clauses[i]}|: ${result}`);
+        }
+      }
+      sArr = tempArr;
+    }
+    return sArr;
+  }
+
+  /**
+     expandUnification - take existing substitution and a clause.
+     Add all unique expanded unifications to the given array.
+     return null on success, or error message
+   */
+  expandUnification(subst, arr, clause) {
+    const me = this;
+    const partials = this.computeUnification(subst, clause.type, clause.pathPattern);
+    if (! Array.isArray(partials)) { // error message
+      return partials;
+    }
+    for (let i=0; i<partials.length; i++) {
+      let p = partials[i];
+      for (let k of Object.keys(subst)) {
+        p[k] = subst[k];
+      }
+      addIfUnique(arr, p);
+    }
+    return null;
+
+    function addIfUnique(list, item) {
+      const pos = list.findIndex( e => isEqual(e, item) );
+      // me.log(`addIfUnique: ${JSON.stringify(list)}, ${JSON.stringify(item)}: pos = ${pos}`);
+      if (pos < 0) {
+        list.push(item);
+        return true;
+      } else {
+        return false;
+      }
+    }
+
+    function isEqual(a, b) {
+      const keys = Object.keys(a);
+      for (let i=0; i< keys.length; i++) {
+        const k = keys[i];
+        if (! b.hasOwnProperty(k)) {
+          return false;
+        }
+        const equal = a[k] === b[k];
+        if (! equal) {
+          return false;
+        }
+      }
+      return true;
+    }
+  }
+
+  /**
+     computeUnification - take existing substitution, allOrCurrent,
+     and a path string as typed by the user.  Return array of new
+     substitution fragments or error
+   */
+  computeUnification(subst, allOrCurrent, pathString) {
+    const varLits = this.getVarLitTokens(pathString);
+    let varLitsCopy = []; // copy with substitutions.
+    for (let i=0; i<varLits.length; i++) {
+      const tok = varLits[i];
+      if (tok.hasOwnProperty('VAR')) {
+        const vname = tok.VAR;
+        if (subst.hasOwnProperty(vname)) { // existing name: copy value
+          varLitsCopy.push({LIT: subst[vname]});
+        } else {   // new name: good.
+          varLitsCopy.push(tok);
+        }
+      } else {
+        varLitsCopy.push(tok);
+      }
+    }
+    // any vars in this clause are new.
+    return this.unify(varLitsCopy, allOrCurrent);
+  }
+
+  // unify(varLitTokens, allOrCurrent) -- return substitution list
+  unify(varLitTokens, allOrCurrent) {
+    if (!allOrCurrent || !allOrCurrent.match(/^ALL|CURRENT|NONCURRENT$/)) {
+      this.log(`expecting ALL or (NON)CURRENT: got ${allOrCurrent}`);
+      return;
+    }
+    let testPaths;
+    if (allOrCurrent === "ALL") {
+      testPaths = this.mc.getAllPaths();
+    } else if (allOrCurrent === "CURRENT") {
+      testPaths = this.mc.getCurrentPaths();
+    } else { // NONCURRENT
+      const temp = this.mc.getCurrentPaths();
+      testPaths = this.mc.getAllPaths()
+        .filter(p => ! temp.includes(p) );
+    }
+
+    let outArr = [];
+    testPaths.forEach( p => {
+      const obj = unifyExpression(varLitTokens, p);
+      if (obj) {
+        outArr.push(obj);
+      }
+    });
+    return outArr;
+
+    function unifyExpression(arr, aPath) {
+      let subst = {};
+      let p = aPath;
+      for (let i=0; i<arr.length; i++) {
+        if (arr[i].hasOwnProperty("LIT")) {
+          if (! p.startsWith(arr[i].LIT)) {
+            return null;
+          } else {
+            p = p.slice(arr[i].LIT.length);
+          }
+        } else if (arr[i].hasOwnProperty("VAR")) {
+          const m = p.match(/^[a-z0-9-]+/);
+          if (m) {
+            subst[arr[i].VAR] = m[0];
+            p = p.slice(m[0].length);
+          } else {
+            return null;
+          }
+        } else if (arr[i].hasOwnProperty("WILDCARD")) {
+          const m = p.match(/^[a-z0-9-]+/);
+          if (m) {
+            p = p.slice(m[0].length);
+          } else {
+            return null;
+          }
+        } else {
+          return null;
+        }
+      }
+      return subst;
+    }
+  }
+
+  /**
+     getVarLitTokens() - split a path expression into VAR and LIT tokens
+
+     VAR token = a variable name that will be used to match a word
+     WILDCARD token = will be used to match a word to be ignored
+     LIT token = a series of words-and-separators that must match exactly.
+   */
+  getVarLitTokens(pathExpr) {
+    const me = this;
+    let arr = [];
+    if (! pathExpr) { return arr; }
+    pathExpr = pathExpr.trim();
+    if (pathExpr.length <= 0) { return arr; }
+
+    let s = pathExpr;
+    do {
+      s = splitExpression(s, arr);
+    } while(s && s.length > 0);
+    return arr;
+
+    function splitExpression(pathExpr, arr) {
+      pathExpr = pathExpr.trim();
+      let m;
+      m = pathExpr.match(/^\*/);
+      if (m) {
+        arr.push({WILDCARD: pathExpr.slice(0,m[0].length)});
+        return pathExpr.slice(m[0].length);
+      }
+      m = pathExpr.match(/^[A-Z]+/);
+      if (m) {
+        arr.push({VAR: pathExpr.slice(0,m[0].length)});
+        return pathExpr.slice(m[0].length);
+      }
+      m = pathExpr.match(/^([a-z0-9-.\/]+)(.*)/);
+      if (m) {
+        arr.push({LIT: m[1]});
+        return m[2];
+      } else {
+        me.log(`unify: bad prefix: |${pathExpr}|`);
+        return "";
+      }
+    }
+  }
+
+
 
   consumeWithPattern(tokList) {
     if (tokList.length < 1) { return -1; }

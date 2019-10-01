@@ -38,23 +38,21 @@ err(mc.exists('.pos.a'));
 err(mc.exists('.pos.b'));
 err(mc.exists('.pos.c'));
 
-process.exit(0);
-
 log(`---- evaluate WITH`);
 
 mc = new Machine;
 result = mc.interpret(["P .board.a", "P .board.b", "P .board.c"]); err(result);
 
 lines = [
-  "% abc",
-  "WITH ALL .board.POS",
+  "% def",
+  "WITH ALL .board.POS BEGIN",
   "DEF CON PARENT .pos CHILDREN {POS}",
+  "END",
 ];
 
-log(mc.getAllPaths());
 e = new Executor(mc, new Tokenizer, new Parser, log);
 e.buildProcsMap(lines);
-result = e.execProc("abc");
+result = e.execProc("def");
 log(mc.getAllPaths());
 
 process.exit(0);
