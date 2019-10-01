@@ -2,7 +2,8 @@
 
 const [log, err, errDiff] = require('./logerr.js');
 const Parser = require('../parser.js');
-const t = require('../tokenizer.js');
+const Tokenizer = require('../tokenizer.js');
+const t = new Tokenizer;
 const Machine = require('../machine.js');
 
 
