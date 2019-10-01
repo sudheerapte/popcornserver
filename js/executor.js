@@ -34,7 +34,7 @@ class Executor {
     if (! proc) {
       this.log(`proc ${name} not found`);
     } else if (typeof proc === 'string') { // error message
-      this.log(proc);
+      this.log(`ERROR: ${proc}`);
     } else {
       proc.forEach( block => {
         const errMsg = this.execBlock(block);
