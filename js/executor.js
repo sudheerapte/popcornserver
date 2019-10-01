@@ -60,7 +60,7 @@ class Executor {
         }
       });
     } else if (block.type === 'WITH') {
-      return `WITH not implemented`;
+      const clauses = this.parseWithClauses(block.header);
     } else if (block.type === 'ON') {
       return `ON not implemented`;
     } else {
@@ -68,19 +68,19 @@ class Executor {
     }
   }
 
-  parseWithClauses(clauseStr, arr) { // return null only when fully parsed
-    clauseStr = clauseStr.trim();
-    if (clauseStr.length <= 0) { return null; }
-    const m = clauseStr.match(/^(ALL|CURRENT|NONCURRENT)\s+([^,]+)/);
-    if (!m) {
-      return `parseWithClauses: failed to parse: ${clauseStr}`;
-    }
-    arr.push(m[0]);
-    clauseStr = clauseStr.slice(m[0].length);
-    if (clauseStr.startsWith(',')) {
-      clauseStr = clauseStr.slice(1);
-    }
-    return this.parseWithClauses(clauseStr, arr);
+  parseWithClauses(header) {
+    let arr = [];
+    header.forEach( tokArr => {
+      if (tokArr.length <= 0) { return; }
+      if (tokArr[0].name !== 'KEYWORD') {
+        this.log(`bad WITH clause: ${tokArr[0].name}`);
+        return;
+      }
+      const type = tokArr[0].value;
+      const pathPattern = this.getPathPattern(tokArr.slice(1));
+      arr.push({type: type, pathPattern: pathPattern});
+    });
+    return arr;
   }
 
   consumeWithPattern(tokList) {
