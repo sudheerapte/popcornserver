@@ -61,7 +61,7 @@ lines = [
   "WITH CURRENT .bar",
   "BEGIN",
   "baz",
-  "",
+  "END",
   "[ def]",
   "WITH ALL .foo NONCURRENT .bar BEGIN",
   "[ ghi ]",
@@ -81,7 +81,7 @@ errDiff(result.numLists, 4);
 errDiff(result.tla.length, 1);
 
 result = p.getScriptBlock(procs.get("def"));
-errDiff(result.error, undefined);
+errDiff(result.error, 'no END found');
 errDiff(result.numLists, 1);
 errDiff(result.tla.length, 0);
 errDiff(result.header.length, 2);
@@ -205,7 +205,7 @@ lines = [
   "WITH CURRENT .bar",
   "BEGIN",
   "baz",
-  "",
+  "END",
   "[ def]",
   "WITH ALL .FOO NONCURRENT .bar BEGIN",
   "[ ghi ]",
@@ -221,9 +221,9 @@ result = p.buildProcs(tla); // get Map of tla
 log(`------     abc`);
 errDiff(result.get("abc")[0].type, "WITH");
 log(`------     def`);
-errDiff(result.get("abc")[0].type, "WITH");
+errDiff(result.get("def"), 'no END found');
 log(`------     ghi`);
-errDiff(result.get("abc")[0].type, "WITH");
+errDiff(result.get("ghi"), "no END found");
 
 function prettyPrint(proc) {
   if (typeof proc === 'string') {

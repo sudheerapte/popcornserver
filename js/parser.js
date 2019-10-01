@@ -6,10 +6,9 @@ class Parser {
   }
 
   /**
-     buildProcs - create and return a map of procedures.
-     The keys of the map are procedure names, and the bodies
-     are procedure contents.
-     Returns a Map. Returns an error message on error.
+     buildProcs - create and return a Map of procedures.
+     Each key of the map is a procedure name, and the value
+     is an array of blocks, or an error string.
    */
 
   buildProcs(tla) {
@@ -82,7 +81,10 @@ class Parser {
     let num = 0; // lists read so far
     do {
       block = this.getScriptBlock(tla.slice(num));
-      if (block && (! block.error) && block.numLists > 0) {
+      if (block.error) {
+        return block.error;
+      }
+      if (block && !block.error && block.numLists > 0) {
         blocks.push(block);
         num += block.numLists;
         // this.log(`getScriptBlock: valid block: ${block.header}`);
@@ -90,7 +92,6 @@ class Parser {
         // this.log(`null block`);
       }
     } while (block && !block.error && block.numLists > 0);
-    if (block.error) { return block.error; }
     return blocks;
   }
 
@@ -289,9 +290,14 @@ class Parser {
       for (; i<tla.length; i++) {
         block.numLists++;
         if (tla[i].length > 0) {
-          block.tla.push(tla[i]);
+          if (tla[i][0].name === 'KEYWORD' && tla[i][0].value === 'END') {
+            return;
+          } else {
+            block.tla.push(tla[i]);
+          }
         }
       }
+      block.error = 'no END found';
     }
   }
 
