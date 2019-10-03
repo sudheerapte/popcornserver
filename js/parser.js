@@ -2,7 +2,8 @@
 
 class Parser {
 
-  constructor() {
+  constructor(tokenizer) {
+    this.t = tokenizer;
   }
 
   /**
@@ -265,9 +266,14 @@ class Parser {
     function consumeOnCondition(tokList) {
       if (tokList.length < 1) { return -1; }
       if (tokList[0].name === 'KEYWORD' &&
-          tokList[0].value === 'CURRENT') {
+          tokList[0].value === 'IS_CURRENT') {
         const num = me.consumePath(tokList.slice(1));
-        return num+1;
+        const cdr = tokList.slice(1+num);
+        if (cdr.length !== 1 || cdr[0].name !== 'WORD') {
+          return -1;
+        } else {
+          return num+2;
+        }
       } else {
         return -1;
       }
@@ -659,7 +665,26 @@ class Parser {
 
   // composePath - return a string. Input must be valid path sequence
   // return null on error
-  composePath(args) {
+  composePath(tokList) {
+    let str = "";
+    if (tokList.length === 0) { return str; }
+    for (let i=0; i<tokList.length; i=i+2) { // count by two
+      if (i === tokList.length -1) { return str; } // only one token left
+      if (tokList[i].name === 'DOT' || tokList[i].name === 'SLASH') {
+        if (tokList[i+1].name !== 'WORD') {
+          return str;
+        } else {
+          str += this.t.specials[tokList[i].name] + tokList[i+1].value;
+        }
+      } else {
+        return str;
+      }
+    }
+    return str;
+  }
+
+
+  oldComposePath(args) {
     if (args.length === 0) {
       return '';
     }
@@ -684,7 +709,7 @@ class Parser {
           str += '/';
           wantWord = true;
         } else {
-          return null;
+          return str;
         }
       }
     }

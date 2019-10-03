@@ -3,6 +3,7 @@
 const [log, err, errDiff] = require('./logerr.js');
 const Parser = require('../parser.js');
 const Tokenizer = require('../tokenizer.js');
+const t = new Tokenizer;
 const Machine = require('../machine.js');
 const Executor = require('../executor.js');
 
@@ -20,6 +21,7 @@ let clauses, sArr, sArr1, sArr2, withClause;
 
 let block, blocks, temp, proc, procs;
 
+
 log(`---- evaluate PLAIN`);
 
 mc = new Machine;
@@ -29,11 +31,14 @@ err(mc.exists('.board.a'));
 lines = [
   "% abc",
   "DEF CON PARENT .pos CHILDREN a b c",
+  "% def",
+  "DEF CON PARENT .pos CHILDREN a b c",
+  "",
 ];
 
-e = new Executor(mc, new Tokenizer, new Parser, log);
+e = new Executor(mc, t, new Parser(t), log);
 e.buildProcsMap(lines);
-result = e.execProc("abc");
+e.execProc("abc");
 err(mc.exists('.pos.a'));
 err(mc.exists('.pos.b'));
 err(mc.exists('.pos.c'));
@@ -50,16 +55,45 @@ lines = [
   "END",
 ];
 
-e = new Executor(mc, new Tokenizer, new Parser, log);
+e = new Executor(mc, t, new Parser(t), log);
 e.buildProcsMap(lines);
-result = e.execProc("def");
-log(mc.getAllPaths());
+result = e.execProc("def"); err(result);
+err(mc.exists(".pos.b"));
+
+
+log(`---- evaluate ON`);
+
+mc = new Machine;
+result = mc.interpret(["P .curr/a", "P .curr/b"]); err(result);
+
+lines = [
+  "% set-is-current",
+  "DEF ALT PARENT .is-current CHILDREN a b",
+  "ON IS_CURRENT .curr a BEGIN",
+  "SET CURRENT PARENT .is-current CHILD a",
+  "END",
+  "ON IS_CURRENT .curr b BEGIN",
+  "SET CURRENT PARENT .is-current CHILD b",
+  "END",
+];
+
+e = new Executor(mc, t, new Parser(t), log);
+e.buildProcsMap(lines);
+result = e.execProc("set-is-current"); err(result);
+errDiff(mc.getCurrentChildName(".is-current"), "a");
+log(`----          setting .curr/b`);
+result = mc.interpret(["C .curr b"]); err(result);
+result = e.execProc("set-is-current"); err(result);
+errDiff(mc.getCurrentChildName(".is-current"), "b");
+
 
 process.exit(0);
 
+
+
 log(`---- buildBlocks`);
 
-p = new Parser();
+p = new Parser(t);
 result = t.tokenize(lines); err(result[0]);
 tla = result[1];
 procs = p.buildProcContentMap(tla);
@@ -83,7 +117,7 @@ lines = [
   "foo",
   "bar",
 ];
-p = new Parser();
+p = new Parser(t);
 result = t.tokenize(lines); err(result[0]);
 tla = result[1];
 
@@ -180,7 +214,7 @@ lines = [
 
 log(`---- buildProcs`);
 [errMsg, tla] = t.tokenize(lines); err(errMsg);
-p = new Parser;
+p = new Parser(t);
 result = p.buildProcs(tla); // get Map of tla
 log(`------     abc`);
 errDiff(result.get("abc")[0].type, "WITH");
@@ -214,7 +248,7 @@ lines = [
   },
 ];
 
-p = new Parser();
+p = new Parser(t);
 
 lines.forEach( rec => {
   const result = t.tokenize(rec.line); err(result[0]);

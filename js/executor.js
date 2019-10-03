@@ -36,21 +36,21 @@ class Executor {
     }
   }
 
+  // execProc() - return null unless error
   execProc(name) {
     const proc = this.procs.get(name);
     if (! proc) {
-      this.log(`ERROR executing ${name}: proc not found`);
+      return `no such proc: ${name}`;
     } else if (typeof proc === 'string') { // error message
-      this.log(`ERROR executing ${name}: ${proc}`);
+      return `ERROR executing ${name}: ${proc}`;
     } else {
-      proc.forEach( block => {
+      for (let i=0; i<proc.length; i++) {
+        const block = proc[i];
         const errMsg = this.execBlock(block);
         if (errMsg) {
-          this.log(`proc ${name}: ${errMsg}`);
-        } else {
-          this.log(`proc ${name}: OK`);
+          return `proc ${name}: ${errMsg}`;
         }
-      });
+      }
     }
   }
 
@@ -102,7 +102,51 @@ class Executor {
         }
       });
     } else if (block.type === 'ON') {
-      return `ON not implemented`;
+      if (! Array.isArray(block.header)) { // error message
+        return `ON conditions not found`;
+      }
+      // Evaluate all the conditions with AND
+      let match = true;
+      for (let i=0; i<block.header.length && match; i++) {
+        const cond = block.header[i];
+        if (! Array.isArray(cond)) {
+          return `bad condition for ON: ${JSON.stringify(cond)}`;
+        }
+        if (! this.p.ifFirstKeyword(cond, 'IS_CURRENT')) {
+          return `condition must be IS_CURRENT: ${cond[0].name}`;
+        }
+        let cdr = cond.slice(1);
+        const num = this.p.consumePath(cdr);
+        if (num <= 0) {
+          return `bad IS_CURRENT path: ${this.t.renderTokens(cdr)}`;
+        }
+        const path = this.p.composePath(cdr);
+        if (! this.mc.isVariableParent(path)) {
+          return `IS_CURRENT: not alt parent: ${path}`;
+        }
+        const state = this.mc.getState(path);
+        const currChild = state.cc[state.curr];
+        cdr = cdr.slice(num);
+        if (cdr.length !== 1) {
+          return `IS_CURRENT ${path}: need 1 arg`;
+        }
+        if (cdr[0].name !== 'WORD') {
+          return `IS_CURRENT ${path}: need WORD`;
+        }
+        if (cdr[0].value !== currChild) {
+          match = false;
+          break;
+        }
+        let firstErr = null;
+        block.tla.forEach( tokArray => {
+          let errMsg, result;
+          [errMsg, result] = this.evaluate(tokArray);
+          if (errMsg && ! firstErr) {
+            firstErr = errMsg;
+          }
+        });
+        return firstErr;
+      }
     } else {
       return `bad block type: ${block.type}`;
     }
