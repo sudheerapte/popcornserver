@@ -55,6 +55,9 @@ class Executor {
     }
   }
 
+  /*****************************************************
+     Internal functions below this point
+  */
   /**
      execBlock - return null or errMsg
    */
@@ -268,6 +271,7 @@ class Executor {
 
   // unify(varLitTokens, allOrCurrent) -- return substitution list
   unify(varLitTokens, allOrCurrent) {
+    const me = this;
     if (!allOrCurrent || !allOrCurrent.match(/^ALL|CURRENT|NONCURRENT$/)) {
       this.log(`expecting ALL or (NON)CURRENT: got ${allOrCurrent}`);
       return;
@@ -303,7 +307,7 @@ class Executor {
             p = p.slice(arr[i].LIT.length);
           }
         } else if (arr[i].hasOwnProperty("VAR")) {
-          const m = p.match(/^[a-z0-9-]+/);
+          const m = p.match(me.t.WORD_RE);
           if (m) {
             subst[arr[i].VAR] = m[0];
             p = p.slice(m[0].length);
@@ -311,7 +315,7 @@ class Executor {
             return null;
           }
         } else if (arr[i].hasOwnProperty("WILDCARD")) {
-          const m = p.match(/^[a-z0-9-]+/);
+          const m = p.match(me.t.WORD_RE);
           if (m) {
             p = p.slice(m[0].length);
           } else {
@@ -368,8 +372,6 @@ class Executor {
       }
     }
   }
-
-
 
   consumeWithPattern(tokList) {
     if (tokList.length < 1) { return -1; }
