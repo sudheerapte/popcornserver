@@ -102,11 +102,7 @@ lines.forEach( rec => {
   errDiff(result[0], rec.errMsg);
   if (! result[0]) {
     let word;
-    if (Array.isArray(result[1])) {
-      word = result[1][0].value;
-    } else {
-      word = result[1].value;
-    }
+    word = result[1][0].value;
     errDiff(word, rec.output);
   }
 });
