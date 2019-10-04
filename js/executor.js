@@ -400,38 +400,6 @@ class Executor {
     return tokList.length;
   }
 
-
-
-  // getEvalFunc - return a function suitable to pass in to
-  // this.t.expand().
-
-  getEvalFunc() {
-    return (tokens => this.evaluate(tokens));
-  }
-
-  // getEvalFuncVarContext - return a function suitable to pass in to
-  // this.t.expand(). This version takes a "varContext" that can
-  // resolve a set of capitalized names (COMMAND token values) to
-  // a different token.
-  // The "varContext" provides one token per capitalized name.
-  getEvalFuncVarContext(varContext) {
-    const me = this;
-    return (tokens => {
-      let newTokList = tokens.map( e => {
-        if (e.name === 'COMMAND' &&
-            varContext.hasOwnProperty(e.value) &&
-            varContext[e.value] &&
-            varContext[e.value].match(/^[a-z0-9-]+$/)
-           ) {
-          return {name: 'WORD', value: varContext[e.value]};
-        } else {
-          return e;
-        }
-      });
-      return me.evalFunc(newTokList);
-    });
-  }
-
   /**
      @function(evaluate) - take token array and return [ errMsg, results ]
 
