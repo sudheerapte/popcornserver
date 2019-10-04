@@ -480,9 +480,7 @@ class Executor {
 
   /**
      @function(expand) - expand any macros
-     return [ errMsg, results ]
-
-     results can be an array of tokens or a single token
+     return [ errMsg, tokenArray ]
 
   */
   expand(tokenArray) {
@@ -508,12 +506,7 @@ class Executor {
           if (subEval[0]) { // error
             return subEval;
           } else {
-            // subEval could be single token or an array
-            if (subEval[1].hasOwnProperty('length')) {
-              subEval[1].forEach( tok => newArray.push(tok) );
-            } else {
-              newArray.push(subEval[1]);
-            }
+            subEval[1].forEach( tok => newArray.push(tok) );
             tokenArray.slice(e+1, tokenArray.length)
               .forEach( tok => newArray.push(tok));
             return this.expand(newArray);
@@ -664,7 +657,7 @@ class Executor {
       if (this.mc.isVariableParent(mPath)) {
         const curr = this.mc.getCurrentChildName(mPath);
         if (curr) {
-          return [ null, {name: 'WORD', value: curr} ];
+          return [ null, [{name: 'WORD', value: curr}] ];
         } else {
           return [`CURRENT: no current child`, null];
         }
@@ -690,14 +683,14 @@ class Executor {
         const data = this.mc.getData(mPath);
         if (data) {
           if (data.trim().match(/^\d+$/)) {
-            return [ null, {name: 'NUMBER', value: data.trim()} ];
+            return [ null, [{name: 'NUMBER', value: data.trim()}] ];
           } else if (data.trim().match(/^[a-z][a-z0-9-]+$/)) {
-            return [ null, {name: 'WORD', value: data.trim()} ];
+            return [ null, [{name: 'WORD', value: data.trim()}] ];
           } else {
-            return [ null, {name: 'STRING', value: data} ];
+            return [ null, [{name: 'STRING', value: data}] ];
           }
         } else {
-          return [ null, {name: 'STRING', value: ""} ];
+          return [ null, [{name: 'STRING', value: ""}] ];
         }
       } else {
         return [`DATAW: not a data leaf`, null];
@@ -720,9 +713,9 @@ class Executor {
       if (this.mc.isDataLeaf(mPath)) {
         const data = this.mc.getData(mPath);
         if (data) {
-          return [ null, {name: 'STRING', value: data} ];
+          return [ null, [{name: 'STRING', value: data}] ];
         } else {
-          return [ null, {name: 'STRING', value: ""} ];
+          return [ null, [{name: 'STRING', value: ""}] ];
         }
       } else {
         return [`DATA: not a data leaf`, null];
