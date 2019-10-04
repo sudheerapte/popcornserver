@@ -432,50 +432,30 @@ class Executor {
 
   /**
      @function(evaluate) - take token array and return [ errMsg, results ]
+
+     We first expand any macros; then if the first word is a command,
+     we evaluate the command.
   */
   evaluate(tokenArray) {
     if (tokenArray.length === 0) {
       return [ null, null ];
     }
     if (tokenArray.length === 1) {
-      return [ null, tokenArray[0] ];
+      return [ null, tokenArray ];
     }
-    // Look for macros; find innermost macro.
-    let [b, e] = this.innerBeginEnd(tokenArray);
-
-    if (b < 0 && e < 0) { // No macros found.
-      if (tokenArray[0].name === 'KEYWORD') {
-        const rec = this._commands[tokenArray[0].value];
-        if (rec) {
-          return rec.fn(tokenArray.slice(1));
-        } else { // anything else evaluates as itself.
-          this.log(`No such command: ${tokenArray[0].value}`);
-          return [null, tokenArray];
-        }
+    const result = this.expand(tokenArray);
+    if (result[0]) {
+      return [result[0], null];
+    }
+    tokenArray = result[1];
+    if (tokenArray[0].name === 'KEYWORD') {
+      const rec = this._commands[tokenArray[0].value];
+      if (rec) {
+        return [null, rec.fn(tokenArray.slice(1))];
       }
     }
-    if (b >= 0 && e >= 0) {
-      // Expand innermost macro and re-evaluate
-      let subEval = this.evaluate(tokenArray.slice(b+1, e));
-      if (subEval[0]) { // error
-        return subEval;
-      } else {
-        let newArray = tokenArray.slice(0, b);
-        // subEval could be single token or an array
-        if (subEval[1].hasOwnProperty('length')) {
-          subEval[1].forEach( tok => newArray.push(tok) );
-        } else {
-          newArray.push(subEval[1]);
-        }
-        tokenArray.slice(e+1, tokenArray.length)
-          .forEach( tok => newArray.push(tok));
-        return this.evaluate(newArray);
-      }
-    }
-    if (e < 0) {
-      return [`BEGIN without END`, tokenArray];
-    }
-
+    // anything else evaluates as itself.
+    return [null, tokenArray];
   }
 
   /**
