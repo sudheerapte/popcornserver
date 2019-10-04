@@ -21,7 +21,6 @@ let clauses, sArr, sArr1, sArr2, withClause;
 
 let block, blocks, temp, proc, procs;
 
-
 log(`---- evaluate PLAIN`);
 
 mc = new Machine;
@@ -86,6 +85,32 @@ result = mc.interpret(["C .curr b"]); err(result);
 result = e.execProc("set-is-current"); err(result);
 errDiff(mc.getCurrentChildName(".is-current"), "b");
 
+log(`---- expand`);
+
+mc = new Machine;
+result = mc.interpret(["P .pos/a", "P .pos/b", "P .pos/c"]); err(result);
+errDiff(mc.getCurrentChildName('.pos'), 'a');
+
+lines = [
+  { input: "{{CURRENT .pos}}", errMsg: null, output: "a" },
+  { input: "SETW .board {{CURRENT .pos}}", errMsg: null, output: "SETW" },
+];
+
+e = new Executor(mc, t, new Parser(t), log);
+lines.forEach( rec => {
+  result = e.expand(t.tokenize(rec.input)[1]);
+  errDiff(result[0], rec.errMsg);
+  if (! result[0]) {
+    let word;
+    if (Array.isArray(result[1])) {
+      word = result[1][0].value;
+    } else {
+      word = result[1].value;
+    }
+    errDiff(word, rec.output);
+  }
+});
+  
 
 process.exit(0);
 

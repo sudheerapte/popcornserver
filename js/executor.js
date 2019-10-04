@@ -1,6 +1,6 @@
 "use strict";
 
-// requires Machine and Parser and Tokenizer
+// requires Machine, Tokenizer, Parser, and log function
 
 class Executor {
 
@@ -12,6 +12,7 @@ class Executor {
     this.p = p ? p : new Parser;
     if (! mc.STATE_TREE) { this.log(`first arg is not a machine`); }
     this._commands = new Map();
+    this._queries = new Map();
     this.addBasicCommandSet();
   }
 
@@ -477,13 +478,65 @@ class Executor {
 
   }
 
+  /**
+     @function(expand) - expand any macros
+     return [ errMsg, results ]
+
+     results can be an array of tokens or a single token
+
+  */
+  expand(tokenArray) {
+    if (tokenArray.length === 0) {
+      return [ null, null ];
+    }
+    if (tokenArray.length === 1) {
+      return [ null, tokenArray[0] ];
+    }
+    // Look for macros; find innermost macro.
+    let [b, e] = this.innerBeginEnd(tokenArray);
+
+    if (b < 0 && e < 0) { // No macros found.
+      return [null, tokenArray];
+    }
+    if (b >= 0 && e >= 0) {
+      let newArray = tokenArray.slice(0, b);
+      // Expand innermost macro and re-expand
+      if (tokenArray[b+1].name === 'KEYWORD') {
+        const rec = this._queries[tokenArray[b+1].value];
+        if (rec) {
+          const subEval = rec.fn(tokenArray.slice(b+2, e));
+          if (subEval[0]) { // error
+            return subEval;
+          } else {
+            // subEval could be single token or an array
+            if (subEval[1].hasOwnProperty('length')) {
+              subEval[1].forEach( tok => newArray.push(tok) );
+            } else {
+              newArray.push(subEval[1]);
+            }
+            tokenArray.slice(e+1, tokenArray.length)
+              .forEach( tok => newArray.push(tok));
+            return this.expand(newArray);
+          }
+        } else {
+          return [`bad query: ${tokenArray[0].value}`, null];
+        }
+      } else {
+        return [`not a query keyword: ${tokenArray[0].name}`, null];
+      }
+    }
+    if (e < 0) {
+      return [`BEGIN without END`, tokenArray];
+    }
+  }
+
   // innerBeginEnd - return [BEGIN, END] indexes
   // We find the last of the innermost macros in the token array.
   innerBeginEnd(tokenArray) {
     for (let i= tokenArray.length-1; i>= 0; i--) {
-      if (tokenArray[i].name === 'END') {
+      if (tokenArray[i].name === 'MACRO_CLOSE') {
         for (let j=i; j>= 0; j--) {
-          if (tokenArray[j].name === 'BEGIN') {
+          if (tokenArray[j].name === 'MACRO_OPEN') {
             return [j, i];
           }
         }
@@ -495,15 +548,20 @@ class Executor {
 
   /**
      addBasicCommandSet() - add records for interpreting commands
+     and expanding queries
      Each record is: { cmd, func(args) }
      The args are an array of tokens. Func should return [null, result]
   */
 
   addBasicCommandSet() {
-    const records = [
+    const queries = [
       {cmd: 'CURRENT', fn: args => this.currentCmd(args)},
       {cmd: 'DATAW', fn: args => this.datawCmd(args)},
       {cmd: 'DATA', fn: args => this.dataCmd(args)},
+    ];
+    queries.forEach( rec => {this._queries[rec.cmd] = rec; } );
+
+    const commands = [
       {cmd: 'DEF', fn: args => this.defCmd(args)},
       {cmd: 'SET', fn: args => this.setCmd(args)},
       {cmd: 'DEL', fn: args => this.delCmd(args)},
@@ -511,11 +569,7 @@ class Executor {
       {cmd: 'MAP', fn: args => this.mapCmd(args)},
       {cmd: 'ATTACH', fn: args => this.attachCmd(args)},
     ];
-    this.addCommands(records);
-  }
-
-  addCommands(arr) {
-    arr.forEach( rec => this._commands[rec.cmd] = rec );
+    commands.forEach ( rec => {this._commands[rec.cmd] = rec; } );
   }
 
   defCmd(args) {
@@ -602,7 +656,7 @@ class Executor {
     if (args.length < 1) {
       return [`CURRENT needs at least 1 arg`, null];
     }
-    const mPath = this.t.composePath(args);
+    const mPath = this.p.composePath(args);
     if (! mPath) {
       return [ `CURRENT: bad syntax for path: ${this.t.renderTokens(args)}`, null ];
     }
