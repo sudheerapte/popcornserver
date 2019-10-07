@@ -94,6 +94,8 @@ errDiff(mc.getCurrentChildName('.pos'), 'a');
 lines = [
   { input: "{{CURRENT .pos}}", errMsg: null, output: "a" },
   { input: "SETW .board {{CURRENT .pos}}", errMsg: null, output: "SETW" },
+  { input: "SETW .board {{FOO .pos}}", errMsg: 'bad query: FOO', output: null },
+  { input: "SETW .board {{foo .pos}}", errMsg: 'query must be KEYWORD: WORD', output: null },
 ];
 
 e = new Executor(mc, t, new Parser(t), log);

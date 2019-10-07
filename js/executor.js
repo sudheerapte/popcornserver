@@ -405,6 +405,9 @@ class Executor {
 
      We first expand any macros; then if the first word is a command,
      we evaluate the command.
+
+     It is not an error if the first token is not a KEYWORD, nor if
+     the KEYWORD is not a known command.
   */
   evaluate(tokenArray) {
     if (tokenArray.length === 0) {
@@ -454,7 +457,7 @@ class Executor {
         if (rec) {
           const subEval = rec.fn(tokenArray.slice(b+2, e));
           if (subEval[0]) { // error
-            return subEval;
+            return [subEval, null];
           } else {
             subEval[1].forEach( tok => newArray.push(tok) );
             tokenArray.slice(e+1, tokenArray.length)
@@ -462,10 +465,10 @@ class Executor {
             return this.expand(newArray);
           }
         } else {
-          return [`bad query: ${tokenArray[0].value}`, null];
+          return [`bad query: ${tokenArray[b+1].value}`, null];
         }
       } else {
-        return [`not a query keyword: ${tokenArray[0].name}`, null];
+        return [`query must be KEYWORD: ${tokenArray[b+1].name}`, null];
       }
     }
     if (e < 0) {
