@@ -457,7 +457,7 @@ class Executor {
         if (rec) {
           const subEval = rec.fn(tokenArray.slice(b+2, e));
           if (subEval[0]) { // error
-            return [subEval, null];
+            return [subEval[0], null];
           } else {
             subEval[1].forEach( tok => newArray.push(tok) );
             tokenArray.slice(e+1, tokenArray.length)
@@ -480,13 +480,13 @@ class Executor {
   // We find the last of the innermost macros in the token array.
   innerBeginEnd(tokenArray) {
     for (let i= tokenArray.length-1; i>= 0; i--) {
-      if (tokenArray[i].name === 'MACRO_CLOSE') {
-        for (let j=i; j>= 0; j--) {
-          if (tokenArray[j].name === 'MACRO_OPEN') {
-            return [j, i];
+      if (tokenArray[i].name === 'MACRO_OPEN') {
+        for (let j=i; j< tokenArray.length; j++) {
+          if (tokenArray[j].name === 'MACRO_CLOSE') {
+            return [i, j];
           }
         }
-        return [-1, i];
+        return [i, -1];
       }
     }
     return [-1, -1];
@@ -575,7 +575,7 @@ class Executor {
 
   setCmd(args) {
     if (this.p.ifNextCommand(args, 0, "DATAW")) {
-      let options = {PATH: "PATH", DATA: "WORD"};
+      let options = {PATH: "PATH", DATA: "WORDS"};
       let result = this.p.parseRequiredTokens(args.slice(1), options);
       if (result[0]) { return [ `SET DATAW: ${result[0]}`, args ]; }
       const struct = result[1];
@@ -621,12 +621,12 @@ class Executor {
       return [ `CURRENT: bad syntax for path: ${this.t.renderTokens(args)}`, null ];
     }
     if (this.mc.exists(mPath)) {
-      if (this.mc.isVariableParent(mPath)) {
-        const curr = this.mc.getCurrent(mPath);
-        if (curr) {
-          return [ null, [{name: 'WORD', value: curr}] ];
+      if (this.mc.isAltParent(mPath)) {
+        const result = this.mc.getCurrent(mPath);
+        if (! result[0]) {
+          return [ null, [{name: 'WORD', value: result[1]}] ];
         } else {
-          return [`CURRENT: no current child`, null];
+          return [`CURRENT: ${result[0]}`, null];
         }
       } else {
         return [`CURRENT: not a variable parent`, null];

@@ -90,35 +90,52 @@ result = mc.interpret(["setCurrent .curr b"]); err(result);
 result = e.execProc("set-is-current"); err(result);
 errDiff(mc.getCurrent(".is-current")[1], "b");
 
-process.exit(0);
-
 
 log(`---- expand`);
 
 mc = new Machine;
-result = mc.interpret(["P .pos/a", "P .pos/b", "P .pos/c"]); err(result);
-errDiff(mc.getCurrent('.pos'), 'a');
+result = mc.interpret(["addLeaf . pos", "addLeaf .pos / a", "addLeaf .pos / b", "addLeaf .pos / c"]); err(result);
+errDiff(mc.getCurrent('.pos')[1], 'a');
 
 lines = [
-  { input: "{{CURRENT .pos}}", errMsg: null, output: "a" },
-  { input: "SETW .board {{CURRENT .pos}}", errMsg: null, output: "SETW" },
-  { input: "SETW .board {{FOO .pos}}", errMsg: 'bad query: FOO', output: null },
-  { input: "SETW .board {{foo .pos}}", errMsg: 'query must be KEYWORD: WORD', output: null },
+  { input: "{{FOO{{CURRENT .pos}} .pos}}",
+    errMsg: 'bad query: FOO',
+    output: null },
+  { input: "{{CURRENT .pos}}",
+    errMsg: null,
+    output: "a" },
+  { input: "SET DATAW PATH .board WORDS {{CURRENT .pos}}",
+    errMsg: null,
+    output: "SET DATAW PATH.boardWORDSa" },
+  { input: "SET DATAW PATH .board WORDS {{FOO .pos}}",
+    errMsg: 'bad query: FOO',
+    output: null },
+  { input: "SET DATAW PATH .board WORDS {{CURRENT .pos}}{{FOO .pos}}",
+    errMsg: 'bad query: FOO',
+    output: null },
+  { input: "SET DATAW PATH .board WORDS {{CURRENT {{FOO .pos}}.pos}}",
+    errMsg: 'bad query: FOO',
+    output: null },
+  { input: "SET DATAW PATH .board WORDS {{foo .pos}}",
+    errMsg: 'query must be KEYWORD: WORD',
+    output: null },
 ];
 
 e = new Executor(mc, t, new Parser(t), log);
 lines.forEach( rec => {
-  result = e.expand(t.tokenize(rec.input)[1]);
+  const tokList = t.tokenize(rec.input)[1];
+  result = e.expand(tokList);
   errDiff(result[0], rec.errMsg);
   if (! result[0]) {
-    let word;
-    word = result[1][0].value;
-    errDiff(word, rec.output);
+    const output = t.renderTokens(result[1]);
+    errDiff(output, rec.output);
   }
 });
   
 
 process.exit(0);
+
+
 
 
 
