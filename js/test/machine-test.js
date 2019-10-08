@@ -1,20 +1,6 @@
-/**
-   Copyright 2018 Sudheer Apte
-
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
-
-       http://www.apache.org/licenses/LICENSE-2.0
-
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License.
-*/
-
 "use strict";
+
+process.exit(0);
 
 const Machine = require("../machine.js");
 let machine = new Machine();
@@ -22,427 +8,276 @@ let machine = new Machine();
 let log, err, errDiff;
 [log, err, errDiff] = require('./logerr.js');
 
+let list, copy;
 let result;
-let delta;
+let undos;
 
-let list = [
-  '.boot',
-  '.boot/failed',
-  '.boot/booting',
-  '.boot/booting.robot',
-  '.boot/booting.robot/unknown',
-  '.boot/booting.robot/expectingjcbs',
-  '.boot/booting.robot/discoveringjcbs',
-  '.boot/booting.robot/failed',
-  '.boot/booting.robot/comparingfirmware',
-  '.boot/booting.robot/loadingfirmware',
-  '.boot/booting.robot/ready',
-  '.boot/running',
-  '.net',
-  '.net.ipv4assign',
-  '.net.ipv4assign/static',
-  '.net.ipv4assign/dhcp',
-  '.net.ipv4assign/zeroconf',
-  '.wcam',
-  '.hcam',
+log(`---- setData`);
+machine = new Machine();
+undos = [];
+machine.addLeaf("", ".", "a");
+list = [
+  { data: "",            result: null, undo: undefined },
+  { data: "",            result: null, undo: undefined },
+  { data: `abc-1 abc-2`, result: null, undo: "setData .a" },
+  { data: ``,            result: null, undo: "setData .a abc-1 abc-2" },
+  { data: `123 456`,     result: null, undo: "setData .a" },
+  { data: `123a 456`,    result: "setData: bad value: |123a 456|", undo: undefined},
+  { data: `122`,         result: null, undo: "setData .a 123 456" },
+  { data: `word`,        result: null, undo: "setData .a 122" },
 ];
 
-// --------------------------------------------------------------
-// Section 1:  Direct calls to _addState() - no events generated
-log(`---- addState`);
-list.forEach( path => {
-  const result = machine._addState(path);
-  err(result);
-});
-
-// 1. count added paths, and check to make sure they all exist in the machine.
-//    verify that three of them are variable paths.
-
-const origPaths = list.length;
-const arr = machine.getAllPaths();
-if (arr.length !== origPaths+1) {
-  err(`expecting ${origPaths+1} paths, got ${arr.length}`);
-}
-
-const varPaths = list.filter( path => {
-  const state = machine.getState(path);
-  return state.hasOwnProperty("curr");
-});
-
-if (varPaths.length !== 3) { err(`expecting 3 variable paths, got ${varPaths.length}`); }
-
-if (! machine.isVariableParent('.net.ipv4assign')) {
-  err(`should be variableParent!`);
-}
-
-if (machine.getCurrentChildName('.net.ipv4assign') !== 'static') {
-  err(`child should be static!`);
-}
-
-// 2. for a few selected states, check parent state name
-
-let s = machine.getState('.net');
-if (s.parent.name !== "") {
-  err(`bad parent for .net: ${JSON.stringify(s.parent)}`);
-}
-s = machine.getState('.boot/booting.robot/comparingfirmware');
-if (s.parent.name !== 'robot') {
-  err(`bad parent for comparingFirmware: ${JSON.stringify(s.parent)}`);
-}
-s = machine.getState('.boot/booting.robot');
-if (s.parent.name !== 'booting') {
-  err(`bad parent for robot: ${JSON.stringify(s.parent)}`);
-}
-
-// Try deleting a leaf.
-
-log(`---- deleteLeaf`);
-//console.log(s);
-//log(`--- deleting discoveringjcbs`);
-result = machine.interpret(['X .boot/booting.robot/discoveringjcbs']);
-err(result);
-s = machine.getState('.boot/booting.robot');
-//console.log(s);
-errDiff(s.cc.length, 6);
-//log(`--- deleting ready`);
-result = machine.interpret(['X .boot/booting.robot/ready']);
-err(result);
-s = machine.getState('.boot/booting.robot');
-//console.log(s);
-errDiff(s.cc.length, 5);
-
-s = machine.getState('.net.ipv4assign');
-//log(s);
-log(`---- converting alt parent to leaf`);
-result = machine.interpret([
-  'X .net.ipv4assign/static',
-  'X .net.ipv4assign/dhcp',
-]);
-//log(s);
-//log(`---- deleting zeroconf`);
-result = machine.interpret([
-  'X .net.ipv4assign/zeroconf',
-]);
-// log(s);
-//log(`---- setting data to ipv4assign`);
-result = machine.interpret([
-  'D .net.ipv4assign foo',
-]);
-err(result);
-// log(s);
-
-// --------------------------------------------------------------
-/*
-log(`---- createLeafDelta`);
-machine = new Machine();
-delta = {delta: [], undo: []};
-result = machine.createChildDelta("", ".", "a", delta);
-err(result);
-//log(JSON.stringify(delta));
-result = machine.createChildDelta(".a", ".", "b", delta);
-err(result);
-result = machine.createChildDelta(".a", "/", "foo", delta);
-log(`tried adding /foo and failed: result`);
-const m = result.match(/^not/);
-log(m);
-if (m === null) { err(result); }
-log(`--- done with adding`);
-errDiff(delta.delta.length, 1);
-errDiff(delta.delta.length, 2);
-result = machine.interpret(delta.delta);
-err(result);
-errDiff(machine.getAllPaths().length, 2);
-
-process.exit(0);
-*/
-
-// --------------------------------------------------------------
-// interpret()
-
-log(`---- interpreting`);
-// interpret once
-machine = new Machine();
-let gotNewMachineEvent = false;
-function newMachineListener(block) {
-  gotNewMachineEvent = true;
-  // console.log(`got block with ${block.length} elements`);
-}
-
-machine.addBlockListener(newMachineListener);
-
-let block = list.map( state => `P ${state}` );
-err(machine.interpret(block));
-
-machine.removeBlockListener(newMachineListener);
-
-// interpret same block again: should be no-op
-let s1 = machine.getSerialization();
-err(machine.interpret(block));
-let s2 = machine.getSerialization();
-let results = s1.map( (s, i) => (s === s2[i]) );
-err(results.find( r => (!r) ));
-
-
-function equalArray(a1, a2) {
-  if (a1.length !== a2.length) { return false; }
-  const results = a1.map( (e, i) => e === a2[i] );
-  const unequal = results.find( r => r !== true );
-  return unequal === undefined;
-}
-
-// 3. check getCurrent, then setCurrent, and verify that event is not triggered
-
-const sPath = '.boot/booting.robot';
-if (! machine.exists(sPath + '/unknown')) {
-  err(`.boot/booting.robot: expecting unknown, got ${curr}`);
-}
-
-let event3Triggered = false;
-machine.addBlockListener(event3Listener);
-
-function event3Listener(arr) {
-  err("event3 should not be triggered when we call setCurrent directly!");
-  event3Triggered = true;
-  err(arr.length === 1);
-  err(arr[0].startsWith('C'));
-}
-
-machine.setCurrent(sPath, 'expectingjcbs');
-if (! machine.exists(sPath + '/expectingjcbs')) {
-  err(`${sPath}: failed to set current state to expectingjcbs`);
-}
-
-let r3m = machine.removeBlockListener(event3Listener);
-err(r3m);
-
-// 4. getCurrentPaths; verify that there are 8.
-
-const currPaths = machine.getCurrentPaths();
-if (currPaths.length !== 8) {
-  err(`expecting 8 currPaths; got ${currPaths.length}`);
+for (let i=0; i<list.length; i++) {
+  const entry = list[i];
+  const undos = [];
+  result = machine.doCommand("setData .a " + entry.data, undos);
+  errDiff(result, entry.result);
+  errDiff(undos[0], entry.undo);
 }
 
 
-// 5. Set data to a leaf state that is not a variable leaf.
-//    It should work, and it should also trigger a registered listener.
-//    Also try to get back the data you set.
-//    Then remove the eventListener. Setting data should no longer
-//    trigger the listener.
+log(`---- clone test`);
 
-let event5Triggered = false;
-let should5Trigger = true;
-function event5Listener(arr) {
-  event5Triggered = true;
-  if (should5Trigger === false) {
-    err(`fooListener should not have been called!`);
-  }
-  err(arr.length === 1);
-  err(arr[0].startsWith("D"));
-  err(arr[0].endsWith("foo"));
-}
-let r5 = machine.addBlockListener(event5Listener);
-err(r5);
-
-[
-  '.boot/booting.robot/unknown',
-  '.wcam',
-].forEach( path => {
-  if (! machine.isLeaf(path)) {
-    err(`${path} should be leaf!`);
-  }
-  if (! machine.isVariableLeaf(path)) {
-    if (machine.getData(path) !== "") {
-      err(`${path} getData() should have returned empty string!`);
-    }
-    err(machine.interpret([`D ${path} foo`]));
-    if (machine.getData(path) !== "foo") {
-      err(`${path} getData() should have returned foo!`);
-    }
-  }
-  if (machine.isParent(path)) {
-    err("${path} should not be a parent!");
-  }
-  if (! machine.isParent(".boot/booting")) {
-    err(".boot/booting should be a parent!");
-  }
-  if (! machine.isConcurrentParent(".boot/booting")) {
-    err(".boot/booting should be a concurrent parent!");
-  }
-});
-
-r5 = machine.removeBlockListener(event5Listener);
-if (r5 !== null) {
-  err(`removeBlockListener returned ${r5}`);
-}
-should5Trigger = false;
-machine.setData(".wcam", "bar");
-if (machine.getData(".wcam") !== "bar") {
-  err(`${path} getData() should have returned bar!`);
-}
-
-// 6. empty out the tree; verify it is empty.
-machine.makeEmpty();
-if (! machine.exists("")) {
-  err("machine should have root path!");
-}
-if (machine.exists(".boot")) {
-  err("machine should not have .boot!");
-}
-
-// 7. try adding paths with nonexistent parent sequences
-
-let r7;
-r7 = machine.interpret(['P .a.b.c']);
-if (r7 !== null) {
-  err(`addState .a.b.c should be null!`);
-}
-if (! machine.exists('.a.b')) {
-  err(`path .a.b should exist!`);
-}
-r7 = machine.interpret(['P .a.b.c.d']);
-if (r7 !== null) {
-  err(`addState .a.b.c.d should be null!`);
-}
-r7 = machine.interpret(['P .a.b.c/d']);
-if (r7 === null) {
-  err(`_addState .a.b.c/d should have failed!`);
-}
-if (! r7.match(/concurrent parent/)) {
-  err(`expecting to match /concurrent parent/; got: ${r7}`);
-}
-r7 = machine.interpret(['P ']);
-if (r7 !== null) {
-  err(`addState "": expecting success; got: ${r7}`);
-}
-r7 = machine.interpret(['P foo']);
-if (r7 === null) {
-  err(`addState "foo": expecting failure!`);
-} else if (! r7.match(/bad path/)) {
-  err(`addState "foo": expecting bad path failure!`);
-}
-
-// interpretOp - toggle parents on and off; see effect on children
-let r9;
-machine = new Machine();
-r9 = machine.interpret(['P .j/k.foo', 'P .j/l.bar', 'C .j l' ]);
-err(r9);
-
-if (! machine.getCurrentPaths().find( p => p.endsWith("bar") )) {
-  err(`expecting .j/l.bar to be current!`);
-}
-machine.interpretOp('C .j k');
-if (! machine.getCurrentPaths().find( p => p.endsWith("foo") )) {
-  err(`expecting .j/k.foo to be current!`);
-}
-
-// interpretOp - toggle data on and off; see effect
-r9 = machine.interpret(['P .z', 'D .z zebra']);
-err(r9);
-if (! machine.getData('.z') || (machine.getData('.z') !== 'zebra')) {
-  err(`expecting data = zebra! got ${machine.getData('.z')}`);
-}
-r9 = machine.interpret(['P .z', 'D .z ']);
-err(r9);
-if (typeof machine.getData('.z') !== 'string' || (machine.getData('.z').length !== 0)) {
-  err(`expecting data = ''! got |${machine.getData('.z')}|`);
-}
-
-// -------------------------------------------------------------------------
-// new Machine
-// -------------------------------------------------------------------------
+list = [
+  'addLeaf . a',
+  'addLeaf . b',
+  'addLeaf .a / c',
+  'addLeaf .a / d',
+  'addLeaf .b / e',
+  'addLeaf .b / f',
+];
 
 machine = new Machine();
-
-// empty the machine and recreate
-r9 = machine.interpret(['E', 'P .x/k.foo']); err(r9);
-r9 = machine.getSerialization();
-err(r9.length === 4);
-r9 = machine.interpret(['P .j/k.foo', 'E', 'P .j/k.foo']); err(r9);
-r9 = machine.getSerialization();
-err(r9.length === 4);
-
-// data append: foo, bar, empty line, baz
-r9 = machine.interpret(['P .j/k.foo', 'D .j/k.foo foo']); err(r9);
-r9 = machine.interpret(['A .j/k.foo bar']); err(r9);
-r9 = machine.interpret(['A .j/k.foo ', 'A .j/k.foo baz']);    err(r9);
-
-const dataValues = machine.getData('.j/k.foo');
-err(dataValues[0] === 'foo');
-err(dataValues[1] === 'bar');
-err(dataValues[2] === '');
-err(dataValues[3] === 'baz');
-
-// getSerialization - serialization must preserve paths
-log(`---- getSerialization`);
-checkSerialTransfer(machine);
-r9 = machine.interpret(['P .j/l', 'C .j l']); err(r9);
-checkSerialTransfer(machine);
-
-// data append to beyond limit of 100 lines
-for (let i=0; i<105; i++) {
-  r9 = machine.interpret([`A .j/k.foo data-${i}`]); err(r9);
+undos = [];
+for (let i=0; i<list.length; i++) {
+  err(machine.doCommand(list[i], undos));
 }
-const firstElem = machine.getData('.j/k.foo')[0];
-if (firstElem !== 'data-5') {
-  err(`firstElem should be |data-5|; got |${firstElem}|`);
-}
-checkSerialTransfer(machine);
-let sLength;
-sLength = machine.getSerialization().length;
-if (sLength !== 106) { err(`serialization should have been 106; got ${sLength}`); }
+copy = machine.clone();
+log(`---- comparing with copy`);
+errDiff(machine.isEqual(copy), true);
+undos = [];
+result = copy.doCommand('setCurrent .b f', undos); err(result);
+errDiff(machine.isEqual(copy), false);
+log(`---- running undos on the copy`);
+result = copy.doCommand(undos[0], undos); err(result);
+errDiff(machine.isEqual(copy), true);
 
-// overwrite appended data with a single empty line
-r9 = machine.interpret(['D .j/k.foo']); err(r9);
-const emptyElem = machine.getData('.j/k.foo');
-if (emptyElem !== '') {
-  err(`getData should have been empty string; got |${emptyElem}|`);
-}
-checkSerialTransfer(machine);
-sLength = machine.getSerialization().length;
-if (sLength !== 6) { err(`serialization should have been 6; got ${sLength}`); }
+log(`---- addLeaf, undos, unundos`);
 
-/**
-   @function(checkSerialTransfer) - serialize, unserialize, check
- */
 
-function checkSerialTransfer(orig) {
-  let allPaths = orig.getAllPaths();
-  let currentPaths = orig.getCurrentPaths();
-  const serial = orig.getSerialization();
-  const machine = new Machine();
-  const res = machine.interpret(serial);
-  err(res);
-  if (! machine.getAllPaths().every( (p, i) => p === allPaths[i] )) {
-    err(`allPaths do not match after serialization!`);
-    console.log(allPaths);
-    console.log(machine.getAllPaths());
-  }
-  if (! machine.getCurrentPaths().every( (p, i) => p === currentPaths[i] )) {
-    err(`currentPaths do not match after serialization!`);
-    console.log(currentPaths);
-    console.log(machine.getCurrentPaths());
-  }
-  if (! machine.getAllPaths().filter(p => machine.isDataLeaf(p)).every( p => {
-    const d = machine.getData(p);
-    if (typeof d === 'string') {
-      return d === orig.getData(p);
+function printStates(machine) {
+  machine._paths.forEach( (s, p) => {
+    const parent = s.parent.name;
+    let details = "";
+    if (s.hasOwnProperty("cc")) {
+      details = "[" + s.cc.length + "]";
+      if (s.hasOwnProperty("curr")) { details += "."+s.curr; }
     } else {
-      return true;
+      if (s.hasOwnProperty("data")) {
+        details += "data = |" + s.data + "|";
+      }
     }
-  })) {
-    console.log(`data do not match after serialization!`);
-    let paths = orig.getAllPaths().filter(p => orig.isDataLeaf(p));
-    paths.forEach(p => console.log(`orig: ${p} = |${machine.getData(p)}|`));
-    paths = machine.getAllPaths().filter(p => machine.isDataLeaf(p));
-    paths.forEach(p => console.log(`machine: ${p} = |${machine.getData(p)}|`));
-    err('dying');
-  }
+    log(` [|${s.name}| parent=|${parent}| ${details}]`);
+  });
 }
+
+// Build up machine using list, then use undos to empty it.
+// While using undos, build unundos list.
+// FInally, use unundos to rebuild the original machine.
+
+list = [
+  'addLeaf . a',
+  'addLeaf . b',
+  'addLeaf .b . c',
+  'addLeaf .b . d',
+  'addLeaf .b . e',
+  'addLeaf .a . f',
+];
+
+machine = new Machine();
+undos = [];
+for (let i=0; i<list.length; i++) {
+  err(machine.doCommand(list[i], undos));
+}
+errDiff(machine.getAllPaths().length, list.length+1);
+errDiff(machine.getCurrentPaths().length, list.length+1);
+errDiff(machine.getAllPaths().length, list.length+1);
+errDiff(undos.length, list.length);
+
+let unundos = [];
+for (let i=0; i<undos.length; i++) {
+  err(machine.doCommand(undos[i], unundos));
+}
+errDiff(machine.getAllPaths().length, 1);
+errDiff(undos.length, list.length);
+
+log(`---- build copy with redos`);
+
+let machinecopy = new Machine();
+undos = [];
+for (let i=0; i<unundos.length; i++) {
+  err(machinecopy.doCommand(unundos[i], undos));
+}
+
+//log(`comparing with original...`);
+let orig = new Machine();
+undos = [];
+for (let i=0; i<list.length; i++) {
+  orig.doCommand(list[i], undos);
+}
+if (!machinecopy.isEqual(orig)) {
+  err(`*** machinecopy is not equal to orig`);
+}
+
+// addLeaf - not an alt parent
+machine = new Machine();
+undos = [];
+result = machine.doCommand("addLeaf . a", undos); err(result);
+result = machine.doCommand("addLeaf .a . b", undos); err(result);
+result = machine.doCommand("addLeaf .a / c", undos);
+if (! result.match(/^not an alt/)) {
+  err(`*** did not get 'not an alt parent' error: got |${result}|`);
+}
+
+// addLeaf - parent has data
+machine = new Machine();
+undos = [];
+result = machine.doCommand("addLeaf . a", undos); err(result);
+result = machine.doCommand("setData .a =fooBar", undos); err(result);
+result = machine.doCommand("addLeaf .a . b", undos);
+if (! result.match(/^parent has data/)) {
+  err(`*** did not get 'parent has data' error: got |${result}|`);
+}
+
+// addLeaf turning a leaf into an alt parent
+machine = new Machine();
+undos = [];
+result = machine.doCommand("addLeaf . a", undos); err(result);
+result = machine.doCommand("addLeaf .a / b", undos); err(result);
+if (! machine.isAltParent(".a")) {
+  err(`.a is not alt parent!`);
+}
+result = machine.getCurrent(".a"); err(result[0]);
+if (result[1] !== "b") {
+  err(`*** addLeaf did not set current pointer to "b"`);
+}
+
+// deleteLastLeaf turning an alt parent into a leaf
+machine = new Machine();
+undos = [];
+result = machine.doCommand("addLeaf . a", undos); err(result);
+err(machine.isLeaf(".a"));
+result = machine.doCommand("addLeaf .a / b", undos); err(result);
+err(machine.isAltParent(".a"));
+result = machine.doCommand("addLeaf .a / c", undos); err(result);
+result = machine.doCommand("deleteLastLeaf .a", undos); err(result);
+result = machine.doCommand("deleteLastLeaf .a", undos); err(result);
+err(machine.isLeaf(".a"));
+
+// deleteLastLeaf - try undo with an alt parent
+machine = new Machine();
+undos = [];
+result = machine.doCommand("addLeaf . a", undos); err(result);
+undos = [];
+result = machine.doCommand("addLeaf .a / b", undos); err(result);
+unundos = [];
+for (let i=0; i<undos.length; i++) {
+  //log(`    running undo command: ${undos[i]}`);
+  result = machine.doCommand(undos[i], unundos); err(result);
+}
+err(machine.isLeaf(".a"));
+
+// deleteLastLeaf - setCurrent and try undo with an alt parent
+machine = new Machine();
+undos = [];
+result = machine.doCommand("addLeaf . a", undos); err(result);
+result = machine.doCommand("addLeaf .a / b", undos); err(result);
+result = machine.doCommand("addLeaf .a / c", undos); err(result);
+result = machine.setCurrent(".a", "c", undos); err(result);
+let cmd = "deleteLastLeaf .a";
+result = machine.doCommand(cmd, undos); err(result);
+result = machine.getCurrent(".a"); err(result[0]);
+errDiff(result[1], "b");
+
+log(`---- setCurrent`);
+machine = new Machine();
+undos = [];
+result = machine.doCommand("addLeaf . a", undos); err(result);
+result = machine.doCommand("addLeaf .a / b", undos); err(result);
+result = machine.doCommand("addLeaf .a / c", undos); err(result);
+//log(`current = ${machine.getCurrent(".a")[1]}`);
+err(machine.getCurrent(".a")[0]);
+errDiff(machine.getCurrent(".a")[1], "b");
+undos = [];
+result = machine.doCommand("setCurrent .a c", undos); err(result);
+errDiff(undos[0], "setCurrent .a b");
+err(machine.getCurrent(".a")[0]);
+errDiff(machine.getCurrent(".a")[1], "c");
+// Try bad current child
+result = machine.doCommand("setCurrent .a foo");
+errDiff(result, "no such child: foo");
+
+log(`---- interpret`);
+machine = new Machine();
+undos = [];
+let arr1 = [
+  "addLeaf . a",
+  "addLeaf .a / b",
+  "addLeaf .a / c",
+];
+result = machine.interpret(arr1, undos); err(result);
+copy = machine.clone();
+
+errDiff(machine.isEqual(copy), true);
+let arr2 = [
+  "setData .a/b foo bar",
+  "setData .a/b baz",
+  "setData .a/b bat",
+  "setCurrent .a c",
+];
+undos = [];
+result = machine.interpret(arr2, undos); err(result);
+errDiff(machine.isEqual(copy), false);
+
+log(`---- executing undos`);
+result = machine.interpret(undos); err(result);
+errDiff(machine.isEqual(copy), true);
+
+function printAll(machine) {
+  machine._paths.forEach( (n, p) => {
+    log(n);
+  });
+}
+
+log(`---- serialize`);
+
+list = [
+  'addLeaf . a',
+  'addLeaf . b',
+  'addLeaf .a / c',
+  'addLeaf .a / d',
+  'addLeaf .b / e',
+  'addLeaf .b / f',
+  'setData .b/e foo bar',
+  'setData .b/e',
+  'addLeaf .b/e . g',
+];
+
+machine = new Machine();
+undos = [];
+result = machine.interpret(list, undos); err(result);
+//log(machine.serialize());
+const list2 = machine.serialize();
+copy = new Machine();
+undos = [];
+result = copy.interpret(list2); err(result);
+err(machine.isEqual(copy));
 
 // --------------------------
 
 process.on('beforeExit', code => {
   if (code === 0) {
+    /*
     if (event3Triggered) {
       err(`event3 was triggered!`);
     }
@@ -452,5 +287,6 @@ process.on('beforeExit', code => {
     if (! gotNewMachineEvent) {
       err('failed to get newmachine event on finishEditing()');
     }
+    */
   }
 });

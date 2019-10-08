@@ -21,14 +21,16 @@ let clauses, sArr, sArr1, sArr2, withClause;
 
 let block, blocks, temp, proc, procs;
 
+
 log(`---- evaluate PLAIN`);
 
 mc = new Machine;
-result = mc.interpret(["P .board.a", "P .board.b", "P .board.c"]); err(result);
+result = mc.interpret(["addLeaf . board", "addLeaf .board . a", "addLeaf .board . b", "addLeaf .board . c"]); err(result);
 err(mc.exists('.board.a'));
 
 lines = [
   "% abc",
+  "DEF ROOT CHILDREN pos",
   "DEF CON PARENT .pos CHILDREN a b c",
   "% def",
   "DEF CON PARENT .pos CHILDREN a b c",
@@ -38,17 +40,18 @@ lines = [
 e = new Executor(mc, t, new Parser(t), log);
 e.buildProcsMap(lines);
 e.execProc("abc");
-err(mc.exists('.pos.a'));
-err(mc.exists('.pos.b'));
-err(mc.exists('.pos.c'));
+['.pos', '.pos.a'].forEach( p => {
+  err(mc.exists(p));
+});
 
 log(`---- evaluate WITH`);
 
 mc = new Machine;
-result = mc.interpret(["P .board.a", "P .board.b", "P .board.c"]); err(result);
+result = mc.interpret(["addLeaf . board", "addLeaf .board . a", "addLeaf .board . b", "addLeaf .board . c"]); err(result);
 
 lines = [
   "% def",
+  "DEF ROOT CHILDREN pos",
   "WITH ALL .board.POS BEGIN",
   "DEF CON PARENT .pos CHILDREN {POS}",
   "END",
@@ -59,15 +62,16 @@ e.buildProcsMap(lines);
 result = e.execProc("def"); err(result);
 err(mc.exists(".pos.b"));
 
-
 log(`---- evaluate ON`);
 
 mc = new Machine;
-result = mc.interpret(["P .curr/a", "P .curr/b"]); err(result);
 
 lines = [
-  "% set-is-current",
+  "% INIT",
+  "DEF ROOT CHILDREN is-current curr",
   "DEF ALT PARENT .is-current CHILDREN a b",
+  "DEF ALT PARENT .curr CHILDREN a b",
+  "% set-is-current",
   "ON IS_CURRENT .curr a BEGIN",
   "SET CURRENT PARENT .is-current CHILD a",
   "END",
@@ -78,18 +82,22 @@ lines = [
 
 e = new Executor(mc, t, new Parser(t), log);
 e.buildProcsMap(lines);
+result = e.execProc("INIT"); err(result);
 result = e.execProc("set-is-current"); err(result);
-errDiff(mc.getCurrentChildName(".is-current"), "a");
+errDiff(mc.getCurrent(".is-current")[1], "a");
 log(`----          setting .curr/b`);
-result = mc.interpret(["C .curr b"]); err(result);
+result = mc.interpret(["setCurrent .curr b"]); err(result);
 result = e.execProc("set-is-current"); err(result);
-errDiff(mc.getCurrentChildName(".is-current"), "b");
+errDiff(mc.getCurrent(".is-current")[1], "b");
+
+process.exit(0);
+
 
 log(`---- expand`);
 
 mc = new Machine;
 result = mc.interpret(["P .pos/a", "P .pos/b", "P .pos/c"]); err(result);
-errDiff(mc.getCurrentChildName('.pos'), 'a');
+errDiff(mc.getCurrent('.pos'), 'a');
 
 lines = [
   { input: "{{CURRENT .pos}}", errMsg: null, output: "a" },
@@ -539,7 +547,7 @@ errDiff(blocks[2].lines.length, 5);
 
 log(`---- runRenderScript: .turn = spider`);
 
-// log(`CURRENT .selectedfly = ${machine.getCurrentChildName(".selectedfly")}`);
+// log(`CURRENT .selectedfly = ${machine.getCurrent(".selectedfly")}`);
 
 initScript = [
   'DEF ALT PARENT .turn CHILDREN spider flies',

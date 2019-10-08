@@ -10,7 +10,7 @@ class Executor {
     this.t = t ? t : new Tokenizer;
     this.log = logfunc ? logfunc : console.log;
     this.p = p ? p : new Parser;
-    if (! mc.STATE_TREE) { this.log(`first arg is not a machine`); }
+    if (! mc._root) { this.log(`first arg is not a machine`); }
     this._commands = new Map();
     this._queries = new Map();
     this.addBasicCommandSet();
@@ -125,7 +125,7 @@ class Executor {
           return `bad IS_CURRENT path: ${this.t.renderTokens(cdr)}`;
         }
         const path = this.p.composePath(cdr);
-        if (! this.mc.isVariableParent(path)) {
+        if (! this.mc.isAltParent(path)) {
           return `IS_CURRENT: not alt parent: ${path}`;
         }
         const state = this.mc.getState(path);
@@ -527,30 +527,44 @@ class Executor {
       let result = this.p.parseRequiredTokens(args.slice(1), options);
       if (result[0]) { return [ `DEF ${type}: ${result[0]}`, args ]; }
       const struct = result[1];
-      if (type === 'CON' && this.mc.isVariableParent(struct.PARENT)) {
+
+      if (! this.mc.exists(struct.PARENT)) {
+        const errMsg = `DEF ${type}: no such path: ${struct.PARENT}`;
+        console.log(errMsg);
+        console.log(this.mc.getAllPaths());
+        return [errMsg, args];
+      }
+      if (type === 'CON' && this.mc.isAltParent(struct.PARENT)) {
+        const errMsg = `DEF CON ${struct.PARENT}: already alt-parent`;
+        console.log(errMsg);
         return [`DEF CON ${struct.PARENT}: already alt-parent`, args];
       }
-      if (type === 'ALT' && this.mc.isConcurrentParent(struct.PARENT)) {
+      if (type === 'ALT' && this.mc.isConParent(struct.PARENT)) {
+        const errMsg = `DEF ALT ${struct.PARENT}: already concurrent parent`;
+        console.log(errMsg);
         return [`DEF ALT ${struct.PARENT}: already concurrent parent`, args];
       }
       const children = struct.CHILDREN;
-      let arr =  children.map(child => `P ${struct.PARENT}${sep}${child}`);
+      let arr =  children.map(child =>
+                              `addLeaf ${struct.PARENT} ${sep} ${child}`);
       result = this.mc.interpret(arr);
       if (result) {
         return [`DEF ${type} ${struct.PARENT}: ${result}`, args];
       } else {
         return [null, null];
       }
-    } else if (this.p.ifNextCommand(args, 0, "TOP")) {
+    } else if (this.p.ifNextCommand(args, 0, "ROOT")) {
       let options = {CHILDREN: "WORDS"};
       let result = this.p.parseRequiredTokens(args.slice(1), options);
-      if (result[0]) { return [ `DEF TOP: ${result[0]}`, args ]; }
+      if (result[0]) { return [ `DEF ROOT: ${result[0]}`, args ]; }
       const struct = result[1];
       const children = struct.CHILDREN;
-      let arr =  children.map(child => `P .${child}`);
+      let arr =  children.map(child => `addLeaf . ${child}`);
       result = this.mc.interpret(arr);
       if (result) {
-        return [`DEF TOP CHILDREN: ${result}`, args];
+        const errMsg = `DEF ROOT CHILDREN: ${result}`;
+        console.log(errMsg);
+        return [errMsg, args];
       } else {
         return [null, null];
       }
@@ -573,7 +587,7 @@ class Executor {
       } else if (! this.mc.isDataLeaf(struct.PATH)) {
         return [`SET DATAW ${struct.PATH}: not a data leaf`, args];
       }
-      result = this.mc.interpretOp(`D ${struct.PATH} ${struct.DATA}`);
+      result = this.mc.interpret([`setData ${struct.PATH} ${struct.DATA}`]);
       if (result) {
         return [`SET DATAW ${struct.PATH}: ${result}`, args];
       } else {
@@ -584,11 +598,11 @@ class Executor {
       let result = this.p.parseRequiredTokens(args.slice(1), options);
       if (result[0]) { return [ `SET CURRENT: ${result[0]}`, args ]; }
       const struct = result[1];
-      if (this.mc.isConcurrentParent(struct.PARENT)) {
+      if (this.mc.isConParent(struct.PARENT)) {
         return [`SET CURRENT ${struct.PARENT} is con parent`, args];
       }
       const word = struct.WORD;
-      result = this.mc.interpretOp(`C ${struct.PARENT} ${struct.CHILD}`);
+      result = this.mc.interpret([`setCurrent ${struct.PARENT} ${struct.CHILD}`]);
       if (result) {
         return [`SET CURRENT ${struct.PARENT}: ${result}`, args];
       } else {
@@ -608,7 +622,7 @@ class Executor {
     }
     if (this.mc.exists(mPath)) {
       if (this.mc.isVariableParent(mPath)) {
-        const curr = this.mc.getCurrentChildName(mPath);
+        const curr = this.mc.getCurrent(mPath);
         if (curr) {
           return [ null, [{name: 'WORD', value: curr}] ];
         } else {

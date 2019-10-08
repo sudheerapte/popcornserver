@@ -615,7 +615,7 @@ class Parser {
           return [`bad arg for ${cmd}`, args];
         }
       } else {
-        return [ `bad option: ${this.renderTokens(tokList[i])}`, args ];
+        return [ `bad option: ${this.t.renderTokens(tokList[i])}`, args ];
       }
     }
     const opts = Object.keys(args);
