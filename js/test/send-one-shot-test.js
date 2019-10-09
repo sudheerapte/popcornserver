@@ -66,8 +66,8 @@ function createTempFile() {
     const FILENAME = '/tmp/send-one-shot-test.txt';
     fs.writeFileSync(FILENAME,
                      `provide foo
-.a
-.b
+addLeaf . a
+addLeaf . b
 `);
     return resolve(FILENAME);
   });
@@ -93,8 +93,8 @@ function sendStringTest(sock) {
 function createString() {
   return new Promise( (resolve, reject) => {
     return resolve(`provide foo
-P .a
-P .b
+addLeaf . a
+addLeaf . b
 `);
   });
 }

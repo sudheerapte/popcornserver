@@ -179,7 +179,7 @@ class AppServer extends EventEmitter {
     }
     const mc = new Machine();
     const res = mc.interpret(arr.slice(1));
-    log(`provide: mc = |${mc.getSerialization().join(" ")}|`);
+    log(`provide: mc = |${mc.serialize().join(" ")}|`);
     if (res) {
       return reject(`provide ${machine}: ${res}`);
     }
@@ -198,7 +198,6 @@ class AppServer extends EventEmitter {
   doAbandon(appName, machine, sse, payload, resolve, reject) {
     log(`abandon ${machine}: parsing transaction`);
     if (! this._appMap.has(appName)) {
-      return reject(`app ${appName} not found!`);
       return reject(`app ${appName} not found!`);
     }
     const appEntry = this._appMap.get(appName);

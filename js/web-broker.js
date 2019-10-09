@@ -184,7 +184,7 @@ class WebBroker extends EventEmitter {
     return new Promise( (resolve, reject) => {
       const m = this._machineMap.get(machine);
       if (m) {
-        const ser = m.getSerialization();
+        const ser = m.serialize();
         const serStr = ser.join('\n');
         log(`sendMachine ${machine} = |${ser.join(' ')}|`);
         const result = 

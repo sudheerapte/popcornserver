@@ -102,6 +102,10 @@ class SSEventEmitter extends EventEmitter {
   }
   sendMessage(s) {
     if (! s) { return; }
+    if (typeof s !== 'string') {
+      console.log(`sendMessage: s is type ${typeof s}`);
+      return;
+    }
     if (s.trim().length <= 0) { return; }
     this.sendEvent({type: "message", data: s});
   }

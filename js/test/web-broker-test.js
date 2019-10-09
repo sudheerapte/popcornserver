@@ -111,7 +111,7 @@ function provideAndUpdateTest() {
   const msClient = new MultiStepClient("myclient", "someurl", s2c, c2s);
   let result;
   const mc = new Machine;
-  err(mc.interpret(['P .a', 'P .a/x', 'P .a/y']));
+  err(mc.interpret(['addLeaf . a', 'addLeaf .a / x', 'addLeaf .a / y']));
   result = broker.provide(msClient.url, mc);
   err(result);
   result = broker.addNewClient(msClient.clientId, msClient.url, c2s, s2c);
@@ -125,7 +125,7 @@ function provideAndUpdateTest() {
   subscribeP()
     .then( handleProvideP )
     .then( () => {
-      mc.interpret(['C .a y']);
+      mc.interpret(['setCurrent .a y']);
       log(`mc modified`);
     })
     .then( handleUpdateP )

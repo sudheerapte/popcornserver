@@ -4,10 +4,12 @@ const [log, err] = require('./logerr.js');
 const Machine = require('../machine.js');
 
 const machineLines = [
-  "P .hinge/open",
-  "P .hinge/closed",
-  "P .bolt/unlocked",
-  "P .bolt/locked",
+  "addLeaf . hinge",
+  "addLeaf . bolt",
+  "addLeaf .hinge / open",
+  "addLeaf .hinge / closed",
+  "addLeaf .bolt / unlocked",
+  "addLeaf .bolt / locked",
 ];
 
 const mc = new Machine();

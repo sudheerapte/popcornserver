@@ -126,6 +126,7 @@ function sendConnect2() {
     sse2.readFrom(sock2);
     sse2.once('SSEvent', ev => {
       if (! connected && ev.data === 'ok') {
+        log(`client2 got connected.`);
         connected = true;
         return resolve();
       } else {
@@ -145,14 +146,16 @@ function sendProvideFoo() {
 	resolve();
       }
     });
-    const result = mc.interpret(["P .a", "P .b", "P .a/foo", "P .a/bar"]);
+    const result = mc.interpret(
+      ["addLeaf . a", "addLeaf . b", "addLeaf .a / foo", "addLeaf .a / bar"]);
     err(result);
     sse2.sendMessage(`provide foo
-${mc.getSerialization().join('\n')}`);
+${mc.serialize().join('\n')}`);
     log(`client2 sent provide foo`);
   });
 }
 function sendProvideBar() {
+  mc = new Machine;
   return new Promise( (resolve, reject) => {
     sse2.once('SSEvent', ev => {
       log(`client2 got after provide bar: |${ev.data}|`);
@@ -160,10 +163,11 @@ function sendProvideBar() {
 	resolve();
       }
     });
-    const result = mc.interpret(["P .a", "P .b", "P .a/foo", "P .a/bar"]);
+    const result = mc.interpret(
+      ["addLeaf . a", "addLeaf . b", "addLeaf .a / foo", "addLeaf .a / bar"]);
     err(result);
     sse2.sendMessage(`provide bar
-${mc.getSerialization().join('\n')}`);
+${mc.serialize().join('\n')}`);
     log(`client2 sent provide bar`);
   });
 }
@@ -175,7 +179,7 @@ function sendUpdateFoo() {
 	resolve();
       }
     });
-    const updateLines =["C .a bar"];
+    const updateLines =["setCurrent .a bar"];
     sse2.sendMessage(`update foo
 ${updateLines.join('\n')}`);
     log(`client2 sent update foo`);
@@ -226,11 +230,13 @@ function sendOneShotProvide() {
         }
       });
       const mc = new Machine();
-      const result = mc.interpret(["P .a", "P .b", "P .a/foo", "P .a/bar"]);
+      const result = mc.interpret(
+        ["addLeaf . a", "addLeaf . b", "addLeaf .a / foo",
+         "addLeaf .a / bar"]);
       err(result);
       const sseEv = `event: oneShotCommand
 data: provide bar
-${mc.getSerialization().map( line => 'data: ' + line).join('\n')}\n\n`;
+${mc.serialize().map( line => 'data: ' + line).join('\n')}\n\n`;
       // log(`sending: |${sseEv}|`);
       sock3.write(sseEv);
       log(`${testName} sent oneShotCommand with provide bar`);
@@ -270,7 +276,7 @@ function sendOneShotUpdate() {
       });
       const sseEv = `event: oneShotCommand
 data: update bar
-data: C .a bar\n\n`;
+data: setCurrent .a bar\n\n`;
       log(`sending: |${sseEv}|`);
       sock3.write(sseEv);
       log(`${testName} sent update bar`);
@@ -309,7 +315,7 @@ function sendOneShotBadUpdate() {
       });
       const sseEv = `event: oneShotCommand
 data: update bar
-data: C .c bar\n\n`;
+data: setCurrent .c bar\n\n`;
       log(`sending: |${sseEv}|`);
       sock3.write(sseEv);
       log(`${testName} sent update bar`);
@@ -349,11 +355,12 @@ function sendBadOneShotCommand() {
         }
       });
       const mc = new Machine();
-      const result = mc.interpret(["P .a", "P .b", "P .a/foo"]);
+      const result = mc.interpret(
+        ["addLeaf . a", "addLeaf . b", "addLeaf .a / foo"]);
       err(result);
       const sseEv = `event: oneShotCommand
 data: something bar
-${mc.getSerialization().map( line => 'data: ' + line).join('\n')}\n\n`;
+${mc.serialize().map( line => 'data: ' + line).join('\n')}\n\n`;
       // log(`sending: |${sseEv}|`);
       sock3.write(sseEv);
       log(`${testName}: sent oneShotCommand with bad command`);
@@ -392,7 +399,8 @@ function sendBadOneShotProvide() {
         }
       });
       const mc = new Machine();
-      const result = mc.interpret(["P .a", "P .b", "P .a/foo"]);
+      const result = mc.interpret(
+        ["addLeaf . a", "addLeaf . b", "addLeaf .a / foo"]);
       err(result);
       const sseEv = `event: oneShotCommand
 data: provide bar\n\n`;
@@ -422,11 +430,12 @@ function sendFireAndForget() {
 	}
       });
       const mc = new Machine();
-      const result = mc.interpret(["P .a", "P .b", "P .a/foo"]);
+      const result = mc.interpret(
+        ["addLeaf . a", "addLeaf . b", "addLeaf .a / foo"]);
       err(result);
       sse3.sendEvent({type: "fireAndForget",
 		      data: `machine baz
-${mc.getSerialization().join('\n')}\n\n`});
+${mc.serialize().join('\n')}\n\n`});
       log(`sent fireAndForget machine baz`);
       sock3.end( () => log(`closed my fireAndForget socket`) );
     });
@@ -454,11 +463,12 @@ function sendBadFireAndForget() {
 	err(`badFireAndForget got: ${ev.data}!`);
       });
       const mc = new Machine();
-      const result = mc.interpret(["P .a", "P .b", "P .a/foo"]);
+      const result = mc.interpret(
+        ["addLeaf . a", "addLeaf . b", "addLeaf .a / foo"]);
       err(result);
       sse3.sendEvent({type: "fireAndForget",
 		      data: `badcommand
-${mc.getSerialization().join('\n')}\n\n`});
+${mc.serialize().join('\n')}\n\n`});
       log(`sent fireAndForget machine baz`);
       sock3.end( () => log(`closed my bad fireAndForget socket`) );
     });
