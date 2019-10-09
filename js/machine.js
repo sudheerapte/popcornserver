@@ -11,6 +11,7 @@ class Machine {
     this.MULTINUMPAT = /^([+-]?[0-9]+\s*)+$/;
     this.PATHPAT = /^\.[a-z][a-z0-9-/.]*$/;
     this.DATAPAT = /^=[a-zA-Z0-9+/=]+$/;
+    this._listeners = [];
   }
   getState(p) { return this._paths.get(p); }
   exists(p) { return this._paths.has(p);  }
@@ -340,6 +341,17 @@ class Machine {
     return copy;
   }
 
+  // --------------------- blockListeners -----------------
+  addBlockListener(func) {
+    this._listeners.push(func);
+  }
+  removeBlockListener(func) {
+    const pos = this._listeners.indexOf(func);
+    if (pos < 0) { return; }
+    this._listeners.splice(pos, 1);
+  }
+  
+
   // --------------------- doCommand -----------------
   doCommand(str, undos) {
     if (! str || str.length <= 0) { return `doCommand: empty string`; }
@@ -467,6 +479,11 @@ class Machine {
           return `${i}: ${result}`;
         }
       }
+    }
+    // success. Call all the listeners and return null
+    for (let f=0; f<this._listeners.length; f++) {
+      const func = this._listeners[f];
+      func(arr);
     }
     return null;
   }
