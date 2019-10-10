@@ -1,7 +1,5 @@
 "use strict";
 
-process.exit(0);
-
 const Machine = require("../machine.js");
 let machine = new Machine();
 
@@ -11,6 +9,7 @@ let log, err, errDiff;
 let list, copy;
 let result;
 let undos;
+
 
 log(`---- setData`);
 machine = new Machine();
@@ -272,6 +271,44 @@ copy = new Machine();
 undos = [];
 result = copy.interpret(list2); err(result);
 err(machine.isEqual(copy));
+
+
+log(`---- listeners`);
+
+list = [
+  'addLeaf . a',
+  'addLeaf . b',
+  'addLeaf .a / c',
+  'addLeaf .a / d',
+];
+
+machine = new Machine();
+result = machine.interpret(list); err(result);
+copy = new Machine();
+result = copy.interpret(machine.serialize()); err(result);
+err(machine.isEqual(copy));
+
+let blockListenerCalls = 0; // number of times blockListener is called.
+machine.addBlockListener(blockListener);
+log(`    modifying machine`);
+result = machine.interpret(['setCurrent .a d']); err(result);
+errDiff(blockListenerCalls, 1);
+log(`    modifying machine again`);
+result = machine.interpret(['setCurrent .a c']); err(result);
+errDiff(blockListenerCalls, 2);
+log(`    modifying machine again, badly`);
+result = machine.interpret(['setCurrent .a z']);
+errDiff(result, "0: no such child: z");
+errDiff(blockListenerCalls, 2);
+
+function blockListener(arr) {
+  blockListenerCalls ++;
+  errDiff(arr.length, 1);
+  errDiff(arr[0].split(' ')[0], 'setCurrent');
+  let res = copy.interpret(arr); err(res);
+  err(machine.isEqual(copy));
+}
+
 
 // --------------------------
 

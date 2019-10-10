@@ -230,8 +230,22 @@ class Machine {
       return null;
     }
     if (typeof d !== 'string') { return `not a string: ${d}`; }
+    /*
+    if (d.match(this.MULTIWORDPAT)) {
+      console.log(`  |${d}| = MULTIWORDPAT`);
+    } else if (d.match(this.MULTINUMPAT)) {
+      console.log(`  |${d}| = MULTINUMPAT`);
+    } else if (d.match(this.DATAPAT)) {
+      console.log(`  |${d}| = DATAPAT`);
+    } else {
+      console.log(`  |${d}| = *** NO MATCH`);
+    }
+    */
+
     // the node data member, if defined, must have one of the
     // three forms MULTINUMPAT, MULTIWORDPAT, or DATAPAT.
+
+
     if (d.match(this.MULTIWORDPAT) ||
         d.match(this.MULTINUMPAT) ||
         d.match(this.DATAPAT)) {
@@ -388,26 +402,36 @@ class Machine {
 
     // setData
     args = getArgs(str, "setData");
-    let spacePos;
     if (args) {
-      if (args.trim().length === 0) {
-        return this.setData("", "", undos);
-      }
-      spacePos = args.indexOf(' ');
-      if (spacePos < 0) {
-        if (! args.match(this.PATHPAT)) {
-          return `setData: bad path: |${args}|`;
+      let p, data;
+      const spacePos = args.indexOf(' ');
+      if (spacePos < 0) { // single arg; assume data = ""
+        p = args.trim(); data = "";
+      } else {
+        const m = args.match(/(^[^\s]+)\s+(.+)$/);
+        if (m) {
+          p = m[1]; data = m[2];
+        } else {
+          return `bad args: ${args}`;
         }
-        return this.setData(args, "", undos);
       }
-      const p = args.slice(0, spacePos);
-      const data = args.slice(spacePos+1);
-      if (data.match(this.DATAPAT)) {
+      if (! p.match(this.PATHPAT)) {
+        return `bad path: ${p}`;
+      }
+      if (data.length === 0) {
         return this.setData(p, data, undos);
-      } else if (data.match(this.MULTIWORDPAT) ||
-                 data.match(this.MULTINUMPAT)) {
-        const b64 = Buffer.from(data).toString('base64');
-        return this.setData(p, '=' + b64, undos);
+      }
+      if (data[0] === '=') {
+        const m = data.match(this.DATAPAT);
+        if (m) {
+          return this.setData(p, m[0], undos);
+        } else {
+          return `setData: bad base64 value: |${data}|`;
+        }
+      }
+      if (data.match(this.MULTIWORDPAT) ||
+          data.match(this.MULTINUMPAT)) {
+        return this.setData(p, data, undos);
       } else {
         return `setData: bad value: |${data}|`;
       }
@@ -416,7 +440,7 @@ class Machine {
     // setCurrent
     args = getArgs(str, "setCurrent");
     if (args && args.length !== 0) {
-      spacePos = args.indexOf(' ');
+      const spacePos = args.indexOf(' ');
       if (spacePos < 0) {
         return `setCurrent needs two args`;
       }
