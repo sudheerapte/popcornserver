@@ -245,7 +245,6 @@ class Machine {
     // the node data member, if defined, must have one of the
     // three forms MULTINUMPAT, MULTIWORDPAT, or DATAPAT.
 
-
     if (d.match(this.MULTIWORDPAT) ||
         d.match(this.MULTINUMPAT) ||
         d.match(this.DATAPAT)) {

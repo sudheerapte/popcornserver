@@ -24,6 +24,7 @@ list = [
   { data: `123a 456`,    result: "setData: bad value: |123a 456|", undo: undefined},
   { data: `122`,         result: null, undo: "setData .a 123 456" },
   { data: `word`,        result: null, undo: "setData .a 122" },
+  { data: `=Zm9v`,       result: null, undo: "setData .a word" },
 ];
 
 for (let i=0; i<list.length; i++) {
