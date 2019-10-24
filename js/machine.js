@@ -230,17 +230,6 @@ class Machine {
       return null;
     }
     if (typeof d !== 'string') { return `not a string: ${d}`; }
-    /*
-    if (d.match(this.MULTIWORDPAT)) {
-      console.log(`  |${d}| = MULTIWORDPAT`);
-    } else if (d.match(this.MULTINUMPAT)) {
-      console.log(`  |${d}| = MULTINUMPAT`);
-    } else if (d.match(this.DATAPAT)) {
-      console.log(`  |${d}| = DATAPAT`);
-    } else {
-      console.log(`  |${d}| = *** NO MATCH`);
-    }
-    */
 
     // the node data member, if defined, must have one of the
     // three forms MULTINUMPAT, MULTIWORDPAT, or DATAPAT.
