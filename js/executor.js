@@ -37,6 +37,32 @@ class Executor {
     }
   }
 
+  buildBlocks(lines) {
+    const result = this.t.tokenize(lines);
+    if (result[0]) {
+      this.log(`execLines failed: ${result[0]}`);
+    } else {
+      const tla = result[1].filter( tokList => tokList.length > 0 );
+      return this.p.buildBlocks(tla);
+    }
+  }
+
+  runLines(lines) {
+    const blocks = this.buildBlocks(lines);
+    if (typeof blocks === 'string') {
+      this.log(`ERROR: ${blocks}`);
+    } else {
+      for (let i=0; i<blocks.length; i++) {
+        const block = blocks[i];
+        const errMsg = this.execBlock(block);
+        if (errMsg) {
+          return `RUN ERROR: ${errMsg}`;
+        }
+      }
+      return null;
+    }
+  }
+
   // execProc() - return null unless error
   execProc(name) {
     const proc = this.procs.get(name);
@@ -52,6 +78,7 @@ class Executor {
           return `proc ${name}: ${errMsg}`;
         }
       }
+      return null;
     }
   }
 
