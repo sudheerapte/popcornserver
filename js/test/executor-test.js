@@ -46,8 +46,10 @@ lines = [
 ];
 
 e = new Executor(mc, t, new Parser(t), log);
-e.runLines(lines, {FOO: 'y'});
-
+e.runLines(lines, varName => {
+  if (varName === 'FOO') {return {name: 'WORD', value: 'y'}; }
+  else { return null; }
+});
 
 err(mc.exists('.y/a'));
 err(mc.exists('.y/b'));
@@ -89,7 +91,11 @@ lines = [
 
 e = new Executor(mc, t, new Parser(t), log);
 e.buildProcsMap(lines);
-e.execProc("abc", {BEE: 'b'});
+e.execProc("abc", varName => {
+  if (varName === 'BEE') {return {name: 'WORD', value: 'b'}; }
+  else { return null; }
+});
+
 ['.pos', '.pos.b'].forEach( p => {
   err(mc.exists(p));
 });
@@ -110,7 +116,10 @@ lines = [
 
 e = new Executor(mc, t, new Parser(t), log);
 e.buildProcsMap(lines);
-result = e.execProc("abc", {BEE: 'b'});
+result = e.execProc("abc", varName => {
+  if (varName === 'BEE') {return {name: 'WORD', value: 'b'}; }
+  else { return null; }
+});
 errDiff(typeof result, 'string');
 if (! result.match(/unexpanded/)) {
   err(`expected unexpanded`);

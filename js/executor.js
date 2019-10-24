@@ -47,14 +47,14 @@ class Executor {
     }
   }
 
-  runLines(lines, varDict) {
+  runLines(lines, f) {
     const blocks = this.buildBlocks(lines);
     if (typeof blocks === 'string') {
       this.log(`ERROR: ${blocks}`);
     } else {
       for (let i=0; i<blocks.length; i++) {
         const block = blocks[i];
-        const errMsg = this.execBlock(block, varDict);
+        const errMsg = this.execBlock(block, f);
         if (errMsg) {
           return `RUN ERROR: ${errMsg}`;
         }
@@ -65,10 +65,10 @@ class Executor {
 
   /**
      execProc() - return null unless error
-     The optional varDict, if present, is first used to
+     The optional function f, if present, is first used to
      expand any VARIABLEs in the block TLA.
   */
-  execProc(name, varDict) {
+  execProc(name, f) {
     const proc = this.procs.get(name);
     if (! proc) {
       return `no such proc: ${name}`;
@@ -77,7 +77,7 @@ class Executor {
     } else {
       for (let i=0; i<proc.length; i++) {
         const block = proc[i];
-        const errMsg = this.execBlock(block, varDict);
+        const errMsg = this.execBlock(block, f);
         if (errMsg) {
           return `proc ${name}: ${errMsg}`;
         }
@@ -92,18 +92,12 @@ class Executor {
   /**
      execBlock - return null or errMsg
 
-     The optional varDict, if present, is first used to
+     The optional function f, if present, is first used to
      expand any VARIABLEs in the block TLA.
    */
-  execBlock(block, varDict) {
-    if (varDict) {
-      this.expandVarsBlock(block, varName => {
-        if (varDict.hasOwnProperty(varName)) {
-          return {name: 'WORD', value: varDict[varName]};
-        } else {
-          return null;
-        }
-      });
+  execBlock(block, f) {
+    if (f) {
+      this.expandVarsBlock(block, f);
       if (block.error) {
         return block.error;
       }
