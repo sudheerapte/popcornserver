@@ -22,7 +22,25 @@ let clauses, sArr, sArr1, sArr2, withClause;
 let block, blocks, temp, proc, procs;
 
 
+log(`---- runLines`);
+
+
+
 log(`---- evaluate PLAIN`);
+
+mc = new Machine;
+
+lines = [
+  "DEF ROOT CHILDREN x y z",
+  "DEF CON PARENT .x CHILDREN a b c",
+  "DEF ALT PARENT .y CHILDREN a b c",
+  "",
+];
+
+e = new Executor(mc, t, new Parser(t), log);
+e.runLines(lines);
+err(mc.exists('.y/a'));
+err(mc.exists('.y/b'));
 
 mc = new Machine;
 result = mc.interpret(["addLeaf . board", "addLeaf .board . a", "addLeaf .board . b", "addLeaf .board . c"]); err(result);
