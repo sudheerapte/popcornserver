@@ -47,14 +47,14 @@ class Executor {
     }
   }
 
-  runLines(lines) {
+  runLines(lines, varDict) {
     const blocks = this.buildBlocks(lines);
     if (typeof blocks === 'string') {
       this.log(`ERROR: ${blocks}`);
     } else {
       for (let i=0; i<blocks.length; i++) {
         const block = blocks[i];
-        const errMsg = this.execBlock(block);
+        const errMsg = this.execBlock(block, varDict);
         if (errMsg) {
           return `RUN ERROR: ${errMsg}`;
         }
@@ -63,8 +63,12 @@ class Executor {
     }
   }
 
-  // execProc() - return null unless error
-  execProc(name) {
+  /**
+     execProc() - return null unless error
+     The optional varDict, if present, is first used to
+     expand any VARIABLEs in the block TLA.
+  */
+  execProc(name, varDict) {
     const proc = this.procs.get(name);
     if (! proc) {
       return `no such proc: ${name}`;
@@ -73,7 +77,7 @@ class Executor {
     } else {
       for (let i=0; i<proc.length; i++) {
         const block = proc[i];
-        const errMsg = this.execBlock(block);
+        const errMsg = this.execBlock(block, varDict);
         if (errMsg) {
           return `proc ${name}: ${errMsg}`;
         }
@@ -87,8 +91,23 @@ class Executor {
   */
   /**
      execBlock - return null or errMsg
+
+     The optional varDict, if present, is first used to
+     expand any VARIABLEs in the block TLA.
    */
-  execBlock(block) {
+  execBlock(block, varDict) {
+    if (varDict) {
+      this.expandVarsBlock(block, varName => {
+        if (varDict.hasOwnProperty(varName)) {
+          return {name: 'WORD', value: varDict[varName]};
+        } else {
+          return null;
+        }
+      });
+      if (block.error) {
+        return block.error;
+      }
+    }
     if (block.type === 'PLAIN') {
       block.tla.forEach( tokArray => {
         let errMsg, result;
@@ -119,7 +138,7 @@ class Executor {
                 return null;
               }
             });
-            return result;
+            return result; // ignore num because it will always be 0
           });
         mappedTla.forEach( tla => results.push(tla) );
       }
@@ -181,6 +200,26 @@ class Executor {
     } else {
       return `bad block type: ${block.type}`;
     }
+  }
+
+  /**
+     expandVarsBlock - expand any VARIABLEs inside the TLA
+     The function f() should return a token or array; see parser.js
+     We require all VARIABLE tokens to be substituted by the function!
+     Otherwise we set block.error
+   */
+  expandVarsBlock(block, f) {
+    let mappedTla;
+    mappedTla = block.tla.filter( list => list.length > 0).
+      map( list => {
+        let num, result;
+        [num, result] = this.p.substVars(list, f);
+        if (num > 0) {
+          block.error = `unexpanded VARIABLEs`;
+        }
+        return result;
+      });
+    block.tla = mappedTla;
   }
 
   parseWithClauses(header) {
