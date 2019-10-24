@@ -73,6 +73,49 @@ e.execProc("abc");
   err(mc.exists(p));
 });
 
+log(`---- evaluate PLAIN varDict`);
+mc = new Machine;
+result = mc.interpret(["addLeaf . board", "addLeaf .board . a", "addLeaf .board . b", "addLeaf .board . c"]); err(result);
+err(mc.exists('.board.a'));
+
+lines = [
+  "% abc",
+  "DEF ROOT CHILDREN pos",
+  "DEF CON PARENT .pos CHILDREN a {BEE} c",
+  "% def",
+  "DEF CON PARENT .pos CHILDREN a {BEE} c",
+  "",
+];
+
+e = new Executor(mc, t, new Parser(t), log);
+e.buildProcsMap(lines);
+e.execProc("abc", {BEE: 'b'});
+['.pos', '.pos.b'].forEach( p => {
+  err(mc.exists(p));
+});
+
+log(`---- evaluate PLAIN varDict with unexpanded error`);
+mc = new Machine;
+result = mc.interpret(["addLeaf . board", "addLeaf .board . a", "addLeaf .board . b", "addLeaf .board . c"]); err(result);
+err(mc.exists('.board.a'));
+
+lines = [
+  "% abc",
+  "DEF ROOT CHILDREN pos",
+  "DEF CON PARENT .pos CHILDREN a {BEE} {CEE}",
+  "% def",
+  "DEF CON PARENT .pos CHILDREN a {BEE} c",
+  "",
+];
+
+e = new Executor(mc, t, new Parser(t), log);
+e.buildProcsMap(lines);
+result = e.execProc("abc", {BEE: 'b'});
+errDiff(typeof result, 'string');
+if (! result.match(/unexpanded/)) {
+  err(`expected unexpanded`);
+}
+
 log(`---- evaluate WITH`);
 
 mc = new Machine;
