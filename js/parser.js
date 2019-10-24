@@ -379,9 +379,10 @@ class Parser {
   /**
      substVars - take a token array and expand any {VAR}s
 
-     Returns [num, outArray], where:
-        - num is the number of variables expanded successfully.
+     Returns [num, outArray, successfulNum], where:
+        - num is the number of variables that could not be expanded.
         - outArray is the result of the substitution.
+        - successfulNum is the number of variables expanded.
 
      The function f() should take the "VAR" portion and return
      a token or array of tokens.
@@ -392,11 +393,12 @@ class Parser {
 
      The caller might want to call this function again if there
      is a possibility that the expansion might contain more {VAR}
-     occurrences, i.e., if num > 0.
+     occurrences, i.e., if succeessfulNum > 0.
    */
 
   substVars(inputArray, f) {
-    let num = 0; // number of variables successfully looked up
+    let num = 0; // number of variables that could not be expanded
+    let successfulNum = 0; // number of variables successfully looked up
     let outArray = [];
     const me = this;
     for (let inPos = 0; inPos < inputArray.length; inPos++) {
@@ -404,20 +406,21 @@ class Parser {
       if (tok.name === 'VARIABLE') {
         const lookup = f(tok.value);
         if (lookup) {
-          num++;
+          successfulNum++;
           if (Array.isArray(lookup)) {
             lookup.forEach( t => outArray.push(t) );
           } else {
             outArray.push(lookup);
           }
         } else {
+          num++;
           outArray.push(tok);
         }
       } else {
         outArray.push(tok);
       }
     }
-    return [num, outArray];
+    return [num, outArray, successfulNum];
   }
 
   /**

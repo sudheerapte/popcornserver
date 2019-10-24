@@ -9,7 +9,7 @@ const Machine = require('../machine.js');
 
 let p, lines, tla;
 let machine;
-let tokens, num;
+let tokens, successfulNum, num;
 let evalFunc;
 
 let result;
@@ -199,8 +199,9 @@ function varLookup(str) {
 }
 result = t.tokenize("foo{FOO}.word"); err(result[0]);
 input = result[1];
-[num, result] = p.substVars(input, varLookup);
-errDiff(num, 1);
+[num, result, successfulNum] = p.substVars(input, varLookup);
+errDiff(num, 0);
+errDiff(successfulNum, 1);
 err(errMsg);
 errDiff(result[0].name, "WORD");
 errDiff(result[1].name, "WORD"); errDiff(result[1].value, "foo");
@@ -209,8 +210,9 @@ errDiff(result[3].name, "WORD");
 
 result = t.tokenize("foo{BADVAR}.word"); err(result[0]);
 input = result[1];
-[num, result] = p.substVars(input, varLookup);
-errDiff(num, 0);
+[num, result, successfulNum] = p.substVars(input, varLookup);
+errDiff(num, 1);
+errDiff(successfulNum, 0);
 err(errMsg);
 errDiff(result[0].name, "WORD");
 errDiff(result[1].name, "VARIABLE"); errDiff(result[1].value, "BADVAR");
