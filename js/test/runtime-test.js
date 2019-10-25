@@ -13,8 +13,6 @@ let runtimeHandler = s => console.log(s);
 
 const P = new Runtime( s => runtimeHandler(s) );
 
-log(`---- include`);
-
 let providedMachineLines, mc, e, lines;
 
 function provideStepP() {
@@ -37,6 +35,31 @@ function initStepP() {
   });
 }
 
+
+log(`---- INIT`);
+
+providedMachineLines = [
+  "addLeaf . a", "addLeaf . b", "addLeaf .a / foo", "addLeaf .a / bar",
+];
+lines = [
+  "%INIT",
+  "DEF ROOT CHILDREN c",
+  "",
+];
+
+provideStepP()
+  .then( initStepP )
+  .then( testStepP )
+  .catch( errMsg => {
+    errDiff(errMsg, "proc INIT: DEF ROOT: bad option: c");
+  });
+
+function testStepP() {
+  return new Promise( (resolve, reject) => {
+    err(mc.exists(".c"));
+    resolve();
+  });
+}
 
 log(`---- INIT with one error`);
 
