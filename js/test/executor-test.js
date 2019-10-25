@@ -21,6 +21,16 @@ let clauses, sArr, sArr1, sArr2, withClause;
 
 let block, blocks, temp, proc, procs;
 
+log(`---- runLines with command errors`);
+mc = new Machine;
+lines = [
+  "DEF ROOT x y z",
+  "",
+];
+
+e = new Executor(mc, t, new Parser(t), log);
+errMsg = e.runLines(lines);
+errDiff(errMsg, 'DEF ROOT: bad option: x');
 
 log(`---- runLines`);
 mc = new Machine;
@@ -35,6 +45,7 @@ e = new Executor(mc, t, new Parser(t), log);
 e.runLines(lines);
 err(mc.exists('.y/a'));
 err(mc.exists('.y/b'));
+
 
 log(`---- runLines varDict`);
 mc = new Machine;
@@ -124,6 +135,8 @@ errDiff(typeof result, 'string');
 if (! result.match(/unexpanded/)) {
   err(`expected unexpanded`);
 }
+
+
 
 log(`---- evaluate WITH`);
 

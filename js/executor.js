@@ -5,7 +5,6 @@
 class Executor {
 
   constructor(mc, t, p, logfunc) {
-    // catch bug where machine is not the second arg
     this.mc = mc;
     this.t = t;
     this.log = logfunc ? logfunc : console.log;
@@ -40,7 +39,7 @@ class Executor {
   buildBlocks(lines) {
     const result = this.t.tokenize(lines);
     if (result[0]) {
-      this.log(`execLines failed: ${result[0]}`);
+      return `execLines failed: ${result[0]}`;
     } else {
       const tla = result[1].filter( tokList => tokList.length > 0 );
       return this.p.buildBlocks(tla);
@@ -50,16 +49,14 @@ class Executor {
   runLines(lines, f) {
     const blocks = this.buildBlocks(lines);
     if (typeof blocks === 'string') {
-      this.log(`ERROR: ${blocks}`);
+      return `ERROR: ${blocks}`;
     } else {
-      for (let i=0; i<blocks.length; i++) {
+      let errMsg = null;
+      for (let i=0; i<blocks.length && errMsg === null; i++) {
         const block = blocks[i];
-        const errMsg = this.execBlock(block, f);
-        if (errMsg) {
-          return `RUN ERROR: ${errMsg}`;
-        }
+        errMsg = this.execBlock(block, f);
       }
-      return null;
+      return errMsg;
     }
   }
 
@@ -102,16 +99,16 @@ class Executor {
         return block.error;
       }
     }
+    let errMsg = null;
     if (block.type === 'PLAIN') {
-      block.tla.forEach( tokArray => {
-        let errMsg, result;
+      for (let i=0; i< block.tla.length && errMsg === null; i++) {
+        const tokArray = block.tla[i];
+        let result;
         [errMsg, result] = this.evaluate(tokArray);
         if (errMsg) {
           return errMsg;
-        } else {
-          return null;
         }
-      });
+      }
     } else if (block.type === 'WITH') {
       const clauses = this.parseWithClauses(block.header);
       const unis = this.getAllUnifications(clauses);
@@ -136,15 +133,14 @@ class Executor {
           });
         mappedTla.forEach( tla => results.push(tla) );
       }
-      results.forEach( tokArray => {
-        let errMsg, result;
+      for (let i=0; i<results.length && errMsg === null; i++) {
+        const tokArray = results[i];
+        let result;
         [errMsg, result] = this.evaluate(tokArray);
         if (errMsg) {
           return errMsg;
-        } else {
-          return null;
         }
-      });
+      }
     } else if (block.type === 'ON') {
       if (! Array.isArray(block.header)) { // error message
         return `ON conditions not found`;
@@ -181,15 +177,13 @@ class Executor {
           match = false;
           break;
         }
-        let firstErr = null;
-        block.tla.forEach( tokArray => {
+        for (let i=0; i< block.tla.length && errMsg === null; i++) {
+          const tokArray = block.tla[i];
           let errMsg, result;
           [errMsg, result] = this.evaluate(tokArray);
-          if (errMsg && ! firstErr) {
-            firstErr = errMsg;
-          }
-        });
-        return firstErr;
+          if (errMsg) { return errMsg; }
+        }
+        return null;
       }
     } else {
       return `bad block type: ${block.type}`;
@@ -484,7 +478,7 @@ class Executor {
     if (tokenArray[0].name === 'KEYWORD') {
       const rec = this._commands[tokenArray[0].value];
       if (rec) {
-        return [null, rec.fn(tokenArray.slice(1))];
+        return rec.fn(tokenArray.slice(1));
       }
     }
     // anything else evaluates as itself.
