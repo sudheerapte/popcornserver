@@ -7,9 +7,9 @@ class Executor {
   constructor(mc, t, p, logfunc) {
     // catch bug where machine is not the second arg
     this.mc = mc;
-    this.t = t ? t : new Tokenizer;
+    this.t = t;
     this.log = logfunc ? logfunc : console.log;
-    this.p = p ? p : new Parser;
+    this.p = p;
     if (! mc._root) { this.log(`first arg is not a machine`); }
     this._commands = new Map();
     this._queries = new Map();
