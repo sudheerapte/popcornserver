@@ -92,7 +92,9 @@ class Runtime {
 
   execProc(name, vdf) {
     const result = this._e.execProc(name, vdf);
-    if (result) { this.log(result); }
+    if (result) {
+      this.log(result);
+    }
   }
   execLines(lines, vdf) {
     const result = this._e.runLines(lines, vdf);
@@ -106,6 +108,7 @@ class Runtime {
   setMc(mc) {
     this._e.setMc(mc);
   }
+  getMc() { return this._e.mc; }
 
   // ----------------- private functions below this point
   /**

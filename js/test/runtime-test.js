@@ -8,7 +8,10 @@ const Tokenizer = require('../tokenizer.js');
 const t = new Tokenizer;
 const Executor = require('../executor.js');
 
-const P = new Runtime( s => log(s) );
+// Runtime log message handler. Set this before calling Runtime
+let runtimeHandler = s => console.log(s);
+
+const P = new Runtime( s => runtimeHandler(s) );
 
 log(`---- include`);
 
@@ -20,6 +23,7 @@ function provideStepP() {
     mc.interpret(providedMachineLines);
     e = new Executor(mc, t, new Parser(t), log);
     P.setExecutor(e);
+    runtimeHandler = s => reject(s);
     P.buildProcsMap(lines);
     return resolve();
   });
@@ -27,22 +31,34 @@ function provideStepP() {
 
 function initStepP() {
   return new Promise( (resolve, reject) => {
+    runtimeHandler = s => reject(s);
     P.execProc("INIT");
     return resolve();
   });
 }
+
+
+log(`---- INIT with one error`);
 
 providedMachineLines = [
   "addLeaf . a", "addLeaf . b", "addLeaf .a / foo", "addLeaf .a / bar",
 ];
 lines = [
   "%INIT",
+  "DEF ROOT c",
   "",
 ];
 
 provideStepP()
   .then( initStepP )
-  .then( () => log("done") );
+  .then( testStepP )
+  .catch( errMsg => {
+    errDiff(errMsg, "proc INIT: DEF ROOT: bad option: c");
+  });
 
-
+function testStepP() {
+  return new Promise( (resolve, reject) => {
+    log(P.getMc().serialize());
+  });
+}
 
