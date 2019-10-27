@@ -22,12 +22,14 @@ class Runtime {
      You simply enqueue() each item. The Runtime automatically unshifts
      items from the queue and executes them.
 
-     Item names:
-
-         UPDATE TIMER HANDLER
+         Name    Additional properties
+         ------- ----------------------
+         UPDATE  lines
+         TIMER   lines
+         HANDLER procName, varDict
 
      On enqueueing, each item is immediately scheduled for execution,
-     unless the setFlowing() setting is set to true.
+     unless the setFlowing() setting is set to false.
 
    */
 
@@ -46,38 +48,14 @@ class Runtime {
       this.execute(item);
     }
   }
-  execute(item) {
-    if (item.name === 'UPDATE' || item.name === 'TIMER') {
-      this.execLines(item.lines);
-      this.execProc("RENDER");
-    } else if (item.name === 'HANDLER') {
-      this.execProc(item.procName, this.makeVarDictFunc(item.varDict));
-      this.execProc("RENDER");
-    }
-  }
-  getNumItems() {
-    return this._queue.length;
-  }
   flowIfNeeded() {
     if (this._flowing && this._queue.length > 0) {
       setImmediate(() => this.doOne());
     }
   }
-  /**
-     makeVarDictFunc() - Utility function to use temporary dictionary
-
-     Pass this as second argument to execProc or execLines
-   */
-  makeVarDictFunc(tempVarDict) {
-    return this.getVarDictFunc( name => {
-      if (tempVarDict.hasOwnProperty(name)) {
-        return tempVarDict[name];
-      } else {
-        return null;
-      }
-    });
+  getNumItems() {
+    return this._queue.length;
   }
-
 
   // get, set base dictionary entries
   getVar(name) { return this._varDict[name]; }
@@ -136,6 +114,30 @@ class Runtime {
         else return this._varDictFunc(name);
       };
     }
+  }
+
+  execute(item) {
+    if (item.name === 'UPDATE' || item.name === 'TIMER') {
+      this.execLines(item.lines);
+      this.execProc("RENDER");
+    } else if (item.name === 'HANDLER') {
+      this.execProc(item.procName, this.makeVarDictFunc(item.varDict));
+      this.execProc("RENDER");
+    }
+  }
+  /**
+     makeVarDictFunc() - Utility function to use temporary dictionary
+
+     Pass this as second argument to execProc or execLines
+   */
+  makeVarDictFunc(tempVarDict) {
+    return this.getVarDictFunc( name => {
+      if (tempVarDict.hasOwnProperty(name)) {
+        return tempVarDict[name];
+      } else {
+        return null;
+      }
+    });
   }
 
 
