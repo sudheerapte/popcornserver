@@ -565,7 +565,15 @@ class Executor {
       {cmd: 'DEF', fn: args => this.defCmd(args)},
       {cmd: 'SET', fn: args => this.setCmd(args)},
       {cmd: 'DEL', fn: args => this.delCmd(args)},
+    ];
+    commands.forEach ( rec => {this._commands[rec.cmd] = rec; } );
+  }
 
+  /**
+     addUserAgentCommandSet() - called only in browser
+   */
+  addUserAgentCommandSet() {
+    const commands = [
       {cmd: 'MAP', fn: args => this.mapCmd(args)},
       {cmd: 'ATTACH', fn: args => this.attachCmd(args)},
     ];
