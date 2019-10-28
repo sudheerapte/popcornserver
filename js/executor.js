@@ -491,9 +491,6 @@ class Executor {
     if (tokenArray.length === 0) {
       return [ null, null ];
     }
-    if (tokenArray.length === 1) {
-      return [ null, tokenArray ];
-    }
     // Look for macros; find innermost macro.
     let [b, e] = this.innerBeginEnd(tokenArray);
 
