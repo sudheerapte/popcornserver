@@ -127,14 +127,6 @@ function checkTokenizeFailure(input, index) {
   errDiff(result[0], `bad token at index ${index}`);
 }
 
-log(`--------- full process -------------`);
-checkFull("foo bar", [null, "foo bar"]);
-checkFull("#fo bar", [null, "#fo bar"]);
-checkFull("{{foo bar}}", [null, "foo bar"]);
-checkFull("{{foo {{bar}}", ['No END found', "{{foo bar"]);
-checkFull("foo {{bar}}}}", [null, "foo bar}}"]);
-log('--');
-checkFull("foo {{\"bar}}}}", ["bad token at index 0", "foo {{\"bar}}}}"]);
 
 log(`--------- testTokenize -------------`);
 
@@ -180,34 +172,7 @@ checkScan("#fo {{bar\"}}", [ 4, 10 ]);
 
 
 
-log(`---- expand suite`);
-function checkExpand(input, output) {
-  //log(`${' '.repeat(30-input.length)}|${input}| |${JSON.stringify(output)}|`);
-  let result = t.expandOnce(input);
-  if (result[0] !== output[0]) {
-    err(`expected ${output[0]}, got ${result[0]}`);
-  }
-  if (result[1] !== output[1]) {
-    err(`expected |${output[1]}|, got |${result[1]}|`);
-  }
-}
-checkExpand("foo bar", [null, "foo bar"]);
-checkExpand("#fo bar", [null, "#fo bar"]);
-checkExpand("{{foo bar}}", [null, "foo bar"]);
-checkExpand("{{foo {{bar}}", [null, "{{foo bar"]);
-checkExpand("foo {{bar}}}}", [null, "foo bar}}"]);
-checkExpand("foo {{\"bar}}}}", ["bad token at index 0", null]);
 
-function checkFull(input, output) {
-  //log(`${' '.repeat(30-input.length)}|${input}| |${JSON.stringify(output)}|`);
-  let result = t.expand(input);
-  if (result[0] !== output[0]) {
-    err(`expected ${output[0]}, got ${result[0]}`);
-  }
-  if (result[1] !== output[1]) {
-    err(`expected |${output[1]}|, got |${result[1]}|`);
-  }
-}
 
 log(`---- tokenize array to produce tla`);
 lines = [
