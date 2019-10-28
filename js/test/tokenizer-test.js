@@ -5,7 +5,7 @@ const Tokenizer = require('../tokenizer.js');
 const t = new Tokenizer;
 
 let tokens;
-let result, result2, lines, input, tla;
+let result, result2, lines, input, tla, nums;
 let options, args, num, errMsg;
 
 log(`---- renderToken`);
@@ -87,6 +87,12 @@ checkTokenize('MARY had a {ADJECTIVE} lamb whose fleece was {{SIMILE}}',
                 {name: 'MACRO_CLOSE', value: null},
               ]);
 
+checkTokenize('abc-def-',
+              [{name: 'WORD', value: 'abc-def'},
+               {name: 'HYPHEN', value: null},]);
+checkTokenize('a',
+              [{name: 'WORD', value: 'a'},]);
+
 log(`--- paths`);
 
 ['.a.b.c/d', ' .a . b .c/  d ', '. a . b. c /  d '].forEach( line => {
@@ -163,11 +169,38 @@ lines = [
   '"foobar "+5',
   'word5 5word',
 ];
-result = t.tokenize(lines); err(result[0]);
-tla = result[1];
-errDiff(tla.length, lines.length);
-errDiff(tla[0].length, 0);
-errDiff(tla[1].length, 2);
-errDiff(tla[2].length, 3);
+nums = [
+  0, 2, 3,
+];
 
+countTokens();
 
+function countTokens() {
+  result = t.tokenize(lines); err(result[0]);
+  tla = result[1];
+  errDiff(tla.length, nums.length);
+  for (let i=0; i<tla.length; i++) {
+    errDiff(tla[i].length, nums[i]);
+  }
+}
+
+log(`---- tokenize array using continuations`);
+lines = [
+  "FOO -5",
+  "LONG line -",
+  "continued over -",
+  "3 lines",
+];
+nums = [2, 6];
+countTokens();
+
+log(`---- tokenize array - continuations with errors`);
+lines = [
+  "FOO -5",
+  "LONG line -",
+  "continued over -",
+  "3 lines-",
+];
+nums = [2, 6];
+result = t.tokenizeArray(lines);
+errDiff(result[0], 'ends with continuation -');

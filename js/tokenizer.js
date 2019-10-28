@@ -17,7 +17,8 @@ class Tokenizer {
     this.MACRO_OPEN_RE = /^{{/;
     this.MACRO_CLOSE_RE = /^}}/;
     this.KEYWORD_RE = /^[A-Z]+[A-Z0-9_]*/;
-    this.WORD_RE = /^[a-z]+[a-z0-9-]*/;
+    this.WORD_RE = /^[a-z]+[a-z0-9-]*[a-z0-9]+/;
+    this.WORD_SINGLE_RE = /^[a-z]/;
     this.NUMBER_RE = /^[+-]?[0-9]+/;
     this.VARIABLE_RE = /^{\s*[A-Z]+[A-Z0-9_]*\s*}/;
 
@@ -36,6 +37,48 @@ class Tokenizer {
   }
 
   /**
+     tokenizeArray - take array of lines and return a TLA.
+
+     As a convenience, if you pass an array of lines to tokenize()
+     below, it will call this function.
+   */
+  tokenizeArray(arr) {
+    if (Array.isArray(arr)) {
+      if (arr.length === 0) { return []; }
+      let outArr = [];
+      let continuation = false; // did we see a terminating HYPHEN?
+      for (let i=0; i<arr.length; i++) {
+        const result = this.tokenize(arr[i]);
+        if (result[0]) { // error
+          return result;
+        }
+        const tokArray = result[1];
+        let len = tokArray.length;
+        let termHyphen = (len > 0 && tokArray[len-1].name === 'HYPHEN');
+        if (termHyphen) {
+          tokArray.pop();
+          len--;
+        }
+        if (continuation) {
+          for (let j=0; j<len; j++) {
+            outArr[outArr.length-1].push(tokArray[j]);
+          }
+        } else {
+          outArr.push(tokArray);
+        }
+        continuation = termHyphen;
+      }
+      if (continuation) {
+        return ['ends with continuation -', arr];
+      }
+      return [null, outArr];
+    } else {
+      return ['not an array', arr];
+    }
+  }
+
+
+  /**
      tokenize - create an array of tokens from an input string
 
      See the renderTokens function below; it can take an array of
@@ -44,25 +87,10 @@ class Tokenizer {
    */
   tokenize(str) {
     if (Array.isArray(str)) {
-      if (str.length === 0) { return []; }
-      let errMsg = "";
-      const tla = str.map( line => {
-        if (typeof line !== 'string') {
-          errMsg += "\nnot a string";
-          return [];
-        }
-        const pair = this.tokenize(line);
-        if (pair[0]) {
-          errMsg += `\n${pair[0]}`;
-          return [];
-        } else {
-          return pair[1];
-        }
-      });
-      if (errMsg.length <= 0) { errMsg = null;}
-      return [errMsg, tla];
+      return this.tokenizeArray(str);
+    } else if (typeof str !== 'string') {
+      return ['not a string', str];
     }
-
     let arr = [];
     let s = str;
     let num = 0;
@@ -94,6 +122,7 @@ class Tokenizer {
       { re: this.MACRO_CLOSE_RE, type: 'MACRO_CLOSE', useValue: false },
       { re: this.KEYWORD_RE,     type: 'KEYWORD',   useValue: true },
       { re: this.WORD_RE,        type: 'WORD',      useValue: true },
+      { re: this.WORD_SINGLE_RE, type: 'WORD',      useValue: true },
       { re: this.NUMBER_RE,      type: 'NUMBER',    useValue: true },
       { re: this.VARIABLE_RE,    type: 'VARIABLE',  useValue: true },
       { re: this.specialsRegex,  type: 'SPECIAL',   useValue: false },
