@@ -20,6 +20,7 @@ class Executor {
   }
   
   buildProcsMap(lines) {
+    // const result = this.t.tokenizeArray(lines);
     const result = this.t.tokenize(lines);
     if (result[0]) {
       this.log(`buildProcsMap failed: ${result[0]}`);
@@ -37,6 +38,7 @@ class Executor {
   }
 
   buildBlocks(lines) {
+    // const result = this.t.tokenizeArray(lines);
     const result = this.t.tokenize(lines);
     if (result[0]) {
       return `execLines failed: ${result[0]}`;
@@ -361,17 +363,19 @@ class Executor {
             p = p.slice(arr[i].LIT.length);
           }
         } else if (arr[i].hasOwnProperty("VAR")) {
-          const m = p.match(me.t.WORD_RE);
-          if (m) {
-            subst[arr[i].VAR] = m[0];
-            p = p.slice(m[0].length);
+          let n, tok;
+          [n, tok] = me.t.consumeOneToken(p);
+          if (tok && tok.name === 'WORD') {
+            subst[arr[i].VAR] = tok.value;
+            p = p.slice(n);
           } else {
             return null;
           }
         } else if (arr[i].hasOwnProperty("WILDCARD")) {
-          const m = p.match(me.t.WORD_RE);
-          if (m) {
-            p = p.slice(m[0].length);
+          let n, tok;
+          [n, tok] = me.t.consumeOneToken(p);
+          if (tok && tok.name === 'WORD') {
+            p = p.slice(n);
           } else {
             return null;
           }
@@ -587,7 +591,6 @@ class Executor {
       if (! this.mc.exists(struct.PARENT)) {
         const errMsg = `DEF ${type}: no such path: ${struct.PARENT}`;
         console.log(errMsg);
-        console.log(this.mc.getAllPaths());
         return [errMsg, args];
       }
       if (type === 'CON' && this.mc.isAltParent(struct.PARENT)) {

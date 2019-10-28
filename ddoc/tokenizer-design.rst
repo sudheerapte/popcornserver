@@ -3,6 +3,9 @@
 The PSL Language Characters and Tokens
 =======================================
 
+Characters, lines, and tokens
+------------------------------
+
 The Popcorn State Language (PSL) uses a subset of ASCII::
 
   A-Z a-z 0-9
@@ -19,16 +22,31 @@ The Popcorn State Language (PSL) uses a subset of ASCII::
   BACKSLASH \
 
 In addition to the above characters, spaces can be used for separating
-tokens.  PSL is a line-oriented language: the input text is read in as
-a sequence of lines, and each line is tokenized. This means that one
+tokens.
+
+PSL is a line-oriented language: the input text is read in as a
+sequence of lines, and each line is tokenized. This means that one
 token cannot span multiple lines.
 
-Note that this set of characters contains the narrower subset called
-``base64``, as described in RFC 6455, base framing protocol in Section
-5, which allows only ``SLASH`` and ``PLUS`` in addition to the letters
-and numbers.
+The line continuation token ``HYPHEN`` can be used as the last token
+on a line, if subsequent lines are to be treated as continuation
+lines. The following two programs are equivalent::
+
+  ABC def -                   ABC def ghi jkl
+  ghi jkl
 
 
+.. sidebar:: Allowed characters and base64
+
+  Note that the PSL set of allowed characters contains the narrower
+  subset called ``base64``, as described in RFC 6455, base framing
+  protocol in Section 5, which allows only ``SLASH`` and ``PLUS`` in
+  addition to the letters and numbers. The ``base64`` subset is
+  important for encoding ``STRING`` tokens, see below.
+
+
+Types of Tokens
+----------------
 
 These are the types of tokens recognized:
 
@@ -100,7 +118,16 @@ In tabular form:
   ``{{`` ``}}``   Macro open and close; encloses other tokens.
 
   ==============  ==============================================
+
+Note the difference between a variable and a macro: a variable is a
+single token that starts and ends with braces, whereas the begin- and
+end-macro symbols are each a separate token and enclose other tokens
+in between.
+
  
+The Tokenizer Class
+---------------------
+
 The ``Tokenizer`` class can construct tokens out of text.  Each token
 is a ``{name, value}`` object, where ``name`` and ``value`` are both
 strings.
@@ -108,10 +135,6 @@ strings.
 The exact Regex format of the tokens, and the exact names of all the
 special chars, are in the class constructor.
 
-Note the difference between a variable and a macro: a variable is a
-single token that starts and ends with braces, whereas the begin- and
-end-macro symbols are each a separate token and enclose other tokens
-in between.
 
 The tokenize method
 ^^^^^^^^^^^^^^^^^^^^
@@ -149,11 +172,20 @@ be consumable as tokens, otherwise you get a ``bad token at index``
 error. It is OK to pass in a string containing just spaces; you get
 back an empty array as a token list.
 
-The ``tokenize()`` method can also take an array of strings and
-produce a corresponding array of token lists (a token-list array
-occurs frequently and is called a TLA). It checks to see if it has
-been passed a single string or an array of strings, to decide which
-one it should produce.
+The ``tokenizeArray()`` method takes an array of strings and produces
+a corresponding array of token lists. A token-list array is a
+frequently-occurring data structure and is called a TLA. The
+``tokenizeArray`` method uses ``tokenize()`` on each string, and if
+the last token is a continuation token ``HYPHEN``, it concatenates the
+tokens from subsequent lines to collapse the array of tokens. It is an
+error for the last string to have a continuation token. The
+``tokenizeArray()`` method returns a two-member array: an error
+message (null if success) and the resulting TLA.
+
+For convenience, the ``tokenize()`` method also checks to see if it
+has been passed a single string or an array of strings, to decide
+which one it should produce. It calls the ``tokenizeArray`` method for
+an array.
 
 The ``renderTokens()`` method performs the inverse operation, taking a
 token list and producing a string. This operation is useful for

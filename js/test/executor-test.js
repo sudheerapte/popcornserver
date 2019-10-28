@@ -136,8 +136,6 @@ if (! result.match(/unexpanded/)) {
   err(`expected unexpanded`);
 }
 
-
-
 log(`---- evaluate WITH`);
 
 mc = new Machine;
@@ -155,6 +153,9 @@ e = new Executor(mc, t, new Parser(t), log);
 e.buildProcsMap(lines);
 result = e.execProc("def"); err(result);
 err(mc.exists(".pos.b"));
+
+
+
 
 log(`---- evaluate ON`);
 
