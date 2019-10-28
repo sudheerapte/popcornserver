@@ -1,10 +1,76 @@
 .. _tokenizer-design:
 
-Language Tokens
-================================
+The PSL Language Characters and Tokens
+=======================================
 
-The Popcorn State Language (PSL) uses a subset of 7-bit-clean ASCII
-for all meaningful tokens:
+The Popcorn State Language (PSL) uses a subset of ASCII::
+
+  A-Z a-z 0-9
+  SLASH /
+  PLUS +
+  EQUAL =
+  HYPHEN -
+  UNDERSCORE _
+  DOT .
+  HASH #
+  OPENCURLY {
+  CLOSECURLY }
+  DOUBLEQUOTE "
+  BACKSLASH \
+
+In addition to the above characters, spaces can be used for separating
+tokens.  PSL is a line-oriented language: the input text is read in as
+a sequence of lines, and each line is tokenized. This means that one
+token cannot span multiple lines.
+
+Note that this set of characters contains the narrower subset called
+``base64``, as described in RFC 6455, base framing protocol in Section
+5, which allows only ``SLASH`` and ``PLUS`` in addition to the letters
+and numbers.
+
+
+
+These are the types of tokens recognized:
+
+``KEYWORD``
+   Used for predefined names in the language, e.g., a command or a
+   named option.  All-capital letters ``A-Z``, digits, and underscores
+   ``_``; the first character must be a letter.
+
+``WORD``
+   Used for user-assigned names in the language, e.g.,
+   the name of an application sub-state.
+   All-lowercase letters ``a-z``, hyphen ``-``, and digits ``0-9``.
+   The first character must be a letter.
+
+``STRING``
+   Used for data, e.g., a data item assigned to a leaf state.
+   The contents can be any of the permitted characters, enclosed
+   by a pair of double quote characters ``"``. Doublequote
+   characters can be contained inside the string by escaping them
+   with a ``BACKSLASH`` character ``\``.
+   Strings can be used to capture arbitrary binary data by
+   using a convention: if the first character is an ``EQUAL`` sign
+   ``=``, then the rest of the string can be interpreted as a
+   ``base64`` encoded sequence of octets.
+
+``NUMBER``
+  A sequence of digits, possibly preceded by a plus or minus sign.
+  The tokenizer does not recognize fractional numbers or exponents.
+
+``VARIABLE``
+  A variable name enclosed in single braces like this:
+  ``{QUEENS_GAMBIT}``. The format of the name portion is the same as a
+  ``KEYWORD`` token above: uppercase letters, numbers, and underscore.
+
+``OPENMACRO`` and ``CLOSEMACRO``
+  ``{{`` ``}}``, macro open and close tokens. These tokens should be
+  matching and should enclose a sequence of tokens. They are used to
+  introduce macro expressions. During execution, the entire sequence
+  will be replaced by the result of a macro expansion.
+
+
+In tabular form:
 
   ==============  ==============================================
   Token           Meaning and format

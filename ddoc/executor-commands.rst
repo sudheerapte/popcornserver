@@ -1,42 +1,84 @@
-.. _parser-design:
+.. _executor-commands:
 
-PSL and Procedures
+Commands and Queries
 =======================
 
-Procedures
+Basic Commands and Queries
+----------------------------
+
+
+State Space Commands
+^^^^^^^^^^^^^^^^^^^^
+
+These commands modify the state space, i.e., they change the shape of
+the tree.  See :ref:`machine-design` for the corresponding low-level
+machine commands ``addLeaf`` and ``deleteLastLeaf`` that these
+are built on top of.
+
+  ==============  ==============================================
+  Command         Behavior
+  ==============  ==============================================
+  ``DEF CON``     1. Create parent components if they do not exist.
+                     Add undo for parent components.
+                  2. If parent exists and is not suitable, ERROR.
+                  3. For each child, if it does not exist,
+                     add child to end of list, and add undo.
+  ``DEF ALT``     1. Create parent components if they do not exist.
+                     Add undo for parent components.
+                  2. If parent exists and is not suitable, ERROR.
+                  3. For each child, if it does not exist,
+                     add child to end of list, and add undo.
+  ``DEL``         1. If path does not exist, ERROR.
+                  2. If path has children, ERROR.
+                  3. Remove path from parent. Add undo.
+  ==============  ==============================================
+
+
+
+State Definition Commands
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+  ================  =================================================
+  Command           Behavior
+  ================  =================================================
+  ``SET CURRENT``   1. If parent does not exist, ERROR.
+                    2. If parent is wrong type, ERROR.
+                    3. If parent does not have the indicated child,
+                       ERROR.
+                    4. Set current and add undo.
+  ``SET DATAW``     1. If node does not exist, ERROR.
+                    2. If node is not a data node, ERROR.
+                    3. Set data and add undo.
+  ``SET DATA``      (same as ``SET DATAW``)
+  ================  =================================================
+
+
+Queries
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+  ==============  ==============================================
+  Query           Returns...
+  ==============  ==============================================
+  ``CURRENT``     The current child of an alt-parent node.
+  ``DATAW``       The *word* assigned to a data-leaf node.
+  ``DATA``        The string assigned to a data-leaf node.
+  ==============  ==============================================
+
+
+
+Basic Queries
 ---------------------------------
 
-The Popcorn State Language (PSL) script for a page is organized into
-*procedures*. Each procedure is a named program that is executed
-independently and has no dependencies on other procedures.
-
-The user writes PSL code for all the procedures for a page in a text
-file in the top-level directory of the page. This text file is
-automatically sent along with the page when the page is loaded.
-
-There are two kinds of procedures: reserved procedures and handlers.
-
-When the page is loaded, the entire set of procedures is parsed into a
-data structure named ``procs``.  The reserved procedures are executed
-automatically at certain points. Handlers are executed in response to
-events.
-
-
-Reserved procedures
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-
-Reserved procedures have pre-assigned names as follows.
 
   ==============  =======================  ====================
-  Name            Purpose                  Executed when...
+  Command                          Executed when...
   ==============  =======================  ====================
   ``IPROPAGATE``  Set up initial state     The page is loaded
   ``IRENDER``     Modify DOM               The page is loaded
   ``PROPAGATE``   Update dependent state   The state is changed
   ``RENDER``      Modify DOM               The state is changed
   ==============  =======================  ====================
-
+ 
 The execution sequence is in the same order as in the table, i.e.,
 each ``PROPAGATE`` procedure is executed before its corresponding
 ``RENDER`` procedure.  The names of the reserved procedures are all in
