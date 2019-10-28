@@ -467,9 +467,6 @@ class Executor {
     if (tokenArray.length === 0) {
       return [ null, null ];
     }
-    if (tokenArray.length === 1) {
-      return [ null, tokenArray ];
-    }
     const result = this.expand(tokenArray);
     if (result[0]) {
       return [result[0], null];
