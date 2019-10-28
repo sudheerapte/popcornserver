@@ -9,10 +9,6 @@ let result, result2, lines, input, tla;
 let options, args, num, errMsg;
 
 log(`---- renderToken`);
-result = t.tokenize("foo foo");
-err(result[0]);
-result2 = t.renderTokens(result[1]);
-
 result = t.renderTokens([{name: 'WORD', value: "foo"},
                          {name: 'WORD', value: "foo"}]);
 errDiff(result, 'foo foo');
@@ -147,31 +143,6 @@ function testTokenize(input, output) {
 testTokenize("DUMMY foo.bar", [null, "DUMMYfoo.bar"]);
 testTokenize("\"DUMMY foo.bar", ["bad token at index 0", '"DUMMY foo.bar']);
 testTokenize("\"DUMMY\nfoo\n.bar", ["bad token at index 0", "DUMMY\nfoo\n.bar"]);
-
-log(`---- scanString suite`);
-function checkScan(input, output) {
-  //log(`${' '.repeat(30-input.length)}|${input}|     ${JSON.stringify(output)}`);
-  let result = t.scanString(input);
-  if (result[0] !== output[0] || result[1] !== output[1]) {
-    err(`input |${input}| should produce |${output}|, got |${result}|`);
-  }
-}
-checkScan("foo bar", [-1, -1]);
-checkScan("foo }}bar}}", [ -1, 4]);
-checkScan("foo {{bar", [ 4, -1 ]);
-checkScan("foo {{bar}}", [ 4, 9 ]);
-checkScan("foo {{bar}}}}", [ 4, 9 ]);
-checkScan("foo {{{{bar}}", [ 6, 11 ]);
-checkScan("foo {{{{bar}}}}", [ 6, 11 ]);
-checkScan("foo \\{{bar}}", [ 5, 10 ]);
-checkScan("foo {{bar\\}}", [ 4, 10 ]);
-checkScan("foo {bar}}", [ -1, 8 ]);
-checkScan("foo \"{bar}}", [ -1, 9 ]);
-checkScan("foo {{bar\"}}", [ 4, 10 ]);
-checkScan("#fo {{bar\"}}", [ 4, 10 ]);
-
-
-
 
 
 log(`---- tokenize array to produce tla`);

@@ -36,60 +36,6 @@ class Tokenizer {
   }
 
   /**
-     scanString - scan the string to find BEGIN/END escapes.
-  
-     This function does not tokenize the input. It can be used to
-     peer inside arbitrary strings to find {{ and }}.
-
-     return [-1 -1] if no BEGIN or END.
-     return [B, E] where E = first END and B = last BEGIN before it.
-     return [-1, E] if END was found before BEGIN
-     return [B, -1] if BEGIN was found but no END was found.
-  */
-  scanString(str) {
-    // const BEGIN=/(?<!\\){{/; const END=/(?<!\\)}}/;
-    // const EITHER=/(?<!\\){{|(?<!\\)}}/g;
-    // TODO lookbehind matches are not supported in Firefox
-    // TODO https://bugzilla.mozilla.org/show_bug.cgi?id=1225665
-    const BEGIN=/{{/; const END=/}}/;
-    const EITHER=/{{|}}/g;
-    if (!str) { return [-1, -1]; }
-    const m = str.match(EITHER);
-    if (!m) { return [-1, -1]; }
-    // console.log(`|${str}| ${JSON.stringify(m)}`);
-    let foundEnd = -1;
-    let foundBegin = -1;
-    let offset = 0; // starting point of remainingStr
-    for (let i=0; i<m.length; i++) {
-      if (m[i].match(BEGIN)) {
-        const remainingStr = str.slice(offset);
-        const index = remainingStr.search(BEGIN);
-        if (index < 0) {
-          throw(new Error(`internal error! impossible`));
-        }
-        foundBegin = index+offset;
-        offset = foundBegin+2;
-      } else {
-        const remainingStr = str.slice(offset);
-        const index = remainingStr.search(END);
-        if (index < 0) {
-          throw(new Error(`internal error! impossible`));
-        }
-        foundEnd = index+offset;
-        offset = foundEnd+2;
-        break;
-      }
-    }
-    if (foundBegin < 0) {
-      return [-1, foundEnd];
-    }
-    if (foundEnd < 0) {
-      return [foundBegin, -1];
-    }
-    return [ foundBegin, foundEnd ];
-  }
-
-  /**
      tokenize - create an array of tokens from an input string
 
      See the renderTokens function below; it can take an array of
