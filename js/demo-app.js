@@ -4,6 +4,12 @@ const net = require('net');
 const SSEmitter = require('./sse.js');
 const Machine = require('./machine.js');
 
+// create logging function log(str). Copy and paste these lines.
+const logger = {};
+require('./debug-log.js')
+  .registerLogger('demo-app', logger);
+function log(str) { logger.log(str); }
+
 const machineLines = [
   "P .hinge/open",
   "P .hinge/closed",
@@ -124,12 +130,6 @@ ${opArr.join('\n')}`);
     }, 10000);
   }
 }
-
-// create logging function log(str). Copy and paste these lines.
-const logger = {};
-require('./debug-log.js')
-  .registerLogger('demo-app', logger);
-function log(str) { logger.log(str); }
 
 module.exports = new DemoApp();
 

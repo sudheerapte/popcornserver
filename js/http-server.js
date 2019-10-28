@@ -149,7 +149,10 @@ class Server extends EventEmitter {
         return fileUtils.streamJsModuleFP('tokenizer.js', res);
       })
       .then( () => {
-        return fileUtils.streamJsModuleFP('propagator.js', res);
+        return fileUtils.streamJsModuleFP('parser.js', res);
+      })
+      .then( () => {
+        return fileUtils.streamJsModuleFP('executor.js', res);
       })
       .then( () => {
         return fileUtils.streamJsModuleFP('boot.js', res);
