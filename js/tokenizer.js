@@ -38,9 +38,6 @@ class Tokenizer {
 
   /**
      tokenizeArray - take array of lines and return a TLA.
-
-     As a convenience, if you pass an array of lines to tokenize()
-     below, it will call this function.
    */
   tokenizeArray(arr) {
     if (Array.isArray(arr)) {

@@ -5,7 +5,6 @@
 
 class Runtime {
   constructor(logFunc) {
-    this._singletonMap = new Map();
     this._queue = [];
     this._varDict = {}; // base dictionary
     this.log = logFunc ? logFunc : console.log;

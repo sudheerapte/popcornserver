@@ -19,8 +19,62 @@ execINITP()
   .then( execINITerrorP )
   .catch( errMsg => log(errMsg) );
 
+/**
+   --------------------- tests execXXXP ----------------
+*/
+
+function execINITP() {
+  return new Promise( (resolve, reject) => {
+    log(`---- INIT`);
+    providedMachineLines = [
+      "addLeaf . a", "addLeaf . b", "addLeaf .a / foo", "addLeaf .a / bar",
+    ];
+    lines = [
+      "%INIT",
+      "DEF ROOT CHILDREN c",
+      "",
+      "%RENDER",
+      "",
+    ];
+    commonStepsP()
+      .then( () => {
+        if (! mc.exists(".c")) {
+          err("expected .c to exist!");
+        }
+        resolve();
+      })
+      .catch( errMsg => err(errMsg) );
+  });
+}
+
+
+function execINITerrorP() {
+  return new Promise( (resolve, reject) => {
+    log(`---- INIT with one error`);
+    providedMachineLines = [
+      "addLeaf . a", "addLeaf . b", "addLeaf .a / foo", "addLeaf .a / bar",
+    ];
+    lines = [
+      "%INIT",
+      "DEF ROOT c",
+      "",
+      "%RENDER",
+      "",
+    ];
+    commonStepsP()
+      .then( () => {
+        err(`test failed`);
+      })
+      .catch( errMsg => {
+        errDiff(errMsg, "proc INIT: DEF ROOT: bad option: c");
+        resolve();
+      });
+  });
+}
 
 /**
+   ---------------- common functions used in tests -----------------
+
    The beginning of each test is "commonStepsP", i.e.,:
     provideStepP - interprets providedMachineLines
     initStepP - execProc("INIT")
@@ -30,8 +84,9 @@ execINITP()
 function provideStepP() {
   return new Promise( (resolve, reject) => {
     mc = new Machine;
-    mc.interpret(providedMachineLines);
+    const res = mc.interpret(providedMachineLines); err(res);
     e = new Executor(mc, t, new Parser(t), log);
+    e.addModelCommands();
     P.setExecutor(e);
     runtimeHandler = s => reject(s);
     P.buildProcsMap(lines);
@@ -63,70 +118,6 @@ function commonStepsP() {
         resolve();
       })
       .catch( errMsg => reject(errMsg) );
-  });
-}
-
-
-function setupINITP() {
-  return new Promise( (resolve, reject) => {
-    providedMachineLines = [
-      "addLeaf . a", "addLeaf . b", "addLeaf .a / foo", "addLeaf .a / bar",
-    ];
-    lines = [
-      "%INIT",
-      "DEF ROOT CHILDREN c",
-      "",
-      "%RENDER",
-      "",
-    ];
-    resolve();
-  });
-}
-
-function execINITP() {
-  return new Promise( (resolve, reject) => {
-    log(`---- INIT`);
-    setupINITP()
-      .then( commonStepsP )
-      .then( () => {
-        if (! mc.exists(".c")) {
-          err("expected .c to exist!");
-        }
-        resolve();
-      })
-      .catch( errMsg => err(errMsg) );
-  });
-}
-
-
-function setupINITerrorP() {
-  return new Promise( (resolve, reject) => {
-    providedMachineLines = [
-      "addLeaf . a", "addLeaf . b", "addLeaf .a / foo", "addLeaf .a / bar",
-    ];
-    lines = [
-      "%INIT",
-      "DEF ROOT c",
-      "",
-      "%RENDER",
-      "",
-    ];
-    resolve();
-  });
-}
-
-function execINITerrorP() {
-  return new Promise( (resolve, reject) => {
-    log(`---- INIT with one error`);
-    setupINITerrorP()
-      .then( commonStepsP )
-      .then( () => {
-        err(`test failed`);
-      })
-      .catch( errMsg => {
-        errDiff(errMsg, "proc INIT: DEF ROOT: bad option: c");
-        resolve();
-      });
   });
 }
 

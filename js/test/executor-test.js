@@ -29,6 +29,7 @@ lines = [
 ];
 
 e = new Executor(mc, t, new Parser(t), log);
+e.addModelCommands();
 errMsg = e.runLines(lines);
 errDiff(errMsg, 'DEF ROOT: bad option: x');
 
@@ -42,6 +43,7 @@ lines = [
 ];
 
 e = new Executor(mc, t, new Parser(t), log);
+e.addModelCommands();
 e.runLines(lines);
 err(mc.exists('.y/a'));
 err(mc.exists('.y/b'));
@@ -57,6 +59,7 @@ lines = [
 ];
 
 e = new Executor(mc, t, new Parser(t), log);
+e.addModelCommands();
 e.runLines(lines, varName => {
   if (varName === 'FOO') {return {name: 'WORD', value: 'y'}; }
   else { return null; }
@@ -80,6 +83,7 @@ lines = [
 ];
 
 e = new Executor(mc, t, new Parser(t), log);
+e.addModelCommands();
 e.buildProcsMap(lines);
 e.execProc("abc");
 ['.pos', '.pos.a'].forEach( p => {
@@ -101,6 +105,7 @@ lines = [
 ];
 
 e = new Executor(mc, t, new Parser(t), log);
+e.addModelCommands();
 e.buildProcsMap(lines);
 e.execProc("abc", varName => {
   if (varName === 'BEE') {return {name: 'WORD', value: 'b'}; }
@@ -126,6 +131,7 @@ lines = [
 ];
 
 e = new Executor(mc, t, new Parser(t), log);
+e.addModelCommands();
 e.buildProcsMap(lines);
 result = e.execProc("abc", varName => {
   if (varName === 'BEE') {return {name: 'WORD', value: 'b'}; }
@@ -150,6 +156,7 @@ lines = [
 ];
 
 e = new Executor(mc, t, new Parser(t), log);
+e.addModelCommands();
 e.buildProcsMap(lines);
 result = e.execProc("def"); err(result);
 err(mc.exists(".pos.b"));
@@ -176,6 +183,7 @@ lines = [
 ];
 
 e = new Executor(mc, t, new Parser(t), log);
+e.addModelCommands();
 e.buildProcsMap(lines);
 result = e.execProc("INIT"); err(result);
 result = e.execProc("set-is-current"); err(result);
@@ -217,6 +225,7 @@ lines = [
 ];
 
 e = new Executor(mc, t, new Parser(t), log);
+e.addModelCommands();
 lines.forEach( rec => {
   const tokList = t.tokenize(rec.input)[1];
   result = e.expand(tokList);

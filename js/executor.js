@@ -12,7 +12,6 @@ class Executor {
     if (! mc._root) { this.log(`first arg is not a machine`); }
     this._commands = new Map();
     this._queries = new Map();
-    this.addBasicCommandSet();
   }
 
   setMc(mc) {
@@ -545,13 +544,13 @@ class Executor {
   }
 
   /**
-     addBasicCommandSet() - add records for interpreting commands
+     addModelCommands() - add records for interpreting commands
      and expanding queries
      Each record is: { cmd, func(args) }
      The args are an array of tokens. Func should return [null, result]
   */
 
-  addBasicCommandSet() {
+  addModelCommands() {
     const queries = [
       {cmd: 'CURRENT', fn: args => this.currentCmd(args)},
       {cmd: 'DATAW', fn: args => this.datawCmd(args)},
@@ -568,9 +567,9 @@ class Executor {
   }
 
   /**
-     addUserAgentCommandSet() - called only in browser
+     addUserAgentCommands() - called only in browser
    */
-  addUserAgentCommandSet() {
+  addUserAgentCommands() {
     const commands = [
       {cmd: 'MAP', fn: args => this.mapCmd(args)},
       {cmd: 'ATTACH', fn: args => this.attachCmd(args)},
