@@ -18,23 +18,32 @@ class Runtime {
      Item queue execution
 
      Items are event records that can make changes to the state model.
-     You simply enqueue() each item. The Runtime automatically unshifts
-     items from the queue and executes them.
+     You simply enqueue each item using enqueueP(). The Runtime
+     automatically shifts items from the queue and executes them.
 
          Name    Additional properties
          ------- ----------------------
          UPDATE  lines
-         TIMER   lines
          HANDLER procName, varDict
 
      On enqueueing, each item is immediately scheduled for execution,
      unless the setFlowing() setting is set to false.
 
+     The euqueueP method returns a promise. If an error was found
+     while executing the item, then the promise reject() will be called
+     with an error message. Otherwise resolve() will be called.
+
    */
 
-  enqueue(item) {
+  enqueueP(item) {
     this._queue.push(item);
-    this.flowIfNeeded();
+    return new Promise( (resolve, reject) => {
+      item.cb = errMsg => {
+        if (errMsg) { reject(errMsg); }
+        else { resolve(); }
+      };
+      this.flowIfNeeded();
+    });
   }
   getFlowing() { return this._flowing; }
   setFlowing(onOff) {
@@ -43,7 +52,7 @@ class Runtime {
   }
   doOne() {
     if (this._queue.length > 0) {
-      const item = this._queue.unshift();
+      const item = this._queue.shift();
       this.execute(item);
     }
   }
@@ -114,14 +123,19 @@ class Runtime {
       };
     }
   }
-
   execute(item) {
-    if (item.name === 'UPDATE' || item.name === 'TIMER') {
+    const cb = item.cb ? item.cb : s => console.log(s);
+    if (item.name === 'UPDATE') {
       this.execLines(item.lines);
       this.execProc("RENDER");
+      return cb();
     } else if (item.name === 'HANDLER') {
       this.execProc(item.procName, this.makeVarDictFunc(item.varDict));
       this.execProc("RENDER");
+      return cb();
+    } else {
+      this.log(`bad item: ${item.name}`);
+      return cb(`bad item: ${item.name}`);
     }
   }
   /**

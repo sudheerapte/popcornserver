@@ -12,6 +12,7 @@ class Executor {
     if (! mc._root) { this.log(`first arg is not a machine`); }
     this._commands = new Map();
     this._queries = new Map();
+    this.addModelCommands();
   }
 
   setMc(mc) {

@@ -17,6 +17,7 @@ let providedMachineLines, mc, e, lines;
 
 execINITP()
   .then( execINITerrorP )
+  .then( enqueueMirrorP )
   .catch( errMsg => log(errMsg) );
 
 /**
@@ -25,7 +26,7 @@ execINITP()
 
 function execINITP() {
   return new Promise( (resolve, reject) => {
-    log(`---- INIT`);
+    log(`---- execProc INIT`);
     providedMachineLines = [
       "addLeaf . a", "addLeaf . b", "addLeaf .a / foo", "addLeaf .a / bar",
     ];
@@ -50,7 +51,7 @@ function execINITP() {
 
 function execINITerrorP() {
   return new Promise( (resolve, reject) => {
-    log(`---- INIT with one error`);
+    log(`---- execProc INIT with one error`);
     providedMachineLines = [
       "addLeaf . a", "addLeaf . b", "addLeaf .a / foo", "addLeaf .a / bar",
     ];
@@ -72,6 +73,43 @@ function execINITerrorP() {
   });
 }
 
+function enqueueMirrorP() {
+  function enqueueP() {
+    return new Promise( (resolve, reject) => {
+    });
+  }
+
+  return new Promise( (resolve, reject) => {
+    log(`---- enqueue INIT`);
+    providedMachineLines = [
+      "addLeaf . a", "addLeaf . b", "addLeaf .a / foo", "addLeaf .a / bar",
+    ];
+    lines = [
+      "%INIT",
+      "DEF ROOT CHILDREN c",
+      "",
+      "%RENDER",
+      "",
+      "%mirror",
+      "WITH ALL .a/X BEGIN",
+      "  DEF ALT PARENT .b CHILDREN X",
+      "END",
+    ];
+    commonStepsP()
+      .then( () => {
+        if (! mc.exists(".c")) {
+          err("expected .c to exist!");
+        }
+        let item = {name: 'UPDATE', procName: 'mirror'};
+      })
+      .then( () => {
+        P.enqueueP(item);
+      })
+      .catch( errMsg => err(errMsg) );
+  });
+}
+
+
 /**
    ---------------- common functions used in tests -----------------
 
@@ -86,7 +124,6 @@ function provideStepP() {
     mc = new Machine;
     const res = mc.interpret(providedMachineLines); err(res);
     e = new Executor(mc, t, new Parser(t), log);
-    e.addModelCommands();
     P.setExecutor(e);
     runtimeHandler = s => reject(s);
     P.buildProcsMap(lines);
