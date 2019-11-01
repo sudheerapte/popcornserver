@@ -109,13 +109,13 @@ class Executor {
           return errMsg;
         }
       }
-    } else if (block.type === 'WITH') {
-      const clauses = this.parseWithClauses(block.header);
+    } else if (block.type === 'FORALL') {
+      const clauses = this.parseForAllClauses(block.header);
       const unis = this.getAllUnifications(clauses);
       if (! Array.isArray(unis)) { // error message
         return unis;
       }
-      // unroll the WITH block into "results", then expand macros.
+      // unroll the FORALL block into "results", then expand macros.
       let results = [];
       for (let i=0; i<unis.length; i++) {
         let mappedTla;
@@ -210,12 +210,12 @@ class Executor {
     block.tla = mappedTla;
   }
 
-  parseWithClauses(header) {
+  parseForAllClauses(header) {
     let arr = [];
     header.forEach( tokArr => {
       if (tokArr.length <= 0) { return; }
       if (tokArr[0].name !== 'KEYWORD') {
-        this.log(`bad WITH clause: ${tokArr[0].name}`);
+        this.log(`bad FORALL clause: ${tokArr[0].name}`);
         return;
       }
       const type = tokArr[0].value;

@@ -136,7 +136,7 @@ if (! result.match(/unexpanded/)) {
   err(`expected unexpanded`);
 }
 
-log(`---- evaluate WITH`);
+log(`---- evaluate FORALL`);
 
 mc = new Machine;
 result = mc.interpret(["addLeaf . board", "addLeaf .board . a", "addLeaf .board . b", "addLeaf .board . c"]); err(result);
@@ -144,7 +144,7 @@ result = mc.interpret(["addLeaf . board", "addLeaf .board . a", "addLeaf .board 
 lines = [
   "% def",
   "DEF ROOT CHILDREN pos",
-  "WITH ALL .board.POS BEGIN",
+  "FORALL ALL .board.POS BEGIN",
   "DEF CON PARENT .pos CHILDREN {POS}",
   "END",
 ];
