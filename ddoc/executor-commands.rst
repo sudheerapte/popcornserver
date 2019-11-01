@@ -53,6 +53,61 @@ State Definition Commands
   ================  =================================================
 
 
+Timer Commands: Schedule and Cancel
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+A timer can be scheduled to execute either a named procedure or a
+single inline command. Once scheduled, it can also be canceled.
+
+To schedule a procedure for execution, use this syntax:
+
+|  ``TIMER`` ``SCHEDULE``
+|     ``DELAY`` *number*
+|     ``NAME`` *string*
+|     ``EXEC`` *word*
+
+After a delay of at least *number* milliseconds, Popcorn will execute
+the procedure *word*.  The ``NAME`` *string* is a name you assign to
+this timer.  If a ``NAME`` is provided, then this timer can be
+canceled using the ``TIMER CANCEL`` command, see below.  The procedure
+*word* must exist.
+
+Instead of a procedure, you can provide a single inline command if
+that is convenient. The syntax is as follows:
+
+|  ``TIMER`` ``SCHEDULE``
+|     ``DELAY`` *number*
+|     ``NAME`` *string*
+|     ``COMMAND`` *tokens*
+
+The *tokens* will be interpreted as a command and executed as an
+``UPDATE`` message when the time comes.
+
+To cancel an existing timer, use the ``TIMER CANCEL`` command:
+
+| ``TIMER`` ``CANCEL``
+|     ``NAME`` *string*
+
+If any existing timer named *string* is already scheduled, then it
+will be canceled. If no such timer is scheduled, or if one has already
+executed, then this command will do nothing. There can be more than
+one timer with the same ``NAME``; if so, all of them will be canceled.
+
+An important use case for timers is when a back-end application
+command is to be sent in response to a user input.  In order to give
+the application time to respond, you might want to change the UI state
+temporarily, showing that the user input has been accepted. When the
+back-end application processes the command and updates the application
+state, the UI state will automatically change.
+
+In case the back-end application does not respond for a while, then
+setting a timer gives you the ability to reflect this failure in the
+UI gracefully. If the delayed procedure executes, then it can show an
+error message. If instead the application responds correctly, then the
+update procedure should use ``TIMER CANCEL`` to prevent the error
+message state from happening.
+
+
 Queries
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -65,24 +120,44 @@ Queries
   ==============  ==============================================
 
 
-
-Basic Queries
+Procedures
 ---------------------------------
 
+Built-in Procedures
+^^^^^^^^^^^^^^^^^^^^^
+
+There are expected to be two built-in procedures with standard names
+``INIT`` and ``RENDER``. These never need to be executed explicitly;
+they are automatically executed as described below.
+
+``INIT``
+  When the page is first loaded, this procedure is executed.  You can
+  create any extensions to the tree needed for the UI
+  here. Similarly, any initial DOM changes can be performed here.
+
+  This procedure is usually full of ``PLAIN`` and ``WITH`` blocks.
+  If you are executing logic in response to the current state,
+  then that logic probably belongs in the ``RENDER`` procedure
+  instead.
+
+``RENDER``
+  Whenever updates are made to the state, this procedure is
+  executed immediately after. You can update any dependent
+  UI state here, as well as any corresponding changes to the DOM.
+  This procedure is usually full of ``ON`` blocks, which set
+  dependent state based on existing state.
 
   ==============  =======================  ====================
-  Command                          Executed when...
+  Procedure       Purpose                  Executed when...
   ==============  =======================  ====================
-  ``IPROPAGATE``  Set up initial state     The page is loaded
-  ``IRENDER``     Modify DOM               The page is loaded
-  ``PROPAGATE``   Update dependent state   The state is changed
-  ``RENDER``      Modify DOM               The state is changed
+  ``INIT``        Set up initial state     The page is loaded
+                  and initial DOM          
+
+  ``RENDER``      Update dependent state   The state is changed
+                  and modify DOM
   ==============  =======================  ====================
  
-The execution sequence is in the same order as in the table, i.e.,
-each ``PROPAGATE`` procedure is executed before its corresponding
-``RENDER`` procedure.  The names of the reserved procedures are all in
-the *keyword* format, as you can see above.
+
 
 Handlers
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -93,9 +168,10 @@ timer events, or application events. For example, the user might
 create a handler named ``tab-change`` in response to a user click
 event.
 
-When a handler executes, it probably modifies the state; the
-``PROPAGATE`` and ``RENDER`` reserved procedures are immediately
-executed after the handler, so that the page can be updated.
+When a handler executes, it usually either emits back-end application
+commands or modifies the state, or both; the ``RENDER`` reserved
+procedure is immediately executed after the handler, so that the UI
+state and the DOM page can be updated.
 
 Blocks
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
