@@ -49,31 +49,31 @@ class Parser {
     }
   }
 
-  parseWithClauses(clauseStr, arr) { // return null only when fully parsed
+  parseForAllClauses(clauseStr, arr) { // return null only when fully parsed
     clauseStr = clauseStr.trim();
     if (clauseStr.length <= 0) { return null; }
     const m = clauseStr.match(/^(ALL|CURRENT|NONCURRENT)\s+([^,]+)/);
     if (!m) {
-      return `parseWithClauses: failed to parse: ${clauseStr}`;
+      return `parseForAllClauses: failed to parse: ${clauseStr}`;
     }
     arr.push(m[0]);
     clauseStr = clauseStr.slice(m[0].length);
     if (clauseStr.startsWith(',')) {
       clauseStr = clauseStr.slice(1);
     }
-    return this.parseWithClauses(clauseStr, arr);
+    return this.parseForAllClauses(clauseStr, arr);
   }
 
   /**
      buildBlocks - take a TLA, and return an array of blocks.
      Each block has a "header", which is null if the lines are plain,
-     but otherwise an ON/WITH/ALL clause.
+     but otherwise an ON/FORALL/ALL clause.
 
      Each block has a type:
 
      'PLAIN': header is null.
      'ON': header is array of conditions.
-     'WITH': header is array of with clauses.
+     'FORALL': header is array of forall clauses.
 
    */
   buildBlocks(tla) {
@@ -97,12 +97,12 @@ class Parser {
   }
 
   // getScriptBlock - return an array of lists forming a block.
-  // Recognizes ON, WITH, and ALL blocks.
+  // Recognizes ON, FORALL, and ALL blocks.
   //     Returns { error, numLists, header, tla }.
   //  type = 
   //     'PLAIN': header is null.
   //     'ON': header is array of conditions.
-  //     'WITH': header is array of with clauses.
+  //     'FORALL': header is array of forall clauses.
 
   // numLists is the number of lists consumed from the input array.
   // header is the portion before the BEGIN, and linesConsumed is
@@ -158,7 +158,7 @@ class Parser {
           continue;
         }
         if (me.ifFirstKeyword(tla[i], "ON") ||
-            me.ifFirstKeyword(tla[i], "WITH") ||
+            me.ifFirstKeyword(tla[i], "FORALL") ||
             me.ifFirstKeyword(tla[i], "ALL")) {
           return;
         }
@@ -182,17 +182,17 @@ class Parser {
       }
       let j=0; // index within the list
       if (me.ifFirstKeyword(tla[i], "ON") ||
-          me.ifFirstKeyword(tla[i], "WITH") ||
+          me.ifFirstKeyword(tla[i], "FORALL") ||
           me.ifFirstKeyword(tla[i], "ALL")) {
         block.type = tla[i][0].value;
         block.header = [];
         j=1;
       } else {
-        block.error = `did not see ON/WITH/ALL`;
+        block.error = `did not see ON/FORALL/ALL`;
         return;
       }
       for (; j<tla[i].length; j++) {
-        // special case for BEGIN on same line as ON/WITH/ALL
+        // special case for BEGIN on same line as ON/FORALL/ALL
         if (j === tla[i].length-1 &&
             tla[i][j].name === 'KEYWORD' &&
             tla[i][j].value === 'BEGIN') {
@@ -211,7 +211,7 @@ class Parser {
           return;
         } else {
           for (let j=0; j<tla[i].length; j++) {
-            // special case for BEGIN on same line as ON/WITH/ALL
+            // special case for BEGIN on same line as ON/FORALL/ALL
             if (j === tla[i].length-1 &&
                 tla[i][j].name === 'KEYWORD' &&
                 tla[i][j].value === 'BEGIN') {
@@ -247,12 +247,12 @@ class Parser {
         }
         return;
       }
-      if (block.type === 'WITH') {
+      if (block.type === 'FORALL') {
         let patterns = [];
         while (block.header.length > 1) {
           const num = consumeWithPattern(block.header);
           if (num < 0) {
-            block.error = `bad WITH pattern: ${block.header[0].name}`;
+            block.error = `bad FORALL pattern: ${block.header[0].name}`;
             return;
           }
           patterns.push(block.header.slice(0, num));

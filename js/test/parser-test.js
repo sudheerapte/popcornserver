@@ -75,14 +75,14 @@ log(`---- getScriptBlock`);
 
 lines = [
   "% abc",
-  "WITH CURRENT .bar",
+  "FORALL CURRENT .bar",
   "BEGIN",
   "baz",
   "END",
   "[ def]",
-  "WITH ALL .foo NONCURRENT .bar BEGIN",
+  "FORALL ALL .foo NONCURRENT .bar BEGIN",
   "[ ghi ]",
-  "WITH CURRENT .foo/BAR",
+  "FORALL CURRENT .foo/BAR",
   "baz",
 ];
 
@@ -221,14 +221,14 @@ errDiff(result[3].name, "WORD");
 
 lines = [
   "% abc",
-  "WITH CURRENT .bar",
+  "FORALL CURRENT .bar",
   "BEGIN",
   "baz",
   "END",
   "[ def]",
-  "WITH ALL .FOO NONCURRENT .bar BEGIN",
+  "FORALL ALL .FOO NONCURRENT .bar BEGIN",
   "[ ghi ]",
-  "WITH CURRENT .foo/BAR",
+  "FORALL CURRENT .foo/BAR",
   "BEGIN",
   "baz",
 ];
@@ -238,7 +238,7 @@ log(`---- buildProcs`);
 p = new Parser(t);
 result = p.buildProcs(tla); // get Map of tla
 log(`------     abc`);
-errDiff(result.get("abc")[0].type, "WITH");
+errDiff(result.get("abc")[0].type, "FORALL");
 log(`------     def`);
 errDiff(result.get("def"), 'no END found');
 log(`------     ghi`);
