@@ -20,7 +20,6 @@ class Executor {
   }
   
   buildProcsMap(lines) {
-    // const result = this.t.tokenizeArray(lines);
     const result = this.t.tokenizeArray(lines);
     if (result[0]) {
       this.log(`buildProcsMap failed: ${result[0]}`);
@@ -38,7 +37,6 @@ class Executor {
   }
 
   buildBlocks(lines) {
-    // const result = this.t.tokenizeArray(lines);
     const result = this.t.tokenizeArray(lines);
     if (result[0]) {
       return `execLines failed: ${result[0]}`;
