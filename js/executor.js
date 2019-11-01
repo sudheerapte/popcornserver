@@ -326,12 +326,12 @@ class Executor {
   // unify(varLitTokens, allOrCurrent) -- return substitution list
   unify(varLitTokens, allOrCurrent) {
     const me = this;
-    if (!allOrCurrent || !allOrCurrent.match(/^ALL|CURRENT|NONCURRENT$/)) {
+    if (!allOrCurrent || !allOrCurrent.match(/^PATH|CURRENT|NONCURRENT$/)) {
       this.log(`expecting ALL or (NON)CURRENT: got ${allOrCurrent}`);
       return;
     }
     let testPaths;
-    if (allOrCurrent === "ALL") {
+    if (allOrCurrent === "PATH") {
       testPaths = this.mc.getAllPaths();
     } else if (allOrCurrent === "CURRENT") {
       testPaths = this.mc.getCurrentPaths();

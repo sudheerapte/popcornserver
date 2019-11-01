@@ -144,7 +144,7 @@ result = mc.interpret(["addLeaf . board", "addLeaf .board . a", "addLeaf .board 
 lines = [
   "% def",
   "DEF ROOT CHILDREN pos",
-  "FORALL ALL .board.POS BEGIN",
+  "FORALL PATH .board.POS BEGIN",
   "DEF CON PARENT .pos CHILDREN {POS}",
   "END",
 ];
@@ -153,9 +153,6 @@ e = new Executor(mc, t, new Parser(t), log);
 e.buildProcsMap(lines);
 result = e.execProc("def"); err(result);
 err(mc.exists(".pos.b"));
-
-
-
 
 log(`---- evaluate ON`);
 
