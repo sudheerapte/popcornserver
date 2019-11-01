@@ -52,7 +52,7 @@ class Parser {
   parseForAllClauses(clauseStr, arr) { // return null only when fully parsed
     clauseStr = clauseStr.trim();
     if (clauseStr.length <= 0) { return null; }
-    const m = clauseStr.match(/^(ALL|CURRENT|NONCURRENT)\s+([^,]+)/);
+    const m = clauseStr.match(/^(PATH|CURRENT|NONCURRENT)\s+([^,]+)/);
     if (!m) {
       return `parseForAllClauses: failed to parse: ${clauseStr}`;
     }
@@ -67,7 +67,7 @@ class Parser {
   /**
      buildBlocks - take a TLA, and return an array of blocks.
      Each block has a "header", which is null if the lines are plain,
-     but otherwise an ON/FORALL/ALL clause.
+     but otherwise an ON/FORALL clause.
 
      Each block has a type:
 
@@ -97,7 +97,7 @@ class Parser {
   }
 
   // getScriptBlock - return an array of lists forming a block.
-  // Recognizes ON, FORALL, and ALL blocks.
+  // Recognizes ON, FORALL blocks
   //     Returns { error, numLists, header, tla }.
   //  type = 
   //     'PLAIN': header is null.
@@ -158,8 +158,7 @@ class Parser {
           continue;
         }
         if (me.ifFirstKeyword(tla[i], "ON") ||
-            me.ifFirstKeyword(tla[i], "FORALL") ||
-            me.ifFirstKeyword(tla[i], "ALL")) {
+            me.ifFirstKeyword(tla[i], "FORALL")) {
           return;
         }
         if (me.ifNextCommand(tla[i], 0, "END") ||
@@ -182,17 +181,16 @@ class Parser {
       }
       let j=0; // index within the list
       if (me.ifFirstKeyword(tla[i], "ON") ||
-          me.ifFirstKeyword(tla[i], "FORALL") ||
-          me.ifFirstKeyword(tla[i], "ALL")) {
+          me.ifFirstKeyword(tla[i], "FORALL")) {
         block.type = tla[i][0].value;
         block.header = [];
         j=1;
       } else {
-        block.error = `did not see ON/FORALL/ALL`;
+        block.error = `did not see ON/FORALL`;
         return;
       }
       for (; j<tla[i].length; j++) {
-        // special case for BEGIN on same line as ON/FORALL/ALL
+        // special case for BEGIN on same line as ON/FORALL
         if (j === tla[i].length-1 &&
             tla[i][j].name === 'KEYWORD' &&
             tla[i][j].value === 'BEGIN') {
@@ -211,7 +209,7 @@ class Parser {
           return;
         } else {
           for (let j=0; j<tla[i].length; j++) {
-            // special case for BEGIN on same line as ON/FORALL/ALL
+            // special case for BEGIN on same line as ON/FORALL
             if (j === tla[i].length-1 &&
                 tla[i][j].name === 'KEYWORD' &&
                 tla[i][j].value === 'BEGIN') {
@@ -282,7 +280,7 @@ class Parser {
     function consumeWithPattern(tokList) {
       if (tokList.length < 1) { return -1; }
       if (tokList[0].name === 'KEYWORD' &&
-          tokList[0].value.match(/^ALL|CURRENT|NONCURRENT$/)) {
+          tokList[0].value.match(/^PATH|CURRENT|NONCURRENT$/)) {
         const num = me.consumePathPattern(tokList.slice(1));
         return num+1;
       } else {
