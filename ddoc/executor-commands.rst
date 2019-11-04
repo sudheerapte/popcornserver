@@ -219,17 +219,17 @@ paths.
 At run time, Popcorn will evaluate *condition* and then execute the
 commands between ``BEGIN`` and ``END`` only if the condition is true.
 
-``WITH`` block:
+``FORALL`` block:
  
-|  ``WITH`` *clause* *clause* ... ``BEGIN``
+|  ``FORALL`` *clause* *clause* ... ``BEGIN``
 |   *command*
 |   *command*
 |    ...
 |  ``END``
 
-The ``WITH`` line can also be split into multiple lines:
+The ``FORALL`` line can also be split into multiple lines:
 
-|  ``WITH`` *clause* *clause* ...
+|  ``FORALL`` *clause* *clause* ...
 |  *clause* *clause* ``BEGIN``
 |  ...
 
@@ -240,9 +240,9 @@ variables that unify the clauses with the current state. Then, Popcorn
 will expand the list of commands between ``BEGIN`` and ``END``, which
 can contain the same variables, once for each substitution.
 
-The parser represents each ``WITH`` clause this way::
+The parser represents each ``FORALL`` clause this way::
 
-  { type: 'ALL' OR 'CURRENT' OR 'NONCURRENT',
+  { type: 'PATH' OR 'CURRENT' OR 'NONCURRENT',
     pattern: [], (list of tokens)
   }
 
@@ -406,7 +406,7 @@ returns a ``block`` structure read from the beginning of the TLA:
   remaining lists in the proc until the proc is fully consumed.
 
 ``type``
-  is one of ``PLAIN``, ``ON``, or ``WITH``
+  is one of ``PLAIN``, ``ON``, or ``FORALL``
 
 ``header``
   the value of ``header`` is ``type``-specific:
@@ -415,9 +415,9 @@ returns a ``block`` structure read from the beginning of the TLA:
   |   ``ON`` - TLA, a list of conditions, each starting with
   |            a keyword, which currently must be ``CURRENT``.
   |            The rest of the condition is a valid path.
-  |   ``WITH`` - TLA, a list of clauses, each starting with
+  |   ``FORALL`` - TLA, a list of clauses, each starting with
   |            a keyword, one of ``CURRENT``, ``NONCURRENT``,
-  |            or ``ALL``. The rest of the clause is a valid
+  |            or ``PATH``. The rest of the clause is a valid
   |            path, except that some words might be replaced
   |            with a ``{VARIABLE}`` or an ``ASTERISK``.
 
@@ -429,7 +429,7 @@ returns a ``block`` structure read from the beginning of the TLA:
 
 ``tla``
   is the array of lists to be executed as commands.  In the case of
-  ``WITH`` clauses, this array might be replicated many times, once
+  ``FORALL`` clauses, this array might be replicated many times, once
   for each substitution, when executing.
 
 

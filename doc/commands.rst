@@ -1,9 +1,9 @@
 .. _commands:
 
-UXML - UX Model Command Language
+PSL - UX Model Command Language
 ================================
 
-We describe UXML, a simple ascii-based language with three sets of
+We describe PSL, a simple ascii-based language with three sets of
 commands:
 
 1. State Space commands, to build up the UX model.
@@ -22,7 +22,7 @@ model, and to use the current state of the model to perform actions:
 - post any input modes, and
 - cause commands to be sent to the back-end app.
 
-UXML extensions to perform these actions are described in the next
+PSL extensions to perform these actions are described in the next
 chapter.
 
 
@@ -38,7 +38,7 @@ to leaf nodes.
 The state space of a UX model must be defined before you can use the
 model and talk about individual states.
 
-UXML uses the constructs **word** and **path** to describe nodes and
+PSL uses the constructs **word** and **path** to describe nodes and
 states in the UX model.
 
 
@@ -105,11 +105,11 @@ In the descriptions below, we use the following terms:
   Consists of a set of one or more capital letters ``[A-Z]``. Command
   words are described below with the commands that require them.
 
-UXML scripts
+PSL scripts
 ^^^^^^^^^^^^
 
-In a script, all the UXML commands are written one per line of ascii
-text. Any non-ascii character makes the entire UXML script illegal.
+In a script, all the PSL commands are written one per line of ascii
+text. Any non-ascii character makes the entire PSL script illegal.
 
 Lines are separated from one another by ascii NL (newline)
 characters. Blank lines and any lines starting with a hash character
@@ -127,7 +127,7 @@ data item consisting of arbitrary ascii characters.
 See later for how to send scripts to Popcorn.
 
 
-UXML Commands
+PSL Commands
 -------------
 
 State Space Commands
@@ -293,7 +293,7 @@ of type ``text/plain``:
 The ``id`` attribute of a ``script`` element is important; Popcorn
 uses it to decide when to execute the script.
 
-The *lines* are UXML text.
+The *lines* are PSL text.
 
 Any consecutive block of simple commands will be evaluated as a single
 transaction. The resulting state becomes the new state of the UX
@@ -423,17 +423,17 @@ represented by a set of substitutions for these variables.
   | ``CURRENT`` *path-expression*
   | ``NONCURRENT`` *path-expression*
 
-.. sidebar:: WITH block patterns
+.. sidebar:: FORALL block patterns
 
   The mechanism used to match patterns solves equations between
   symbolic expressions. This process is called *unification* in
   computer science.
 
-  Popcorn's ``WITH`` blocks match your patterns against the UX model
+  Popcorn's ``FORALL`` blocks match your patterns against the UX model
   to generate a list of *substitutions*. Each substitution is used to
-  produce a block of UXML commands.
+  produce a block of PSL commands.
 
-  The ``WITH`` patterns must match word-for-word against paths in the
+  The ``FORALL`` patterns must match word-for-word against paths in the
   UX model. This kind of unification is called first-order, syntactic
   unification.
   
@@ -459,7 +459,7 @@ time.  Together, you can provide a list of patterns to build up
 unified contexts of variable substitutions. The *line*\s are
 expanded using each of these contexts.
 
-Let us first show a simple example of ``WITH`` blocks, and then a more
+Let us first show a simple example of ``FORALL`` blocks, and then a more
 complex one.
 
 Example with a pattern
@@ -483,13 +483,13 @@ of the board positions. For example, we would like to define::
 and so on.
   
 Instead of writing 8 lines with repeated creatures, we could
-write a single ``WITH`` block as follows::
+write a single ``FORALL`` block as follows::
 
-  WITH ALL .board.POS BEGIN
+  FORALL PATH .board.POS BEGIN
   DEF ALT .board.{{POS}} spider1 spider2 spider3 fly
   END
 
-The above ``WITH`` block has the pattern ``ALL .board.POS``, which
+The above ``FORALL`` block has the pattern ``ALL .board.POS``, which
 introduces a **block variable**, ``POS``. This pattern matches the
 entire state space in eight ways, with ``POS`` taking the values ``a``,
 ``b``, ``c``, ..., ``h``.
@@ -515,14 +515,14 @@ Example with two patterns
 
 We can use two patterns to shorten the block line further::
 
-  WITH ALL .creature.X ALL .board.POS BEGIN
+  FORALL PATH .creature.X PATH .board.POS BEGIN
   DEF ALT .board.{{POS}} {{X}}
   END
 
 In the above block, we have two patterns::
 
-  ALL .creature.X
-  ALL .board.POS
+  PATH .creature.X
+  PATH .board.POS
 
 These two patterns introduce two variables, ``X`` and ``POS``.  The
 first pattern matches the existing state space in eight ways, with ``X
@@ -539,26 +539,26 @@ of variable substitutions. We get the equivalent of::
 
 and so on. These 32 lines will be the result of unrolling the block.
 
-The three kinds of WITH patterns
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+The three kinds of FORALL patterns
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-``WITH`` patterns come in three different kinds:
+``FORALL`` patterns come in three different kinds:
 
   ==============  ==============================================
   Kind            Meaning
   ==============  ==============================================
-  ``ALL``         The path is part of the state space
+  ``PATH``         The path is part of the state space
   ``CURRENT``     The path is in the current state
   ``NONCURRENT``  The path is NOT in the current state
   ==============  ==============================================
 
 The patterns are used as follows::
 
-  ALL path-expression
+  PATH path-expression
   CURRENT path-expression
   NONCURRENT path-expression
 
-The ``ALL`` pattern, as we have seen above, matches any valid
+The ``PATH`` pattern, as we have seen above, matches any valid
 path in the UX model, i.e., in the state space. This is how we were
 able to obtain the 8 and the 4 matches above.
 
@@ -577,8 +577,8 @@ variable in the block, you write macros like ``{{POS}}``.
 Adjacency Example
 ^^^^^^^^^^^^^^^^^
 
-The above uses of ``WITH`` block variables were like nested ``for``
-loops in programming languages. But ``WITH`` blocks are far more
+The above uses of ``FORALL`` block variables were like nested ``for``
+loops in programming languages. But ``FORALL`` blocks are far more
 powerful. We show an example now.
 
 Let us say our board game allows adjacent moves, and we would like to enable drag-and-drop from a creature's current position to the adjacent positions.
@@ -606,18 +606,18 @@ In our game, when the creature ``spider1`` is on position ``a``, i.e.,
 when ``.board.a/spider1`` is current, we would like to enable
 drag-and-drop with the three adjacent positions as destinations.
 
-From the ``.adj`` paths above, we can see how we can use ``WITH``
+From the ``.adj`` paths above, we can see how we can use ``FORALL``
 patterns to extract all the positions adjacent to the one that
 ``spider1`` is currently on:
 
-  | ``WITH CURRENT .board.POS/spider1 ALL .adj.POS.ADJPOS BEGIN``
+  | ``FORALL CURRENT .board.POS/spider1 PATH .adj.POS.ADJPOS BEGIN``
   |   ... *some action using* ``{{POS}}`` *and* ``{{ADJPOS}}`` ...
   | ``END``
 
 Here, too, we are using two patterns with two variables::
 
   CURRENT .board.POS/spider1
-  ALL .adj.POS.ADJPOS
+  PATH .adj.POS.ADJPOS
  
 But these two patterns are not independent, unlike our earlier
 example.  One of the two block variables, ``POS``, is used in both
