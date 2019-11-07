@@ -74,11 +74,6 @@ function execINITerrorP() {
 }
 
 function enqueueMirrorP() {
-  function enqueueP() {
-    return new Promise( (resolve, reject) => {
-    });
-  }
-
   return new Promise( (resolve, reject) => {
     log(`---- enqueue INIT`);
     providedMachineLines = [
@@ -91,7 +86,7 @@ function enqueueMirrorP() {
       "%RENDER",
       "",
       "%mirror",
-      "WITH ALL .a/X BEGIN",
+      "FORALL PATH .a/X BEGIN",
       "  DEF ALT PARENT .b CHILDREN X",
       "END",
     ];
@@ -101,9 +96,8 @@ function enqueueMirrorP() {
           err("expected .c to exist!");
         }
         let item = {name: 'UPDATE', procName: 'mirror'};
-      })
-      .then( () => {
-        P.enqueueP(item);
+        P.enqueueP(item)
+          .then( () => log("done") );
       })
       .catch( errMsg => err(errMsg) );
   });
@@ -157,7 +151,4 @@ function commonStepsP() {
       .catch( errMsg => reject(errMsg) );
   });
 }
-
-
-
 
