@@ -1,7 +1,13 @@
 .. _executor-commands:
 
+Go directly to :ref:`runtime`
+
+
 Commands and Queries
 =======================
+
+.. _psl-basic-commands:
+
 
 Basic Commands and Queries
 ----------------------------
@@ -299,32 +305,6 @@ PSL uses lists of tokens to build structures:
   ==============  =====================================================
 
 
-PSL Commands for Machine States
---------------------------------
-
-
-Machine state building commands
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-  ==============  ==============================================
-  Command         Behavior
-  ==============  ==============================================
-  ``DEF CON``     1. Create parent components if they do not exist.
-                     Add undo for parent components.
-                  2. If parent exists and is not suitable, ERROR.
-                  3. For each child, if it does not exist,
-                     add child to end of list, and add undo.
-  ``DEF ALT``     1. Create parent components if they do not exist.
-                     Add undo for parent components.
-                  2. If parent exists and is not suitable, ERROR.
-                  3. For each child, if it does not exist,
-                     add child to end of list, and add undo.
-  ``DEL``         1. If path does not exist, ERROR.
-                  2. If path has children, ERROR.
-                  3. Remove path from parent. Add undo.
-  ==============  ==============================================
-
-
 
 Parser functions
 =====================
@@ -452,3 +432,58 @@ tokens. The tokens are interpolated instead of the original ``{VAR}``.
 
 Returns ``[num, tokArray]``, where ``num`` is the number of
 successful substitutions performed.
+
+
+.. _runtime:
+
+Popcorn Runtime
+-----------------
+
+The Runtime is a global object always available as an instance named
+``P``.  There is one Runtime in the browser, and a slightly different
+Runtime in the Popcorn back end.
+The main difference is that the back-end Runtime has no DOM and no
+user inputs.
+
+The Runtime maintains a queue of executable items, executing and
+shifting the first item off the queue asynchronously (i.e., using
+``setImmediate``). There are two types of items:
+
+UPDATE item
+
+  ``UPDATE`` items are requests to make a state change. They can be
+  sent by the back-end application, or they can be created by a timer
+  in the browser.
+
+  An ``UPDATE`` item either contains command text to be tokenized and
+  executed, or the name of a procedure to be executed. In either case,
+  when this item is executed, Popcorn will first execute the
+  procedure, and then the ``RENDER`` built-in procedure.
+
+  When an ``UPDATE`` item contains the name of a procedure to execute,
+  it can also provide a set of variable assignments to be expanded
+  within the procedure.
+
+  Members, if the item names a procedure:
+
+  - ``procName``, a string naming a procedure
+
+  - ``varDict``, an object containing variables and string values.
+
+  Members, if the item contains PSL command text:
+
+  - ``lines``, an array of strings containing PSL text.
+
+
+HANDLER item:
+
+  A ``HANDLER`` item is created when user input is received. It always
+  names a procedure, and its ``varDict`` is filled according to the
+  input mode that generated the item. To execute a ``HANDLER`` item,
+  Popcorn does the same thing as for the ``UPDATE`` item.
+
+  
+
+  
+
+  
